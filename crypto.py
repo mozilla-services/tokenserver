@@ -6,6 +6,7 @@ import json
 import time
 
 _SIZE = 128
+_HASH = hashlib.sha1
 
 
 def generate_secret(size=_SIZE):
@@ -15,15 +16,23 @@ def generate_secret(size=_SIZE):
 def sign(token, secret):
     if len(secret) != 128:
         raise ValueError("Invalid secret")
-    token['signature'] = hmac.new(secret, '', hashlib.sha1).hexdigest()
+    token['signature'] = _signature(token, secret)
     return token
 
+
+def _signature(token, secret):
+    token = token.copy()
+    if 'signature' in token:
+        del token['signature']
+    token = token.items()
+    token.sort()
+    return hmac.new(secret, json.dumps(token), _HASH).hexdigest()
 
 def verify(token, secret):
     if len(secret) != 128:
         raise ValueError("Invalid secret")
     signature = token['signature']
-    wanted = hmac.new(secret, '', hashlib.sha1).hexdigest()
+    wanted = _signature(token, secret)
     if signature != wanted:
         raise ValueError('Invalid Token')
 
