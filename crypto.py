@@ -3,7 +3,8 @@ import hashlib
 import os
 import binascii
 import json
-import time
+from hkdf import derive
+from datetime import now, timedelta
 
 _SIZE = 128
 _HASH = hashlib.sha1
@@ -28,6 +29,7 @@ def _signature(token, secret):
     token.sort()
     return hmac.new(secret, json.dumps(token), _HASH).hexdigest()
 
+
 def verify(token, secret):
     if len(secret) != 128:
         raise ValueError("Invalid secret")
@@ -35,6 +37,7 @@ def verify(token, secret):
     wanted = _signature(token, secret)
     if signature != wanted:
         raise ValueError('Invalid Token')
+
 
 def create_header(token):
     return 'Authorization: MozToken %s' % json.dumps(token)
@@ -51,12 +54,10 @@ def extract_token(header):
     return token
 
 
-def create_token(email, uid, node, secret, ttl=30):
-    token =  {'timestamp': time.time(),
-              'ttl': ttl,
-              'email': email,
-              'uid': uid,
-              'node': node}
+def create_token(uid, secret, expires=None):
+    if expires is None:
+        expires = now() + timedelta(minutes=30)
+    token = {'uid': uid, 'expires': expires.isoformat()}
     sign(token, secret)
     return token
 
@@ -66,9 +67,13 @@ if __name__ == '__main__':
     secret = generate_secret()
     print(secret)
 
+    print('Derive the secret')
+    dsecret = derive(secret, 128, salt="salted_value")
+    print(dsecret)
+
     print('========= SERVER ==========')
     print('Creating the signed token')
-    token = create_token('tarek@mozilla.com', '123', 'phx345', secret)
+    token = create_token('123', dsecret)
     print token
 
     print('creating a header with it')
@@ -83,4 +88,4 @@ if __name__ == '__main__':
 
     print "validating the signature"
 
-    verify(token, secret)
+    verify(token, dsecret)
