@@ -1,4 +1,3 @@
-import math
 import hashlib
 import os
 import binascii
@@ -13,16 +12,16 @@ class HKDF(object):
     """Implementation of the HMAC Key Derivation Function (HKDF) described
     on https://tools.ietf.org/html/rfc5869.
     """
-    def __init__(self, hash=hashlib.sha1, salt=''):
+    def __init__(self, salt='', hash=hashlib.sha1):
         """
         :param salt: optional salt value (a non-secret random value).
                      If not provided, it is set to a string of Hashlen zeros.
 
         """
         self.hash = hash
-        self.salt = salt
         self.hashlen = self.hash().digest_size
-        self.salt.zfill(self.hashlen)
+
+        self.salt = salt or chr(0) * (self.hashlen)
         self.okm = None
 
     def derive(self, ikm, size, info=None):
@@ -38,8 +37,8 @@ class HKDF(object):
 
         Returns a pseudorandom key and its lenght
         """
-        res = hmac.new(key=ikm, msg=self.salt, digestmod=self.hash)
-        return res.hexdigest()
+        res = hmac.new(key=self.salt, msg=ikm, digestmod=self.hash)
+        return res.digest()
 
     def expand(self, prk, size, info=None):
         """Expand the given pseudo random key (PRK) to give the output keyring
@@ -70,10 +69,10 @@ class HKDF(object):
         return self.okm
 
 
-def derive(ikm, size, salt=None, info=None):
+def derive(ikm, size, salt=None, info=None, hash=None):
     """Derive the input keyring material IKM to another key of the specified
     size, using additional info if provided"""
-    hkdf = HKDF(salt=salt)
+    hkdf = HKDF(salt=salt, hash=hash)
     return hkdf.derive(ikm, size, info)
 
 
