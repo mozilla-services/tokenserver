@@ -4,7 +4,7 @@ import os
 import binascii
 import json
 from hkdf import derive
-from datetime import now, timedelta
+from datetime import datetime, timedelta
 
 _SIZE = 128
 _HASH = hashlib.sha1
@@ -56,7 +56,7 @@ def extract_token(header):
 
 def create_token(uid, secret, expires=None):
     if expires is None:
-        expires = now() + timedelta(minutes=30)
+        expires = datetime.now() + timedelta(minutes=30)
     token = {'uid': uid, 'expires': expires.isoformat()}
     sign(token, secret)
     return token
