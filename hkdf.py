@@ -12,13 +12,13 @@ class HKDF(object):
     """Implementation of the HMAC Key Derivation Function (HKDF) described
     on https://tools.ietf.org/html/rfc5869.
     """
-    def __init__(self, salt='', hash=hashlib.sha1):
+    def __init__(self, salt='', hash=None):
         """
         :param salt: optional salt value (a non-secret random value).
                      If not provided, it is set to a string of Hashlen zeros.
 
         """
-        self.hash = hash
+        self.hash = hash or hashlib.sha1
         self.hashlen = self.hash().digest_size
 
         self.salt = salt or chr(0) * (self.hashlen)
