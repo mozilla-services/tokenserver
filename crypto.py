@@ -67,9 +67,13 @@ if __name__ == '__main__':
     secret = generate_secret()
     print(secret)
 
-    print('Derive the secret')
+    print('Derive the client secret')
     dsecret = derive(secret, 128, salt="salted_value")
     print(dsecret)
+
+    print('Derive the node server secret')
+    dsecret2 = derive(secret, 128, salt="salted_value")
+    print(dsecret2)
 
     print('========= SERVER ==========')
     print('Creating the signed token')
