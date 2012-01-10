@@ -9,7 +9,6 @@ def sha_random(size=160):
     return binascii.b2a_hex(os.urandom(size))[:size]
 
 
-
 class HKDF(object):
     """Implementation of the HMAC Key Derivation Function (HKDF) described
     on https://tools.ietf.org/html/rfc5869.
@@ -61,6 +60,13 @@ class HKDF(object):
             output += prev
 
         return output
+
+
+def derive(ikm, size, salt=None, info=None):
+    """Derive the input keyring material IKM to another key of the specified
+    size, using additional info if provided"""
+    hkdf = HKDF(salt=salt)
+    return hkdf.derive(ikm, size, info)
 
 
 if __name__ == '__main__':
