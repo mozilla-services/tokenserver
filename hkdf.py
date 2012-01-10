@@ -23,6 +23,7 @@ class HKDF(object):
         self.salt = salt
         self.hashlen = self.hash().digest_size
         self.salt.zfill(self.hashlen)
+        self.okm = None
 
     def derive(self, ikm, size, info=None):
         prk = self.extract(ikm)
@@ -51,15 +52,22 @@ class HKDF(object):
 
         Returns the output keyring material (OKM)
         """
+        if info is None:
+            info = ""
 
-        prev, output = "", ""
-        steps = math.ceil(float(size) / self.hashlen)
+        T, temp = "", ""
 
-        for step in range(int(steps)):
-            prev = hmac.new(prk, prev + str(step), self.hash).hexdigest()
-            output += prev
+        i = 0x01
+        while len(T) < size:
+            msg = temp + info + chr(i)
+            h = hmac.new(prk, msg, self.hash)
+            temp = h.digest()
+            i += 1
+            T += temp
 
-        return output
+        self.okm = T[0:size]
+
+        return self.okm
 
 
 def derive(ikm, size, salt=None, info=None):
