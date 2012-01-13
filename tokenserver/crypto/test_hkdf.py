@@ -4,6 +4,7 @@
 See http://tahoe-lafs.org/trac/pycryptopp/attachment/ticket/42
 """
 #!/usr/bin/env python
+import os
 
 import re
 import unittest
@@ -13,6 +14,7 @@ from binascii import a2b_hex, b2a_hex
 import hkdf
 
 
+here = os.path.dirname(__file__)
 TEST_HKDF_RE = re.compile("\nCOUNT=([0-9]+)\nHASH=([0-9A-Z]+)\nIKM=([0-9a-f]+)"
                           "\nSALT=([0-9a-z ]+)\nINFO=([0-9a-z ]+)\nL=([0-9]+)"
                           "\nPRK=([0-9a-f]+)\nOKM=([0-9a-f]+)")
@@ -25,7 +27,7 @@ class HKDFTest(unittest.TestCase):
         # Key Derivation Function (HKDF))'s
         # Appendix A. Test Vectors
         # http://tools.ietf.org/html/rfc5869
-        curfile = open('HKDFMsg.txt', 'r')
+        curfile = open(os.path.join(here, 'HKDFMsg.txt'), 'r')
         s = curfile.read()
         print s, "\n"
         return self._test_HKDF(s)

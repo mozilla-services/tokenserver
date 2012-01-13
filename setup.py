@@ -2,7 +2,7 @@ import os
 from setuptools import setup, find_packages
 
 
-requires = ['powerhose']
+requires = ['powerhose', 'cornice']
 
 
 setup(name='tokenserver',
