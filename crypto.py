@@ -5,36 +5,45 @@ import binascii
 import json
 from hkdf import derive
 from datetime import datetime, timedelta
+import time
 
-_SIZE = 128
+_SIZE = 256
 _HASH = hashlib.sha1
 
 
-def generate_secret(size=_SIZE):
+def random_value(size=_SIZE):
     return binascii.b2a_hex(os.urandom(size))[:size]
 
 
-def sign(token, secret):
-    if len(secret) != 128:
+def sign(token, secret, key='signature'):
+    if len(secret) != _SIZE:
         raise ValueError("Invalid secret")
-    token['signature'] = _signature(token, secret)
+    token[key] = _signature(token, secret, key)
     return token
 
 
-def _signature(token, secret):
+def oauth_sign(token, secret):
+    token['oauth_timestamp'] = time.time()
+    token['oauth_nonce'] = random_value(128)
+    token = sign(token, secret, key='oauth_signature')
+    token['oauth_signature_method'] = 'HMAC-SHA1'  # XXX
+    return token
+
+
+def _signature(token, secret, key='signature'):
     token = token.copy()
-    if 'signature' in token:
-        del token['signature']
+    if key in token:
+        del token[key]
     token = token.items()
     token.sort()
     return hmac.new(secret, json.dumps(token), _HASH).hexdigest()
 
 
-def verify(token, secret):
-    if len(secret) != 128:
+def verify(token, secret, key="signature"):
+    if len(secret) != _SIZE:
         raise ValueError("Invalid secret")
-    signature = token['signature']
-    wanted = _signature(token, secret)
+    signature = token[key]
+    wanted = _signature(token, secret, key)
     if signature != wanted:
         raise ValueError('Invalid Token')
 
@@ -57,39 +66,45 @@ def extract_token(header):
 def create_token(uid, secret, expires=None):
     if expires is None:
         expires = datetime.now() + timedelta(minutes=30)
-    token = {'uid': uid, 'expires': expires.isoformat()}
+    token = {'uid': uid, 'expires': time.mktime(expires.timetuple())}
     sign(token, secret)
     return token
 
 
+def create_token_info(token, token_secret, salt, node, metadata=None):
+    info = {
+        'oauth_consumer_key': token,
+        'oauth_consumer_secret': token_secret,
+        'salt': salt,
+        'app_node': node,
+    }
+
+    if metadata is not None:
+        info['app_metadata'] = metadata
+
+    return info
+
+
+def get_secrets():
+    master = random_value()
+    sig_secret = derive(master, _SIZE, salt="SIGN")
+
+    return master, sig_secret
+
+
+def get_token(master, sig_secret, idx, node):
+    salt = random_value()  # XXX define what's the salt lenght
+
+    auth_token = create_token(idx, sig_secret)
+    token_secret = derive(master, _SIZE, salt=salt)
+
+    return create_token_info(auth_token, token_secret, salt, node)
+
+
 if __name__ == '__main__':
-    print('Creating a secret')
-    secret = generate_secret()
-    print(secret)
+    import sys
 
-    print('Derive the client secret')
-    dsecret = derive(secret, 128, salt="salted_value")
-    print(dsecret)
-
-    print('Derive the node server secret')
-    dsecret2 = derive(secret, 128, salt="salted_value")
-    print(dsecret2)
-
-    print('========= SERVER ==========')
-    print('Creating the signed token')
-    token = create_token('123', dsecret)
-    print token
-
-    print('creating a header with it')
-    header = create_header(token)
-    print header
-
-    print('========= NODE ==========')
-    print('extracting the token from the header')
-
-    token = extract_token(header)
-    print header
-
-    print "validating the signature"
-
-    verify(token, dsecret)
+    master, sig_secret = get_secrets()
+    for x in range(int(sys.argv[1])):
+        print("Generates a token")
+        print(get_token(master, sig_secret, 123, "phx2"))
