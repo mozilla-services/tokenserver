@@ -3,9 +3,10 @@ import hashlib
 import os
 import binascii
 import json
-from hkdf import derive
 from datetime import datetime, timedelta
 import time
+
+from tokenserver.hkdf import derive
 
 _SIZE = 256
 _HASH = hashlib.sha1
