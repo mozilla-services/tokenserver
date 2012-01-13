@@ -25,7 +25,7 @@ def main():
     for i in range(items):
         data = {'userid': random.choice(USERS),
                 'node': random.choice(NODES),
-                'func_id': 'create_token'}
+                'func': 'create_token'}
 
         ventilator.execute(data)
 
