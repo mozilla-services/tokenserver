@@ -1,18 +1,21 @@
 #include <iostream>
+
+#include "libhose.h"
 #include "cryptopp/hkdf.h"
 #include "cryptopp/sha.h"
 #include "cryptopp/osrng.h"
+#include "response.pb.h"
 
-using namespace std;
 using namespace CryptoPP;
-
+using namespace powerhose;
+using namespace std;
 
 /**
  * Derive the given input keyring material into an output keyring material, 
  * using an automatically generated salt (which is returned as well)
  *
  **/
-void derive_secret(byte* ikm, byte* salt, byte* okm){
+void _derive_secret(byte* ikm, byte* salt, byte* okm){
 	int l = 82;
 	const unsigned int BLOCKSIZE = 16* 8;
 
@@ -33,8 +36,11 @@ void derive_secret(byte* ikm, byte* salt, byte* okm){
 				   NULL, 0);
 }
 
-int main(int argc, const char *argv[])
-{
+string derive_secret(string job, Registry reg) {
+    // deserialize the request (XXX make sure we don't need anything more here)
+    // 1. get the master certificate
+    // XXX. for now this is a fixed value directly specified in the code, but
+    // we want to have it on disk somewhere.
 	byte ikm[80] = { 
 		0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09,
 		0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15,
@@ -45,14 +51,31 @@ int main(int argc, const char *argv[])
 		0x46, 0x47, 0x48, 0x49, 0x4a, 0x4b, 0x4c, 0x4d, 0x4e, 0x4f };
 
 	byte salt[82];
-	memset(salt, 0, sizeof(salt));
 
+	memset(salt, 0, sizeof(salt));
 	byte okm[82];
 
-	derive_secret(ikm, salt, okm);
+    // 2. derivate it using HKDF
+	_derive_secret(ikm, salt, okm);
 
-	cout << "derivated secret" << endl << okm << endl;
-	cout << "salt" << endl << salt << endl;;
+    // 3. return the OKM and the salt
+    Response resp;
+    resp.set_salt(&salt, sizeof(salt));
+    resp.set_secret(&okm, sizeof(okm));
 
-	return 0;
+    string string_resp;
+    resp.SerializeToString(&string_resp);
+    return string_resp;
+}
+
+
+int main(int argc, const char *argv[])
+{
+    // building the map of functions
+    Function fderive = Function("derive_secret", &derive_secret);
+    Functions functions;
+    functions.insert(fderive);
+  
+    // running 10 workers
+    return run_workers(10, functions, NULL, NULL);
 }

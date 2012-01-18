@@ -2,19 +2,26 @@ PROJECT = tokencppworker
 BUILD = build/
 LIB = libs/
 SRC = src/
-OBJ = $(BUILD)main.o
 LIBS = cryptopp
 CPP = g++
+PROTOBUF = $(SRC)
 CXXFLAGS = -Wall -ansi -pedantic-errors
 
-all: mkdirs
-	$(CPP) -c $(SRC)main.cpp -L $(LIB) -o $(BUILD)main.o $(CXXFLAGS) -lcryptopp
-	$(CPP) $(OBJ) -l$(LIBS) -lpthread -o $(BUILD)$(PROJECT) $(CXXFLAGS) 
+all: mkdirs protobuf libhose
+	$(CPP) -o $(BUILD)$(PROJECT) $(SRC)response.pb.cc $(SRC)crypto.cpp $(SRC)libhose.o -lprotobuf -lzmq -lcryptopp $(CXXFLAGS)
+
+protobuf:
+	cd $(SRC); protoc response.proto --cpp_out=. --python_out=../client
 
 mkdirs:
 	@if [ ! -d "$(BUILD)" ]; then \
 		mkdir $(BUILD); \
 	fi
 
+libhose:
+	cp ../../powerhose/powerhose/libhose/libhose.o src
+	cp ../../powerhose/powerhose/libhose/libhose.h src
+
 clean:
 	rm -rf $(BUILD)
+	rm src/libhose.o src/libhose.h
