@@ -2,7 +2,7 @@ import os
 from setuptools import setup, find_packages
 
 
-requires = ['cornice']
+requires = ['cornice', 'pyvep']
 
 
 setup(name='tokenserver',
