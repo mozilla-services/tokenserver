@@ -1,14 +1,31 @@
 from webtest import TestApp
 import unittest
 import json
+import os
 
 from tokenserver import main
 from vep import DummyVerifier
+
+here = os.path.dirname(__file__)
 
 
 class TestService(unittest.TestCase):
 
     def setUp(self):
+
+        global_config = {'__file__': os.path.join(here, 'test.ini'),
+                         'here': here}
+
+        settings = {'pyramid.includes': 'pyramid_debugtoolbar',
+                    'pyramid.debug_authorization': 'false',
+                    'pyramid.default_locale_name': 'en',
+                    'pyramid.reload_templates': 'true',
+                    'pyramid.debug_notfound': 'false',
+                    'pyramid.debug_templates': 'true',
+                    'mako.directories': 'cornice:templates',
+                    'pyramid.debug_routematch': 'false'}
+
+        self.app = TestApp(main(global_config, **settings))
         self.verifier = DummyVerifier
 
         def urlopen(url, data): # NOQA
@@ -27,12 +44,10 @@ class TestService(unittest.TestCase):
         return self.verifier.make_assertion(email, url)
 
     def test_unknown_app(self):
-        app = TestApp(main({}))
         headers = {'Authorization': 'Browser-ID %s' % self._getassertion()}
-        res = app.get('/1.0/xXx/token', headers=headers, status=404)
+        res = self.app.get('/1.0/xXx/token', headers=headers, status=404)
         res = json.loads(res.body)
         self.assertEqual(res['errors'][0], 'Unknown application')
 
     def test_no_auth(self):
-        app = TestApp(main({}))
-        app.get('/1.0/sync/token', status=401)
+        self.app.get('/1.0/sync/token', status=401)
