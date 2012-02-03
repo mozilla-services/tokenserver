@@ -1,16 +1,13 @@
-from pyramid.config import Configurator
-from tokenserver.bidauth import BrowserIDPolicy
+from mozsvc.config import get_configurator
 
 
 def includeme(config):
     config.include("cornice")
+    config.include("mozsvc")
     config.scan("tokenserver.views")
 
 
 def main(global_config, **settings):
-    bid = BrowserIDPolicy('dummy')
-
-    config = Configurator(settings=settings,
-                          authentication_policy=bid)
+    config = get_configurator(global_config, **settings)
     config.include(includeme)
     return config.make_wsgi_app()
