@@ -1,5 +1,0 @@
-To install this, you need to grab and compile a specific verison of cryptopp,
-which introduces HKDF. You can find it online at
-https://github.com/ametaireau/cryptopp/
-
-To install it, run `make install`.
