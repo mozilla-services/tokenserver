@@ -51,3 +51,8 @@ class TestService(unittest.TestCase):
 
     def test_no_auth(self):
         self.app.get('/1.0/sync/token', status=401)
+
+    def test_valid_app(self):
+        headers = {'Authorization': 'Browser-ID %s' % self._getassertion()}
+        res = self.app.get('/1.0/sync/token', headers=headers)
+        self.assertEqual(res.json['service_entry'], 'http://example.com')
