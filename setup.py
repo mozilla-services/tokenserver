@@ -2,7 +2,8 @@ import os
 from setuptools import setup, find_packages
 
 
-requires = ['cornice', 'repoze.who.plugins.vepauth', 'mozsvc']
+requires = ['cornice', 'repoze.who.plugins.vepauth', 'mozsvc',
+            'pyramid_whoauth']
 
 
 setup(name='tokenserver',

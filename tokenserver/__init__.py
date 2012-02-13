@@ -4,6 +4,7 @@ from mozsvc.config import get_configurator
 def includeme(config):
     config.include("cornice")
     config.include("mozsvc")
+    config.include("pyramid_whoauth")
     config.scan("tokenserver.views")
 
 
