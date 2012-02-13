@@ -4,6 +4,8 @@
 from repoze.who.plugins.vepauth.tokenmanager import SignedTokenManager
 from pyramid.threadlocal import get_current_registry
 from mozsvc.config import get_configurator
+from cornice.util import json_error
+from cornice.errors import Errors
 
 
 class NodeTokenManager(SignedTokenManager):
@@ -20,6 +22,19 @@ class NodeTokenManager(SignedTokenManager):
         token, secret, __ = super(NodeTokenManager, self).make_token(request,
                                                                      data)
         return token, secret, extra
+
+    def _validate_request(self, request, data):
+        """Raise a cornice compatible error when the application is not
+        found"""
+        if ('application' in request.matchdict and self.applications and
+                request.matchdict['application'] not in self.applications):
+            errors = Errors()
+            errors.add("uri", "application",
+            "the application %s is not defined, please use one of %s" % (
+                request.matchdict['application'],
+                ", ".join(self.applications)))
+
+            raise json_error(errors, 404)
 
 
 def includeme(config):
