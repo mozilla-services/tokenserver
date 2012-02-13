@@ -1,0 +1,7 @@
+lib
+bin
+include
+man
+*.pyc
+tokenserver.egg-info
+.Python
