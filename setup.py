@@ -15,4 +15,6 @@ setup(name='tokenserver',
       [paste.app_factory]
       main = tokenserver:main
       """,
-      install_requires=requires)
+      install_requires=requires,
+      tests_require=requires,
+      test_suite="tokenserver.tests")
