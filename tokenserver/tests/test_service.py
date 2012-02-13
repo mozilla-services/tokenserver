@@ -5,6 +5,7 @@ import os
 
 from tokenserver import main
 from vep import DummyVerifier
+from mozsvc.util import CatchErrors
 
 here = os.path.dirname(__file__)
 
@@ -25,7 +26,8 @@ class TestService(unittest.TestCase):
                     'mako.directories': 'cornice:templates',
                     'pyramid.debug_routematch': 'false'}
 
-        self.app = TestApp(main(global_config, **settings))
+        app = CatchErrors(main(global_config, **settings))
+        self.app = TestApp(app)
         self.verifier = DummyVerifier
 
         def urlopen(url, data): # NOQA
@@ -45,9 +47,7 @@ class TestService(unittest.TestCase):
 
     def test_unknown_app(self):
         headers = {'Authorization': 'Browser-ID %s' % self._getassertion()}
-        res = self.app.get('/1.0/xXx/token', headers=headers, status=404)
-        res = json.loads(res.body)
-        self.assertEqual(res['errors'][0], 'Unknown application')
+        self.app.get('/1.0/xXx/token', headers=headers, status=404)
 
     def test_no_auth(self):
         self.app.get('/1.0/sync/token', status=401)
