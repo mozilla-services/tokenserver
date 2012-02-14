@@ -50,7 +50,8 @@ class TestService(unittest.TestCase):
 
     def test_unknown_app(self):
         headers = {'Authorization': 'Browser-ID %s' % self._getassertion()}
-        self.app.get('/1.0/xXx/token', headers=headers, status=404)
+        resp = self.app.get('/1.0/xXx/token', headers=headers, status=404)
+        self.assertTrue('errors' in resp.json)
 
     def test_no_auth(self):
         self.app.get('/1.0/sync/token', status=401)
