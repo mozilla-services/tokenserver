@@ -59,3 +59,8 @@ class TestService(unittest.TestCase):
         headers = {'Authorization': 'Browser-ID %s' % self._getassertion()}
         res = self.app.get('/1.0/sync/token', headers=headers)
         self.assertEqual(res.json['service_entry'], 'http://example.com')
+
+    def test_discovery(self):
+        res = self.app.get('/')
+        self.assertEqual(res.json['auth'],
+                         'https://token.services.mozilla.com')
