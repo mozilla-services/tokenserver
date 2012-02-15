@@ -4,6 +4,9 @@ from pyramid.threadlocal import get_current_registry
 from cornice.util import json_error
 from cornice.errors import Errors
 
+from tokenserver.backends import (DefaultNodeAssignmentBackend,
+                                  NodeAssignmentBackend)
+
 
 class NodeTokenManager(SignedTokenManager):
     def __init__(self, node_assignment_backend=None, *args, **kw):
@@ -44,12 +47,23 @@ class NodeTokenManager(SignedTokenManager):
     def _validate_request(self, request, data):
         """Raise a cornice compatible error when the application is not
         one of the defined ones"""
-        if ('application' in request.matchdict and self.applications and
-                request.matchdict['application'] not in self.applications):
-            errors = Errors()
-            errors.add("uri", "application",
-            "the application %s is not defined, please use one of %s" % (
-                request.matchdict['application'],
-                ", ".join(self.applications)))
+        if self.applications == {}:
+            return
 
+        application = request.matchdict.get('application')
+        version = request.matchdict.get('version')
+        errors = Errors()
+
+        if application not in self.applications:
+            errors.add("uri", "application",
+            "the application %r is not defined, please use one of %s" % (
+                        application, ", ".join(self.applications.keys())))
+
+        if version not in self.applications[application]:
+            versions = self.applications[application]
+            errors.add("uri", "version",
+              ("the application %r is not defined for this version, please "
+               "use one of %s") % (application, ", ".join(versions)))
+
+        if len(errors) > 0:
             raise json_error(errors, 404)

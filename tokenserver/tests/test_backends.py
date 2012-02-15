@@ -36,7 +36,7 @@ class TestBackends(unittest.TestCase):
         finally:
             backends.get_current_registry = _registry
 
-    def test_ldap_node_assignment_backend(self):
+    def _test_ldap_node_assignment_backend(self):
         ldap = "ldap://user:password@server"
         sreg = "http://to.sreg.server"
         snode = "http://to.snode.server"
