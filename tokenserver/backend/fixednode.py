@@ -1,9 +1,5 @@
-from repoze.who.plugins.vepauth.tokenmanager import SignedTokenManager
 from pyramid.threadlocal import get_current_registry
-
-from cornice.util import json_error
 from zope.interface import implements
-from cornice.errors import Errors
 from tokenserver.backend import INodeAssignment
 
 

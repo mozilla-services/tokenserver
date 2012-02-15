@@ -5,10 +5,15 @@ from webtest import TestApp
 import unittest
 import json
 import os
+from pyramid import testing
 
 from tokenserver import main
 from vep import DummyVerifier
 from mozsvc.util import CatchErrors
+from mozsvc.config import load_into_settings
+from tokenserver.backend import INodeAssignment
+from mozsvc.plugin import load_and_register
+
 
 here = os.path.dirname(__file__)
 
@@ -16,21 +21,17 @@ here = os.path.dirname(__file__)
 class TestService(unittest.TestCase):
 
     def setUp(self):
-
-        global_config = {'__file__': os.path.join(here, 'test.ini'),
-                         'here': here}
-
-        settings = {'pyramid.includes': 'pyramid_debugtoolbar',
-                    'pyramid.debug_authorization': 'false',
-                    'pyramid.default_locale_name': 'en',
-                    'pyramid.reload_templates': 'true',
-                    'pyramid.debug_notfound': 'false',
-                    'pyramid.debug_templates': 'true',
-                    'mako.directories': 'cornice:templates',
-                    'pyramid.debug_routematch': 'false'}
-
-        app = CatchErrors(main(global_config, **settings))
-        self.app = TestApp(app)
+        self.config = testing.setUp()
+        self.ini = os.path.join(os.path.dirname(__file__), 'test_fixednode.ini')
+        settings = {}
+        load_into_settings(self.ini, settings)
+        self.config.add_settings(settings)
+        self.config.include("tokenserver")
+        load_and_register("tokenserver", self.config)
+        self.backend = self.config.registry.getUtility(INodeAssignment)
+        wsgiapp = self.config.make_wsgi_app()
+        wsgiapp = CatchErrors(wsgiapp)
+        self.app = TestApp(wsgiapp)
         self.verifier = DummyVerifier
 
         def urlopen(url, data): # NOQA
@@ -60,8 +61,3 @@ class TestService(unittest.TestCase):
         headers = {'Authorization': 'Browser-ID %s' % self._getassertion()}
         res = self.app.get('/1.0/sync/2.1', headers=headers)
         self.assertEqual(res.json['service_entry'], 'http://example.com')
-
-    def test_discovery(self):
-        res = self.app.get('/')
-        self.assertEqual(res.json['auth'],
-                         'https://token.services.mozilla.com')
