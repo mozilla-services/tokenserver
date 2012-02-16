@@ -24,15 +24,3 @@ class TestFixedBackend(unittest.TestCase):
         wanted = 'http://example.com'
         self.assertEqual(wanted, self.backend.create_node(None, None))
         self.assertEqual(wanted, self.backend.get_node(None, None))
-
-    def _test_ldap_node_assignment_backend(self):
-        ldap = "ldap://user:password@server"
-        sreg = "http://to.sreg.server"
-        snode = "http://to.snode.server"
-        backend = LDAPNodeAssignmentBackend(ldap, sreg, snode, None)
-
-        # in case we esplicitely ask for an unknown user, we return None
-        backend.get_node(email, service)
-
-        # in this case, adding an user makes a call to sreg
-        node = backend.create_node(email, service)
