@@ -87,7 +87,4 @@ class SNodeBackend(ProxyBackend):
             msg = 'no node for the product is available for assignment '
             raise BackendError(msg, server=url)
 
-        if body == username:
-            return username
-
         return body
