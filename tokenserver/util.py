@@ -14,20 +14,12 @@ from mozsvc.exceptions import BackendError
 from tokenserver import logger
 
 
-class SREGBackend(object):
+class ProxyBackend(object):
 
     def __init__(self, location, path, scheme='http', **kw):
         self.location = location
         self.scheme = scheme
         self.path = path
-
-    def _generate_url(self, username, additional_path=None):
-        path = "%s/%s" % (self.path, username)
-        if additional_path:
-            path = "%s/%s" % (path, additional_path)
-        url = urlparse.urlunparse([self.scheme, self.location,
-                                  path, None, None, None])
-        return url
 
     def _proxy(self, method, url, data=None, headers=None):
         if data is not None:
@@ -42,9 +34,20 @@ class SREGBackend(object):
                 raise  # XXX
         return status, body
 
+    def _generate_url(self, username, additional_path=None):
+        path = "%s/%s" % (self.path, username)
+        if additional_path:
+            path = "%s/%s" % (path, additional_path)
+        url = urlparse.urlunparse([self.scheme, self.location,
+                                  path, None, None, None])
+        return url
+
     def _hashemail(self, email):
         digest = sha1(email.lower()).digest()
         return b32encode(digest).lower()
+
+
+class SREGBackend(ProxyBackend):
 
     def create_user(self, email):
         username = self._hashemail(email)
@@ -66,3 +69,25 @@ class SREGBackend(object):
         msg += 'Received body:\n%s\n' % str(body)
         msg += 'Received status: %d' % status
         raise BackendError(msg, server=url)
+
+
+class SNodeBackend(ProxyBackend):
+    def allocate_user(self, email):
+        username = self._hashemail(email)
+        url = self._generate_url(username, 'sync')
+        status, body = self._proxy('GET', url)
+        if status != 200:
+            msg = 'Unable to allocate a note to a user via snode. '
+            msg += 'Received body:\n%s\n' % str(body)
+            msg += 'Received status: %d' % status
+            raise BackendError(msg, server=url)
+
+        # the result is the node on success
+        if body is None:
+            msg = 'no node for the product is available for assignment '
+            raise BackendError(msg, server=url)
+
+        if body == username:
+            return username
+
+        return body
