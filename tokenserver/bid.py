@@ -23,6 +23,8 @@ class IPowerhoseRunner(Interface):
 
 # global registry
 # # XXX thread-safetiness ?
+
+# XXX see https://github.com/Pylons/pyramid/issues/442
 def bye(*args, **kw):
     stop_runners()
     sys.exit(1)
