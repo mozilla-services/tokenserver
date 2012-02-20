@@ -63,7 +63,6 @@ class LDAPNodeAssignmentBackend(object):
         :param email: the email of the user to look the node for
         :param service: the service to look for
         """
-        # make a call to ldap
         with self.pool.connection() as conn:
             try:
                 res = conn.search_st('ou=users,dc=mozilla',

@@ -18,12 +18,12 @@ class TestSReg(unittest.TestCase, RegPatcher):
 
     def test_sreg(self):
         # let's create a user
-        backend = SRegBackend('example.com', '/1.0/sreg')
+        backend = SRegBackend('example.com/1.0/sreg')
         username = backend.create_user('john@example.com')
         self.assertEquals(username, 'kismw365lo7emoxr3ohojgpild6lph4b')
 
     def test_snode(self):
         # let's get a user ndoe
-        backend = SNodeBackend('example.com', '/1.0/')
+        backend = SNodeBackend('example.com/1.0/')
         node = backend.allocate_user('john@example.com')
         self.assertEquals(node, 'http://phx324')

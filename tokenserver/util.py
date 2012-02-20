@@ -3,7 +3,6 @@
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 import json
 import re
-import urlparse
 from base64 import b32encode
 from hashlib import sha1
 import binascii
@@ -17,10 +16,9 @@ from tokenserver import logger
 
 class ProxyBackend(object):
 
-    def __init__(self, location, path, scheme='http', **kw):
-        self.location = location
+    def __init__(self, uri, scheme='http', **kw):
         self.scheme = scheme
-        self.path = path
+        self.uri = uri
 
     def _proxy(self, method, url, data=None, headers=None):
         if data is not None:
@@ -36,12 +34,10 @@ class ProxyBackend(object):
         return status, body
 
     def _generate_url(self, username, additional_path=None):
-        path = "%s/%s" % (self.path, username)
+        path = "%s://%s/%s" % (self.scheme, self.uri, username)
         if additional_path:
             path = "%s/%s" % (path, additional_path)
-        url = urlparse.urlunparse([self.scheme, self.location,
-                                  path, None, None, None])
-        return url
+        return path
 
 
 class SRegBackend(ProxyBackend):
