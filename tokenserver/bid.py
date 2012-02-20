@@ -1,8 +1,11 @@
 import os
 import json
 import time
-from pyramid.threadlocal import get_current_registry
+import signal
 import base64
+import sys
+
+from pyramid.threadlocal import get_current_registry
 
 from vep.verifiers.local import LocalVerifier
 from vep.jwt import JWT
@@ -20,6 +23,13 @@ class IPowerhoseRunner(Interface):
 
 # global registry
 # # XXX thread-safetiness ?
+def bye(*args, **kw):
+    stop_runners()
+    sys.exit(1)
+
+signal.signal(signal.SIGTERM, bye)
+signal.signal(signal.SIGINT, bye)
+
 _runners = {}
 
 
