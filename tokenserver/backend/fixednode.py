@@ -21,7 +21,7 @@ class DefaultNodeAssignmentBackend(object):
         if self._service_entry is None:
             settings = get_current_registry().settings
             self._service_entry = settings.get('tokenserver.service_entry')
-        return self._service_entry
+        return self._service_entry, None
 
     def get_node(self, email, service):
         return self.service_entry

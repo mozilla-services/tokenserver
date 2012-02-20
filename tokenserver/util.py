@@ -2,6 +2,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 import json
+import re
 import urlparse
 from base64 import b32encode
 from hashlib import sha1
@@ -42,15 +43,11 @@ class ProxyBackend(object):
                                   path, None, None, None])
         return url
 
-    def _hashemail(self, email):
-        digest = sha1(email.lower()).digest()
-        return b32encode(digest).lower()
 
-
-class SREGBackend(ProxyBackend):
+class SRegBackend(ProxyBackend):
 
     def create_user(self, email):
-        username = self._hashemail(email)
+        username = hash_email(email)
         url = self._generate_url(username)
         password = binascii.b2a_hex(os.urandom(20))[:20]
         payload = {'password': password, 'email': email}
@@ -72,8 +69,9 @@ class SREGBackend(ProxyBackend):
 
 
 class SNodeBackend(ProxyBackend):
+
     def allocate_user(self, email):
-        username = self._hashemail(email)
+        username = hash_email(email)
         url = self._generate_url(username, 'sync')
         status, body = self._proxy('GET', url)
         if status != 200:
@@ -88,3 +86,23 @@ class SNodeBackend(ProxyBackend):
             raise BackendError(msg, server=url)
 
         return body
+
+
+def hash_email(email):
+    digest = sha1(email.lower()).digest()
+    return b32encode(digest).lower()
+
+
+def decode_ldap_uri(ldap):
+        matchs = re.match(r'(?P<scheme>.+)\:\/\/((?P<username>.+)'\
+                           ':(?P<password>.+)@)?(?P<hostname>.+)', ldap)
+        if matchs is None:
+            raise Exception("wrong ldap scheme defined in the configuration")
+
+        results = matchs.groupdict()
+
+        ldapuri = '%s://%s' % (results['scheme'], results['hostname'])
+        bind_password = results['password']
+        bind_user = results['username']
+
+        return ldapuri, bind_user, bind_password

@@ -1,5 +1,10 @@
 import urllib2
+import ldap
 import json
+import random
+import time
+
+from ldappool import StateConnector
 
 
 class _Resp(object):
@@ -13,6 +18,42 @@ class _Resp(object):
 
     def getcode(self):
         return self.code
+
+
+# drop-in replacement for the default connector for ldappool
+class MemoryStateConnector(StateConnector):
+
+    return_values = None
+
+    def __init__(self, uri, bind=None, passwd=None, **kw):
+        if bind is not None and passwd is not None:
+            self.simple_bind_s(bind, passwd)
+        self.uri = uri
+        self._next_id = 30
+        self._l = self
+
+    def get_lifetime(self):
+        return time.time()
+
+    def unbind_ext(self, *args, **kw):
+        if random.randint(1, 10) == 1:
+            raise ldap.LDAPError('Invalid State')
+
+    def simple_bind_s(self, who, passwd):
+        self.connected = True
+        self.who = who
+        self.cred = passwd
+
+    def search_st(self, dn, *args, **kw):
+        if self.__class__.return_values is not None:
+            values = [self.__class__.return_values]
+            self.__class__.return_values = None
+            return values
+        return ()
+
+    @classmethod
+    def set_return_values(cls, request, values):
+        cls.return_values = (request, values)
 
 
 class RegPatcher(object):

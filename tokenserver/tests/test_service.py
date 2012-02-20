@@ -7,7 +7,6 @@ import json
 import os
 from pyramid import testing
 
-from tokenserver import main
 from vep import DummyVerifier
 from mozsvc.util import CatchErrors
 from mozsvc.config import load_into_settings
@@ -22,7 +21,7 @@ class TestService(unittest.TestCase):
 
     def setUp(self):
         self.config = testing.setUp()
-        self.ini = os.path.join(os.path.dirname(__file__), 'test_fixednode.ini')
+        self.ini = os.path.join(here, 'test_fixednode.ini')
         settings = {}
         load_into_settings(self.ini, settings)
         self.config.add_settings(settings)

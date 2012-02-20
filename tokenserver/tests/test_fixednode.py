@@ -22,5 +22,5 @@ class TestFixedBackend(unittest.TestCase):
 
     def test_read_config(self):
         wanted = 'http://example.com'
-        self.assertEqual(wanted, self.backend.create_node(None, None))
-        self.assertEqual(wanted, self.backend.get_node(None, None))
+        self.assertEqual(wanted, self.backend.create_node(None, None)[0])
+        self.assertEqual(wanted, self.backend.get_node(None, None)[0])

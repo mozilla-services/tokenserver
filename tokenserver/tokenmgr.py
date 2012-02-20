@@ -13,7 +13,7 @@ class NodeTokenManager(SignedTokenManager):
         email = data['email']
         service = request.matchdict['application']
 
-        node = backend.get_node(email, service)
+        node, username = backend.get_node(email, service)
         if node is None:
             node = backend.create_node(email, service)
 
