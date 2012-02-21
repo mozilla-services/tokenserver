@@ -49,7 +49,6 @@ class PowerHoseRunner(object):
             _runners[self.endpoint] = JobRunner(self.endpoint)
         self.runner = _runners[self.endpoint]
         self.runner.start()
-        time.sleep(0.1)
 
     def execute(self, *args, **kw):
         return self.runner.execute(*args, **kw)
@@ -95,10 +94,10 @@ class PowerHoseJWT(object):
         # XXX toy serialization + sending everything
         # will need to do much better
         job_data = {'algorithm': self.algorithm,
-                     'key_data': key_data,
-                     'signed_data': self.signed_data,
-                     'signature': base64.b64encode(self.signature),
-                     'payload': self.payload}
+                    'key_data': key_data,
+                    'signed_data': self.signed_data,
+                    'signature': base64.b64encode(self.signature),
+                    'payload': self.payload}
 
         job_id = 'verify-bid'
         job_data = json.dumps(job_data)
