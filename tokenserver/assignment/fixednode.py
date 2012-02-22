@@ -1,6 +1,6 @@
 from pyramid.threadlocal import get_current_registry
 from zope.interface import implements
-from tokenserver.backend import INodeAssignment
+from tokenserver.assignment import INodeAssignment
 
 
 class DefaultNodeAssignmentBackend(object):
@@ -17,7 +17,7 @@ class DefaultNodeAssignmentBackend(object):
     @property
     def service_entry(self):
         """Implement this as a property to have the context when looking for
-        the valiue of the setting"""
+        the value of the setting"""
         if self._service_entry is None:
             settings = get_current_registry().settings
             self._service_entry = settings.get('tokenserver.service_entry')

@@ -5,7 +5,7 @@ import os
 import unittest
 from pyramid import testing
 
-from tokenserver.backend import INodeAssignment
+from tokenserver.assignment import INodeAssignment
 from mozsvc.config import load_into_settings
 
 

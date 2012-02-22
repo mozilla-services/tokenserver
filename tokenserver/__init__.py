@@ -17,7 +17,7 @@ def includeme(config):
     config.include("pyramid_whoauth")
     config.scan("tokenserver.views")
 
-    # initializes the backend
+    # initializes the assignment backend
     load_and_register("tokenserver", config)
 
     # initializes the powerhose backend

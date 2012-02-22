@@ -2,6 +2,7 @@ import urllib2
 import json
 import random
 import time
+from vep.verifiers.dummy import DummyVerifier
 
 try:
     import ldap
@@ -22,6 +23,11 @@ class _Resp(object):
 
     def getcode(self):
         return self.code
+
+# very dummy verifier
+class VeryDummyVerifier(DummyVerifier):
+    def verify_certificate_chain(self, certs, *args, **kw):
+        return certs[0]
 
 
 # drop-in replacement for the default connector for ldappool

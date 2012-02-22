@@ -6,24 +6,25 @@ import unittest
 from pyramid import testing
 import time
 
-from vep.verifiers.local import LocalVerifier
 import threading
-from tokenserver.bid import IPowerhoseRunner, get_worker, stop_runners
-from mozsvc.config import load_into_settings
-from tokenserver.tests.test_service import TestService
 from webtest import TestApp
 import unittest
 import json
 import os
 from pyramid import testing
 
-from tokenserver import main
+from vep.verifiers.local import LocalVerifier
 from vep import DummyVerifier
+
 from mozsvc.util import CatchErrors
 from mozsvc.config import load_into_settings
-from tokenserver.backend import INodeAssignment
 from mozsvc.plugin import load_and_register
+from mozsvc.config import load_into_settings
 
+from tokenserver.assignment import INodeAssignment
+from tokenserver import main
+from tokenserver.bid import IPowerhoseRunner, get_worker, stop_runners
+from tokenserver.tests.test_service import TestService
 
 
 class Worker(threading.Thread):

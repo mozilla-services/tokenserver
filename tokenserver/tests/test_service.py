@@ -10,8 +10,8 @@ from pyramid import testing
 from vep import DummyVerifier
 from mozsvc.util import CatchErrors
 from mozsvc.config import load_into_settings
-from tokenserver.backend import INodeAssignment
 from mozsvc.plugin import load_and_register
+from tokenserver.assignment import INodeAssignment
 
 
 here = os.path.dirname(__file__)

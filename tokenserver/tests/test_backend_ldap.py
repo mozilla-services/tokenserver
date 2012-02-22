@@ -6,7 +6,7 @@ from mozsvc.config import load_into_settings
 from mozsvc.plugin import load_and_register
 
 from tokenserver import logger
-from tokenserver.backend import INodeAssignment
+from tokenserver.assignment import INodeAssignment
 from tokenserver.tests.support import (MemoryStateConnector, RegPatcher,
                                        LDAP_SUPPORT)
 

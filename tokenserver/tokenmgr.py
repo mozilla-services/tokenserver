@@ -4,7 +4,7 @@ from pyramid.threadlocal import get_current_registry
 from cornice.util import json_error
 from cornice.errors import Errors
 
-from tokenserver.backend import INodeAssignment
+from tokenserver.assignment import INodeAssignment
 
 
 class NodeTokenManager(SignedTokenManager):
