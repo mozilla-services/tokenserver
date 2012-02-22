@@ -5,3 +5,5 @@ man
 *.pyc
 tokenserver.egg-info
 .Python
+loadtest/*.xml*
+loadtest/html
