@@ -12,6 +12,8 @@ import unittest
 import json
 import os
 from pyramid import testing
+from logging.config import fileConfig
+from ConfigParser import NoSectionError
 
 from vep.verifiers.local import LocalVerifier
 from vep import DummyVerifier
@@ -22,26 +24,11 @@ from mozsvc.plugin import load_and_register
 from mozsvc.config import load_into_settings
 
 from tokenserver.assignment import INodeAssignment
-from tokenserver import main
-from tokenserver.bid import IPowerhoseRunner, get_worker, stop_runners
+from tokenserver import main, logger
+
+from tokenserver.crypto.master import IPowerhoseRunner, stop_runners
+from tokenserver.crypto.pyworker import get_worker
 from tokenserver.tests.test_service import TestService
-
-
-class Worker(threading.Thread):
-    def __init__(self, endpoint):
-        threading.Thread.__init__(self)
-        self.endpoint = endpoint
-
-    def run(self):
-        self.worker = get_worker(self.endpoint)
-        try:
-            self.worker.run()
-        except Exception:
-            self.worker.stop()
-
-    def join(self):
-        self.worker.stop()
-        threading.Thread.join(self)
 
 
 class TestPowerService(unittest.TestCase):
@@ -55,8 +42,13 @@ class TestPowerService(unittest.TestCase):
         return self.verifier.make_assertion(email, url)
 
     def setUp(self):
+        logger.debug("TestPowerService.setUp")
         self.config = testing.setUp()
         settings = {}
+        try:
+            fileConfig(self.get_ini())
+        except NoSectionError:
+            pass
         load_into_settings(self.get_ini(), settings)
         self.config.add_settings(settings)
         self.config.include("tokenserver")
@@ -66,15 +58,15 @@ class TestPowerService(unittest.TestCase):
         wsgiapp = CatchErrors(wsgiapp)
         self.app = TestApp(wsgiapp)
         self.verifier = DummyVerifier
-        self.worker = Worker("ipc:///tmp/master-routing.ipc")
-        self.worker.start()
-        time.sleep(.1)
+        time.sleep(1.)
 
     def tearDown(self):
-        self.worker.join()
+        logger.debug("TestPowerService.tearDown")
         stop_runners()
+        logger.debug("TestPowerService.tearDown over")
 
     def test_valid_app(self):
+        logger.debug("TestPowerService.test_valid_app")
         headers = {'Authorization': 'Browser-ID %s' % self._getassertion()}
         res = self.app.get('/1.0/sync/2.1', headers=headers)
         self.assertEqual(res.json['service_entry'], 'http://example.com')

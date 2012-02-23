@@ -3,6 +3,7 @@
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 import logging
 from ConfigParser import NoSectionError
+from collections import defaultdict
 
 from mozsvc.config import get_configurator
 from mozsvc.plugin import load_and_register
@@ -25,6 +26,24 @@ def includeme(config):
         load_and_register("powerhose", config)
     except NoSectionError:
         pass
+
+    # load apps and set them up back in the setting
+    settings = config.registry.settings
+    key = 'tokenserver.applications'
+    applications = defaultdict(list)
+    for element in settings.get(key, '').split(','):
+        element = element.strip()
+        if element == '':
+            continue
+        element = element.split('-')
+        if len(element) != 2:
+            continue
+        app, version = element
+        applications[app].append(version)
+
+    settings[key] = applications
+
+
 
 
 def main(global_config, **settings):

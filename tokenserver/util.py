@@ -8,6 +8,9 @@ from hashlib import sha1
 import binascii
 import os
 
+from pyramid.httpexceptions import HTTPError
+from webob import Response
+
 from mozsvc.http_helpers import get_url
 from mozsvc.exceptions import BackendError
 
@@ -102,3 +105,13 @@ def decode_ldap_uri(ldap):
         bind_user = results['username']
 
         return ldapuri, bind_user, bind_password
+
+
+class JsonError(HTTPError):
+    def __init__(self, status=400, location='body', name='', description=''):
+        body = {'status': status, 'errors':
+                [{'location': location, 'name': name, 'description': description}]
+                }
+        Response.__init__(self, json.dumps(body))
+        self.status = status
+        self.content_type = 'application/json'

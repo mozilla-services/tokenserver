@@ -5,8 +5,7 @@ import os
 from setuptools import setup, find_packages
 
 
-requires = ['cornice', 'repoze.who.plugins.vepauth', 'mozsvc',
-            'pyramid_whoauth', 'powerhose', 'circus']
+requires = ['cornice', 'mozsvc', 'powerhose', 'circus']
 
 
 setup(name='tokenserver',
