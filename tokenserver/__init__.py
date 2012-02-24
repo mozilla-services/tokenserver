@@ -7,6 +7,7 @@ from collections import defaultdict
 
 from mozsvc.config import get_configurator
 from mozsvc.plugin import load_and_register
+from tokenlib.secrets import Secrets
 
 
 logger = logging.getLogger('tokenserver')
@@ -43,7 +44,11 @@ def includeme(config):
 
     settings[key] = applications
 
-
+    # load the secrets file
+    key = 'tokenserver.secrets_file'
+    node = settings['tokenserver.node']
+    secrets = settings[key] = Secrets(settings[key])
+    settings['tokenserver.secret'] = secrets.get(node)
 
 
 def main(global_config, **settings):

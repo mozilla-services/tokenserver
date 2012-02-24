@@ -5,7 +5,7 @@ import os
 from setuptools import setup, find_packages
 
 
-requires = ['cornice', 'mozsvc', 'powerhose', 'circus']
+requires = ['cornice', 'mozsvc', 'powerhose', 'circus', 'tokenlib']
 
 
 setup(name='tokenserver',
@@ -19,4 +19,4 @@ setup(name='tokenserver',
       """,
       install_requires=requires,
       tests_require=requires,
-      test_suite="tokenserver.tests")
+      test_suite='tokenserver.tests')

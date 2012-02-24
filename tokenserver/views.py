@@ -6,6 +6,7 @@ import json
 
 from cornice import Service
 from cornice.resource import resource, view
+
 from tokenserver.util import JsonError
 
 #
@@ -42,7 +43,6 @@ def valid_assertion(request):
     # XXX here call the tool that will validate the assertion
     # and set the email in request.validated['email']
 
-
 def valid_app(request):
     supported = request.registry.settings['tokenserver.applications']
     application = request.matchdict.get('application')
@@ -71,9 +71,13 @@ class TokenService(object):
 
     @view(validators=(valid_app, valid_assertion))
     def get(self):
+        request = self.request
+
         # XXX here, build the token
-        assertion = self.request.validated['assertion']
-        application = self.request.validated['application']
-        version = self.request.validated['version']
-        #email = self.request.validated['email']
+        assertion = request.validated['assertion']
+        application = request.validated['application']
+        version = request.validated['version']
+        #email = request.validated['email']
+        node_secret = request.registry.settings['tokenserver.secret'][0]
+
         return {'service_entry': 'http://example.com'}
