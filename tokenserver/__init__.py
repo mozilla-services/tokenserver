@@ -46,9 +46,7 @@ def includeme(config):
 
     # load the secrets file
     key = 'tokenserver.secrets_file'
-    node = settings['tokenserver.node']
-    secrets = settings[key] = Secrets(settings[key])
-    settings['tokenserver.secret'] = secrets.get(node)
+    settings[key] = Secrets(settings[key])
 
 
 def main(global_config, **settings):

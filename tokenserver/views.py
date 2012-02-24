@@ -78,6 +78,6 @@ class TokenService(object):
         application = request.validated['application']
         version = request.validated['version']
         #email = request.validated['email']
-        node_secret = request.registry.settings['tokenserver.secret'][0]
-
+        secrets = request.registry.settings['tokenserver.secrets_file']
+        
         return {'service_entry': 'http://example.com'}
