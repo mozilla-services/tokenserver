@@ -33,7 +33,7 @@ class TestLDAPNode(TestCase):
               """insert into nodes (`node`, `service`, `available`,
                     `capacity`, `current_load`, `downed`, `backoff`)
                   values ("phx12", "sync", 100, 100, 0, 0, 0)""")
-        self._sqlite = self.backend._engine.driver == 'sqlite'
+        self._sqlite = self.backend._engine.driver == 'pysqlite'
 
     def tearDown(self):
         if self._sqlite:

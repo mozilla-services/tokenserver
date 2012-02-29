@@ -19,21 +19,35 @@ _Base = declarative_base()
 tables = []
 
 
-class UserNodes(_Base):
-    """This table lists all the users associated to a service.
+def get_user_nodes_table(driver):
+    if 'user_nodes' in _Base.metadata.tables:
+        return _Base.metadata.tables['user_nodes']
 
-    A user is represented by an email, a uid and its allocated node.
-    """
-    __tablename__ = 'user_nodes'
-    email = Column(String(128), primary_key=True, index=True)
-    node = Column(String(64), primary_key=True, nullable=False)
-    service = Column(String(30), primary_key=True, nullable=False)
-    uid = Column(BigInteger(), index=True, autoincrement=True, unique=True,
-                 nullable=False)
+    if driver != 'pysqlite':
+        class UserNodes(_Base):
+            """This table lists all the users associated to a service.
 
+            A user is represented by an email, a uid and its allocated node.
+            """
+            __tablename__ = 'user_nodes'
+            email = Column(String(128), primary_key=True, index=True)
+            node = Column(String(64), primary_key=True, nullable=False)
+            service = Column(String(30), primary_key=True, nullable=False)
+            uid = Column(BigInteger(), index=True, autoincrement=True, unique=True,
+                        nullable=False)
 
-user_nodes = UserNodes.__table__
-tables.append(user_nodes)
+        return UserNodes.__table__
+    else:
+
+        class UserNodes(_Base):
+            """Sqlite version"""
+            __tablename__ = 'user_nodes'
+            email = Column(String(128))
+            node = Column(String(64), nullable=False)
+            service = Column(String(30), nullable=False)
+            uid = Column(Integer(11), primary_key=True, autoincrement=True)
+
+        return UserNodes.__table__
 
 
 class Nodes(_Base):
@@ -87,7 +101,9 @@ class SQLNodeAssignment(object):
     def __init__(self, sqluri, create_tables=False, **kw):
         self.sqluri = sqluri
         self._engine = create_engine(sqluri, poolclass=NullPool)
-        for table in tables:
+        self.user_nodes = get_user_nodes_table(self._engine.driver)
+
+        for table in tables + [self.user_nodes]:
             table.metadata.bind = self._engine
             if create_tables:
                 table.create(checkfirst=True)
