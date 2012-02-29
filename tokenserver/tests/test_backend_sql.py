@@ -4,6 +4,7 @@ import os
 from pyramid import testing
 from mozsvc.config import load_into_settings
 from mozsvc.plugin import load_and_register
+from sqlalchemy.exc import IntegrityError
 
 from tokenserver import logger
 from tokenserver.assignment import INodeAssignment
@@ -27,10 +28,21 @@ class TestLDAPNode(TestCase):
         load_and_register("tokenserver", self.config)
         self.backend = self.config.registry.getUtility(INodeAssignment)
 
+        # adding a node with 100 slots
+        self.backend._safe_execute(
+              """insert into nodes (`node`, `service`, `available`,
+                    `capacity`, `current_load`, `downed`, `backoff`)
+                  values ("phx12", "sync", 100, 100, 0, 0, 0)""")
+        self._sqlite = self.backend._engine.driver == 'sqlite'
+
     def tearDown(self):
-        filename = self.backend.sqluri.split('sqlite://')[-1]
-        if os.path.exists(filename):
-            os.remove(filename)
+        if self._sqlite:
+            filename = self.backend.sqluri.split('sqlite://')[-1]
+            if os.path.exists(filename):
+                os.remove(filename)
+        else:
+            self.backend._safe_execute('delete from nodes')
+            self.backend._safe_execute('delete from user_nodes')
 
     def test_get_node(self):
 
@@ -38,8 +50,13 @@ class TestLDAPNode(TestCase):
         self.assertEquals(unassigned,
                           self.backend.get_node("tarek@mozilla.com", "sync"))
 
-        res = self.backend.create_node("tarek@mozilla.com", "sync")
-        wanted = (1, u'phx12')
+        res = self.backend.allocate_node("tarek@mozilla.com", "sync")
+
+        if self._sqlite:
+            wanted = (1, u'phx12')
+        else:
+            wanted = (0, u'phx12')
+
         self.assertEqual(res, wanted)
         self.assertEqual(wanted,
                          self.backend.get_node("tarek@mozilla.com", "sync"))
