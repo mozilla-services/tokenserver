@@ -15,7 +15,7 @@ class NodeTokenManager(SignedTokenManager):
 
         node, username = backend.get_node(email, service)
         if node is None:
-            node = backend.create_node(email, service)
+            node, username = backend.create_node(email, service)
 
         extra = {'service_entry': node}
         token, secret, __ = super(NodeTokenManager, self)\

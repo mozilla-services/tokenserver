@@ -79,5 +79,5 @@ class TokenService(object):
         version = request.validated['version']
         #email = request.validated['email']
         secrets = request.registry.settings['tokenserver.secrets_file']
-        
+
         return {'service_entry': 'http://example.com'}
