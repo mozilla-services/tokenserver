@@ -1,15 +1,9 @@
-import os
-import json
 import time
 import signal
-import base64
 import sys
+from functools import partial
 import threading
-
-from pyramid.threadlocal import get_current_registry
-
-from vep.verifiers.local import LocalVerifier
-from vep.jwt import JWT
+import json
 
 from zope.interface import implements, Interface
 
@@ -20,7 +14,7 @@ from powerhose import logger
 
 class IPowerhoseRunner(Interface):
 
-    def execute(*args, **kw):
+    def execute(self, *args, **kw):
         """ """
 
 # global registry
@@ -83,7 +77,21 @@ class PowerHoseRunner(object):
         self.runner.start()
         time.sleep(.5)
         self.workers = _workers[self.endpoint]
-        self.workers.start()
+        self.workers.run()
+        self.methods = ['derivate_key', 'check_signature',
+                        'check_signature_with_cert']
 
-    def execute(self, *args, **kw):
-        return self.runner.execute(*args, **kw)
+    def __getattr__(self, attr):
+        if attr in self.methods:
+            return self.execute(partial(self.execute, attr))
+        raise KeyError()
+
+    def encode_data(self, **data):
+        return json.dumps(data)
+
+    def decode_data(self, data):
+        return json.loads(data)
+
+    def execute(self, job_id, *args, **kwargs):
+        data = self.runner.execute(job_id, self.encode_data(*args, **kwargs))
+        return self.decode_data(data)

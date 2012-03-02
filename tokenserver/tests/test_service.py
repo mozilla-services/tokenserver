@@ -7,7 +7,12 @@ import json
 import os
 from pyramid import testing
 
-from vep import DummyVerifier
+from vep.tests.support import (
+    patched_urlopen,
+    fetch_public_key,
+    make_assertion
+)
+
 from mozsvc.util import CatchErrors
 from mozsvc.config import load_into_settings
 from mozsvc.plugin import load_and_register
@@ -34,22 +39,25 @@ class TestService(unittest.TestCase):
         wsgiapp = self.config.make_wsgi_app()
         wsgiapp = CatchErrors(wsgiapp)
         self.app = TestApp(wsgiapp)
-        self.verifier = DummyVerifier
 
         def urlopen(url, data): # NOQA
             class response(object):
                 @staticmethod
                 def read():
-                    key = DummyVerifier.fetch_public_key("browserid.org")
+                    key = fetch_public_key("browserid.org")
                     return json.dumps({"public-key": key})
             return response
 
-        self.verifier.urlopen = urlopen
+        self.patched = patched_urlopen(urlopen)
+        self.patched.__enter__()
+
+    def tearDown(self):
+        self.patched.__exit__(None, None, None)
 
     def _getassertion(self):
         email = 'tarek@mozilla.com'
         url = 'http://tokenserver.services.mozilla.com'
-        return self.verifier.make_assertion(email, url)
+        return make_assertion(email, url)
 
     def test_unknown_app(self):
         headers = {'Authorization': 'Browser-ID %s' % self._getassertion()}

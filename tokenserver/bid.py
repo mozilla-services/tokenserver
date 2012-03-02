@@ -1,50 +1,71 @@
-import os
-import json
 import time
-import signal
-import base64
-import sys
-
-from pyramid.threadlocal import get_current_registry
 
 from vep.verifiers.local import LocalVerifier
-from vep.jwt import JWT
-
-from zope.interface import implements, Interface
-
-
-class PowerHoseJWT(object):
-
-    def __init__(self, algorithm, payload, signature, signed_data):
-        self.algorithm = algorithm
-        self.payload = payload
-        self.signature = signature
-        self.signed_data = signed_data
-        self.runner = get_current_registry().getUtility(IPowerhoseRunner)
-
-    def check_signature(self, key_data):
-        """Check that the JWT was signed with the given key."""
-        # XXX toy serialization + sending everything
-        # will need to do much better
-        job_data = {'algorithm': self.algorithm,
-                    'key_data': key_data,
-                    'signed_data': self.signed_data,
-                    'signature': base64.b64encode(self.signature),
-                    'payload': self.payload}
-
-        job_id = 'verify-bid'
-        job_data = json.dumps(job_data)
-        res = self.runner.execute(job_id, job_data)
-        res = json.loads(res)
-        return res.get('res') == 1
+from vep.errors import InvalidSignatureError, ExpiredSignatureError
 
 
 class PowerHoseVerifier(LocalVerifier):
 
-    def __init__(self, urlopen=None, trusted_secondaries=None, cache=None,
-                 parser_cls=PowerHoseJWT):
-        super(PowerHoseVerifier, self).__init__(urlopen, trusted_secondaries,
-                                                cache, parser_cls)
+    def verify_certificate_chain(self, certificates, now=None):
+        """Verify a certificate chain using a powerhose worker.
 
-    def verify(self, assertion):
-        return super(PowerHoseVerifier, self).verify(assertion)
+        The main difference with the base LocalVerifier class is that we
+        are using the issuer name as a key to give the information to the
+        worker, so we don't need to pass along the certificate.
+
+        In case there is a list of certificates, the last one is returned by
+        this function.
+        """
+        if not certificates:
+            raise ValueError("chain must have at least one certificate")
+        if now is None:
+            now = int(time.time() * 1000)
+
+        def _check_cert_validity(cert):
+            if cert.payload["exp"] < now:
+                raise ExpiredSignatureError("expired certificate in chain")
+
+        # Here, two different use cases are being handled.
+        # if there is only one bundled certificate, then send the data with
+        # the hostname. If there are more than one certificate, checks need
+        # to be done directly using the certificate data from the bundled
+        # certificates, so all the information is passed along
+
+        issuer = certificates[0].payload["iss"]
+        current_key = None
+        for cert in certificates:
+            _check_cert_validity(cert)
+            if not self.check_token_signature(cert, None, hostname=issuer,
+                                              key=current_key):
+                raise InvalidSignatureError("bad signature in chain")
+            current_key = cert.payload["public-key"]
+        return cert
+
+    def check_token_signature(self, data, cert=None, hostname=None, key=None):
+        """Check the signature of the given data according the the given
+        certificate or hostname.
+
+        In any cases, the verification is done in the PowerHose worker,
+        using the hostname and not the given data enclosed in the certificate.
+
+        This means that the payload of the given certificate should contain
+        an "iss" key with the hostname of the certificate issuer.
+
+        :param data: the data the check the validity of
+        :param cert: the certificate to use for the verification
+        :param hostname: the hostname to get the certificate from
+        :param key: if provided, this key will be used to check the signature.
+        """
+        if hostname is None and cert is None and key is None:
+            raise ValueError("You should specify either cert, hostname or key")
+
+        if key:
+            return self.runner.check_signature_with_key(
+                    key=key, signed_data=data.signed_data,
+                    signature=data.signature, algorithm=data.algorithm)
+
+        hostname = hostname or cert.payload["iss"]
+        return self.runner.check_signature(hostname=hostname,
+                                           signed_data=data.signed_data,
+                                           signature=data.signature,
+                                           algorithm=data.algorithm)

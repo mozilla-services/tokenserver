@@ -6,29 +6,20 @@ import unittest
 from pyramid import testing
 import time
 
-import threading
 from webtest import TestApp
-import unittest
-import json
-import os
-from pyramid import testing
 from logging.config import fileConfig
 from ConfigParser import NoSectionError
 
-from vep.verifiers.local import LocalVerifier
-from vep import DummyVerifier
+from vep.tests.support import make_assertion
 
 from mozsvc.util import CatchErrors
 from mozsvc.config import load_into_settings
 from mozsvc.plugin import load_and_register
-from mozsvc.config import load_into_settings
 
 from tokenserver.assignment import INodeAssignment
-from tokenserver import main, logger
+from tokenserver import logger
 
-from tokenserver.crypto.master import IPowerhoseRunner, stop_runners
-from tokenserver.crypto.pyworker import get_worker
-from tokenserver.tests.test_service import TestService
+from tokenserver.crypto.master import stop_runners
 
 
 class TestPowerService(unittest.TestCase):
@@ -39,7 +30,7 @@ class TestPowerService(unittest.TestCase):
     def _getassertion(self):
         email = 'tarek@mozilla.com'
         url = 'http://tokenserver.services.mozilla.com'
-        return self.verifier.make_assertion(email, url)
+        return make_assertion(email, url)
 
     def setUp(self):
         logger.debug("TestPowerService.setUp")
@@ -57,7 +48,6 @@ class TestPowerService(unittest.TestCase):
         wsgiapp = self.config.make_wsgi_app()
         wsgiapp = CatchErrors(wsgiapp)
         self.app = TestApp(wsgiapp)
-        self.verifier = DummyVerifier
         time.sleep(1.)
 
     def tearDown(self):
