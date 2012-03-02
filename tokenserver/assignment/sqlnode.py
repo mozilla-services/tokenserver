@@ -2,7 +2,7 @@
 """
 from zope.interface import implements
 from tokenserver.assignment import INodeAssignment
-from tokenlib.metadata.sql import SQLMetadata
+from wimms.sql import SQLMetadata
 
 
 class SQLNodeAssignment(SQLMetadata):
