@@ -77,7 +77,7 @@ class PowerHoseRunner(object):
         self.runner.start()
         time.sleep(.5)
         self.workers = _workers[self.endpoint]
-        self.workers.run()
+        self.workers.start()
         self.methods = ['derivate_key', 'check_signature',
                         'check_signature_with_cert']
 
