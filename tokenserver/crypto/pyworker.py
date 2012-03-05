@@ -3,7 +3,7 @@ import sys
 import os
 
 from powerhose.client.worker import Worker
-from powerhose import logger
+from tokenserver import logger
 
 from vep._m2_monkeypatch import DSA as _DSA
 from vep._m2_monkeypatch import RSA as _RSA
@@ -29,6 +29,7 @@ def load_certificates(path, certs=None):
     In case some certificates are already loaded with the same hostname,
     they will be replaced with the new ones.
     """
+    logger.info('loading the certificates located in %s' % path)
     if certs is None:
         certs = {}
 
@@ -78,12 +79,14 @@ def get_certificate(algo, filename=None, key=None):
 class CryptoWorker(object):
 
     def __init__(self, path):
+        logger.info('starting a crypto worker')
         self.serialize = json.dumps
         self.certs = []
         self.certs = load_certificates(path)
 
     def __call__(self, msg):
         """proxy to the functions exposed by the worker"""
+        logger.info('worker called with the message %s' % msg)
         try:
             try:
                 function_id, serialized_data = msg.split('::', 1)
