@@ -91,7 +91,7 @@ class PowerHoseRunner(object):
         self.runner.start()
         time.sleep(.5)
         self.workers = _workers[self.endpoint]
-        self.workers.run()
+        self.workers.start()
 
     def __getattr__(self, attr):
         if attr in self.methods:
