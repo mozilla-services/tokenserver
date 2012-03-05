@@ -2,7 +2,7 @@ import urllib2
 import json
 import random
 import time
-from vep.verifiers.dummy import DummyVerifier
+from vep.verifiers.local import LocalVerifier
 
 try:
     import ldap
@@ -25,7 +25,7 @@ class _Resp(object):
         return self.code
 
 # very dummy verifier
-class VeryDummyVerifier(DummyVerifier):
+class DummyVerifier(LocalVerifier):
     def verify_certificate_chain(self, certs, *args, **kw):
         return certs[0]
 
