@@ -73,8 +73,9 @@ class PowerHoseRunner(object):
 
         self.endpoint = endpoint
         self.workers_cmd = workers_cmd
+        envdict = {}
+
         if env is not None:
-            envdict = {}
             for pair in env.split(';'):
                 key, value = pair.split('=', 1)
                 envdict[key] = value
