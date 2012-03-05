@@ -3,6 +3,7 @@ import sys
 import os
 
 from powerhose.client.worker import Worker
+from powerhose import logger
 
 from vep._m2_monkeypatch import DSA as _DSA
 from vep._m2_monkeypatch import RSA as _RSA
@@ -131,13 +132,13 @@ class CryptoWorker(object):
         pass
 
 
-def get_worker(endpoint, prefix='tokenserver'):
+def get_worker(endpoint, path, prefix='tokenserver'):
     identity = 'ipc://%s-%s' % (prefix, os.getpid())
-    return Worker(endpoint, identity, CryptoWorker())
+    return Worker(endpoint, identity, CryptoWorker(os.path.abspath(path)))
 
 
 if __name__ == '__main__':
-    worker = get_worker(sys.argv[1])
+    worker = get_worker(*sys.argv[1:])
     try:
         worker.run()
     finally:

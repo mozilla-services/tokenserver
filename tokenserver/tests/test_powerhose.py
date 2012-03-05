@@ -56,6 +56,7 @@ class TestPowerService(unittest.TestCase):
         logger.debug("TestPowerService.tearDown over")
 
     def test_valid_app(self):
+        from ipdb import set_trace; set_trace()
         logger.debug("TestPowerService.test_valid_app")
         headers = {'Authorization': 'Browser-ID %s' % self._getassertion()}
         res = self.app.get('/1.0/sync/2.1', headers=headers)

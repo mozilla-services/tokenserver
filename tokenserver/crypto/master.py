@@ -48,9 +48,10 @@ def stop_runners():
 
 
 class CryptoWorkers(threading.Thread):
-    def __init__(self, workers_cmd, num_workers):
+    def __init__(self, workers_cmd, num_workers, working_dir, env, **kw):
         threading.Thread.__init__(self)
-        self.workers = Workers(workers_cmd, num_workers=num_workers)
+        self.workers = Workers(workers_cmd, num_workers=num_workers,
+                               working_dir=working_dir, env=env, **kw)
 
     def run(self):
         logger.debug('Starting powerhose workers')
@@ -65,21 +66,31 @@ class CryptoWorkers(threading.Thread):
 class PowerHoseRunner(object):
     implements(IPowerhoseRunner)
 
-    def __init__(self, endpoint, workers_cmd, num_workers=5, **kw):
+    methods = ['derivate_key', 'check_signature', 'check_signature_with_cert']
+
+    def __init__(self, endpoint, workers_cmd, num_workers=5, working_dir=None,
+                 env=None):
+
         self.endpoint = endpoint
         self.workers_cmd = workers_cmd
+        if env is not None:
+            envdict = {}
+            for pair in env.split(';'):
+                key, value = pair.split('=', 1)
+                envdict[key] = value
+
         if self.endpoint not in _runners:
             _runners[self.endpoint] = JobRunner(self.endpoint)
             _workers[self.endpoint] = CryptoWorkers(self.workers_cmd,
-                                                    num_workers=num_workers)
+                                                    num_workers=num_workers,
+                                                    working_dir=working_dir,
+                                                    env=envdict)
         self.runner = _runners[self.endpoint]
         logger.debug('Starting powerhose master')
         self.runner.start()
         time.sleep(.5)
         self.workers = _workers[self.endpoint]
         self.workers.run()
-        self.methods = ['derivate_key', 'check_signature',
-                        'check_signature_with_cert']
 
     def __getattr__(self, attr):
         if attr in self.methods:
@@ -95,3 +106,8 @@ class PowerHoseRunner(object):
     def execute(self, job_id, *args, **kwargs):
         data = self.runner.execute(job_id, self.encode_data(*args, **kwargs))
         return self.decode_data(data)
+
+
+if __name__ == '__main__':
+    runner = JobRunner(sys.argv[1])
+    runner.start()
