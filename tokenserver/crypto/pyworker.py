@@ -77,6 +77,9 @@ class CryptoWorker(object):
     def __call__(self, msg):
         """proxy to the functions exposed by the worker"""
         logger.info('worker called with the message %s' % msg)
+        if isinstance(msg, list):
+            msg = msg[1]
+
         try:
             try:
                 function_id, serialized_data = msg.split('::', 1)
