@@ -148,20 +148,36 @@ class PowerHoseRunner(object):
         object.
         """
         if attr in self.methods:
-            return self.execute(partial(self.execute, attr))
-        raise KeyError()
+            return functools.partial(self._execute, attr)
+        raise KeyError("'%s' is not supported by the powerhose runner" % attr)
 
-    def encode_data(self, **data):
-        return json.dumps(data)
+    def _execute(self, function_id, **data):
+        """Send a message to the underlying runner.
 
-    def decode_data(self, data):
-        return json.loads(data)
+        This is the low level function, and shouldn't be used directly as-is.
+        You should use the high level messages to send crypto works to the
+        workers.
 
-    def execute(self, job_id, *args, **kwargs):
-        data = self.runner.execute(job_id, self.encode_data(*args, **kwargs))
-        return self.decode_data(data)
+        This function takes care of the serialisation / deserialization,
+        depending the function given.
 
+        In the eventuality that the invoked function returns an error, an
+        exception will be raised.
 
-if __name__ == '__main__':
-    runner = JobRunner(sys.argv[1])
-    runner.start()
+        :param function_id: the name of the function to be invoked.
+        :param data: the parameters to send to the function.
+        """
+        obj = PROTOBUF_CLASSES[function_id]()
+        for key, value in data.items():
+            setattr(obj, key, value)
+
+        serialized_resp = self.runner.execute("GAZOLINE",
+                "::".join((function_id, obj.SerializeToString())))
+
+        resp = Response()
+        resp.ParseFromString(serialized_resp)
+
+        if resp.error:
+            raise Exception(resp.error)
+        else:
+            return resp.value
