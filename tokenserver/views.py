@@ -8,6 +8,7 @@ from cornice import Service
 from cornice.resource import resource, view
 
 from tokenserver.util import JsonError
+from tokenserver.verifiers import get_verifier
 
 #
 # Discovery page
@@ -38,10 +39,12 @@ def valid_assertion(request):
         resp = JsonError(401, description='Unsupported')
         resp.www_authenticate = ('Browser-ID', {})
         raise resp
+
+    verifier = get_verifier()
+    verifier.verify(assertion)
+
     request.validated['assertion'] = assertion
 
-    # XXX here call the tool that will validate the assertion
-    # and set the email in request.validated['email']
 
 def valid_app(request):
     supported = request.registry.settings['tokenserver.applications']
@@ -67,7 +70,6 @@ def valid_app(request):
 class TokenService(object):
     def __init__(self, request):
         self.request = request
-
 
     @view(validators=(valid_app, valid_assertion))
     def get(self):
