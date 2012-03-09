@@ -122,7 +122,7 @@ class CryptoWorker(object):
             cert = get_certificate(key=cert, algo=algorithm)
             return cert.verify(signed_data, signature)
         except:
-           self.error('could not check sig')
+            self.error('could not check sig')
 
     def derivate_key(self):
         pass
