@@ -122,10 +122,14 @@ class PowerHoseRunner(object):
         envdict = {}
 
         if env is not None:
-            for pair in env.split(';'):
-                key, value = pair.split('=', 1)
-                envdict[key] = value
+            if isinstance(env, dict):
+                envdict = env
+            else:
+                for pair in env.split(';'):
+                    key, value = pair.split('=', 1)
+                    envdict[key] = value
 
+        # register the runner and the workers in the global vars.
         if self.endpoint not in _runners:
             _runners[self.endpoint] = JobRunner(self.endpoint)
             _workers[self.endpoint] = CryptoWorkers(self.workers_cmd,
