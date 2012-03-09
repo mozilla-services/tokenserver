@@ -49,35 +49,36 @@ class TestPowerHoseVerifier(unittest.TestCase):
 
 
 class TestPowerService(unittest.TestCase):
-    def get_ini(self):
-        return os.path.join(os.path.dirname(__file__),
-                            'test_powerhose.ini')
 
-    def setUp(self):
-        logger.debug("TestPowerService.setUp")
-        self.config = testing.setUp()
+    @classmethod
+    def get_ini(self):
+        return os.path.join(os.path.dirname(__file__), 'test_powerhose.ini')
+
+    @classmethod
+    def setUpClass(cls):
+        cls.config = testing.setUp()
         settings = {}
         try:
-            fileConfig(self.get_ini())
+            fileConfig(cls.get_ini())
         except NoSectionError:
             pass
-        load_into_settings(self.get_ini(), settings)
-        self.config.add_settings(settings)
-        self.config.include("tokenserver")
-        load_and_register("tokenserver", self.config)
-        self.backend = self.config.registry.getUtility(INodeAssignment)
-        wsgiapp = self.config.make_wsgi_app()
+        load_into_settings(cls.get_ini(), settings)
+        cls.config.add_settings(settings)
+        cls.config.include("tokenserver")
+        load_and_register("tokenserver", cls.config)
+        cls.backend = cls.config.registry.getUtility(INodeAssignment)
+
+    @classmethod
+    def tearDownClass(cls):
+        stop_runners()
+
+    def setUp(self):
+        wsgiapp = TestPowerService.config.make_wsgi_app()
         wsgiapp = CatchErrors(wsgiapp)
         self.app = TestApp(wsgiapp)
         time.sleep(1.)
 
-    def tearDown(self):
-        logger.debug("TestPowerService.tearDown")
-        stop_runners()
-        logger.debug("TestPowerService.tearDown over")
-
     def test_valid_app(self):
-        logger.debug("TestPowerService.test_valid_app")
         headers = {'Authorization': 'Browser-ID %s' % _get_assertion()}
         res = self.app.get('/1.0/sync/2.1', headers=headers)
         self.assertEqual(res.json['service_entry'], 'http://example.com')
