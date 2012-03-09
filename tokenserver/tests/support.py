@@ -2,7 +2,13 @@ import urllib2
 import json
 import random
 import time
+import os
+
 from vep.verifiers.local import LocalVerifier
+from vep import jwt
+
+from tokenserver.crypto.pyworker import _RSA
+from tokenserver.crypto.master import PowerHoseRunner
 
 try:
     import ldap
@@ -23,6 +29,7 @@ class _Resp(object):
 
     def getcode(self):
         return self.code
+
 
 # very dummy verifier
 class DummyVerifier(LocalVerifier):
@@ -88,3 +95,27 @@ class RegPatcher(object):
     def tearDown(self):
         urllib2.urlopen = self.old
         super(RegPatcher, self).tearDown()
+
+
+CERTS_LOCATION = os.path.join(os.path.dirname(__file__), 'certs')
+
+
+def load_key(hostname):
+    filename = os.path.join(CERTS_LOCATION, '%s.key' % hostname)
+    obj = _RSA.load_key(filename)
+    return jwt.RS256Key(obj=obj)
+
+
+def sign_data(hostname, data, key=None):
+    # load the cert with the private key
+    return load_key(hostname).sign(data)
+
+
+class PurePythonRunner(PowerHoseRunner):
+    def __init__(self, runner):
+        self.runner = runner
+
+        def patched_runner(blah, data):
+            return self.runner(data)
+
+        setattr(self.runner, 'execute', patched_runner)

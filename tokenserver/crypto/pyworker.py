@@ -4,23 +4,13 @@ import os
 
 from powerhose.client.worker import Worker
 from tokenserver import logger
+from tokenserver.crypto.master import Response, PROTOBUF_CLASSES
 
 from vep._m2_monkeypatch import DSA as _DSA
 from vep._m2_monkeypatch import RSA as _RSA
 from vep import jwt
 
 from M2Crypto import BIO
-
-from tokenserver.crypto.messages import (
-    CheckSignature,
-    CheckSignatureWithCert,
-    Response
-)
-
-PROTOBUF_CLASSES = {
-    'check_signature': CheckSignature,
-    'check_signature_with_cert': CheckSignatureWithCert
-}
 
 
 def load_certificates(path, certs=None):

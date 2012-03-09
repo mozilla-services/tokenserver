@@ -1,9 +1,8 @@
 import time
 import signal
 import sys
-from functools import partial
+import functools
 import threading
-import json
 
 from zope.interface import implements, Interface
 
@@ -11,6 +10,17 @@ from powerhose.jobrunner import JobRunner
 from powerhose.client.workers import Workers
 from powerhose import logger
 
+from tokenserver.crypto.messages import (
+    CheckSignature,
+    CheckSignatureWithCert,
+    Response
+)
+
+# association between the function names and the appropriate protobuf classes
+PROTOBUF_CLASSES = {
+    'check_signature': CheckSignature,
+    'check_signature_with_cert': CheckSignatureWithCert
+}
 
 
 # interface to be able to register the powerhose worker and retrieve it in the
