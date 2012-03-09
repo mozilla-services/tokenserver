@@ -22,11 +22,12 @@ def includeme(config):
     # initializes the assignment backend
     load_and_register("tokenserver", config)
 
-    # initializes the powerhose backend
-    try:
-        load_and_register("powerhose", config)
-    except NoSectionError:
-        pass
+    # initialize the powerhose and browserid backends if they exist
+    for section in ("powerhose", "browserid"):
+        try:
+            load_and_register(section, config)
+        except NoSectionError:
+            pass
 
     # load apps and set them up back in the setting
     settings = config.registry.settings
