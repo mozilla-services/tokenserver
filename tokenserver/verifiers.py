@@ -1,10 +1,42 @@
 import time
 
-from vep.verifiers.local import LocalVerifier
+from pyramid.threadlocal import get_current_registry
+from zope.interface import implements, Interface
+
+from tokenserver.crypto.master import IPowerhoseRunner
+
+from vep.verifiers.local import LocalVerifier as LocalVerifier_
 from vep.errors import InvalidSignatureError, ExpiredSignatureError
 
 
+def get_verifier():
+    """returns the registered verifier, building it if necessary."""
+    return get_current_registry().getUtility(IBrowserIdVerifier)
+
+
+# This is to simplify the registering of the implementations using pyramid
+# registry.
+class IBrowserIdVerifier(Interface):
+    pass
+
+
+# The default verifier from browserid
+class LocalVerifier(LocalVerifier_):
+    implements(IBrowserIdVerifier)
+
+
 class PowerHoseVerifier(LocalVerifier):
+    """PyVEP verifier using powerhose for cryptographic operations."""
+
+    def __init__(self, *args, **kwargs):
+        # At instanciation, this verifier gets the powerhose runner from the
+        # registry and use it for the internal operations
+        runner = kwargs.pop('runner', None)
+        if runner is None:
+            runner = get_current_registry().getUtility(IPowerhoseRunner)
+
+        self.runner = runner
+        super(PowerHoseVerifier, self).__init__(*args, **kwargs)
 
     def verify_certificate_chain(self, certificates, now=None):
         """Verify a certificate chain using a powerhose worker.
