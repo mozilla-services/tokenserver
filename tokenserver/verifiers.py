@@ -36,7 +36,7 @@ class PowerHoseVerifier(LocalVerifier):
             runner = get_current_registry().getUtility(IPowerhoseRunner)
 
         self.runner = runner
-        super(PowerHoseVerifier, self).__init__(*args, **kwargs)
+        super(PowerHoseVerifier, self).__init__(warning=False, *args, **kwargs)
 
     def verify_certificate_chain(self, certificates, now=None):
         """Verify a certificate chain using a powerhose worker.
