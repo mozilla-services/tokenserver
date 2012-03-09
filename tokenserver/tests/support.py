@@ -5,6 +5,7 @@ import time
 import os
 
 from vep.verifiers.local import LocalVerifier
+from vep.tests.support import make_assertion
 from vep import jwt
 
 from tokenserver.crypto.pyworker import _RSA
@@ -119,3 +120,35 @@ class PurePythonRunner(PowerHoseRunner):
             return self.runner(data)
 
         setattr(self.runner, 'execute', patched_runner)
+
+
+def get_assertion(email, audience='*', hostname='browserid.org',
+        bad_issuer_cert=False, bad_email_cert=False):
+    """Creates a browserid assertion for the given email, audience and
+    hostname.
+
+    This function can also be used to create invalid assertions. This will be
+    the case if you set the bad_issuer_cert or the bad_email cert arguments to
+    True.
+    """
+
+    key = load_key(hostname)
+    pub = key.rsa.pub()[1].decode('latin-1')
+
+    kwargs = {
+        'issuer_keypair': (pub, key),
+        'email_keypair': (pub, key)
+    }
+
+    # We remove the issuer_keypair and email_keypair arguments, which will let
+    # the underlying make_assertion function from vep use its internal test
+    # certificates, which are not the same as the one we use for the
+    # tokenserver.
+
+    if bad_issuer_cert:
+        del kwargs['issuer_keypair']
+
+    if bad_email_cert:
+        del kwargs['email_keypair']
+
+    return make_assertion(email, audience, **kwargs)
