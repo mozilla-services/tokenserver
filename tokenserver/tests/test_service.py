@@ -13,7 +13,7 @@ from vep.tests.support import (
     make_assertion
 )
 
-from mozsvc.util import CatchErrors
+from cornice.tests import CatchErrors
 from mozsvc.config import load_into_settings
 from mozsvc.plugin import load_and_register
 from tokenserver.assignment import INodeAssignment
