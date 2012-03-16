@@ -3,10 +3,23 @@
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 import os
 import unittest
+from collections import defaultdict
+
 from pyramid import testing
 
 from tokenserver.assignment import INodeAssignment
+from tokenserver.assignment import fixednode
 from mozsvc.config import load_into_settings
+from mozsvc.exceptions import BackendError
+
+DEFAULT_EMAIL = "alexis@mozilla.com"
+DEFAULT_NODE = "example.com"
+DEFAULT_SERVICE = "sync"
+
+
+def restore_defaults():
+    fixednode._UID = 0
+    fixednode._USERS_UIDS = defaultdict(dict)
 
 
 class TestFixedBackend(unittest.TestCase):
@@ -22,6 +35,31 @@ class TestFixedBackend(unittest.TestCase):
         self.backend = self.config.registry.getUtility(INodeAssignment)
 
     def test_read_config(self):
-        wanted = 'http://example.com'
-        self.assertEqual(wanted, self.backend.create_node(None, None)[0])
-        self.assertEqual(wanted, self.backend.get_node(None, None)[0])
+        self.assertEqual(DEFAULT_NODE,
+                self.backend.allocate_node(DEFAULT_EMAIL, DEFAULT_SERVICE)[1])
+
+    def test_assignation(self):
+        # restore the default values for testing
+        restore_defaults()
+        try:
+            # getting the node assignation for an existing user should return
+            # None and the service entry
+            self.assertEquals(
+                    self.backend.get_node(DEFAULT_EMAIL, DEFAULT_SERVICE),
+                    (None, DEFAULT_NODE))
+
+            # Now allocate an user to a node
+            self.assertEquals(
+                    self.backend.allocate_node(DEFAULT_EMAIL, DEFAULT_SERVICE),
+                    (0, DEFAULT_NODE))
+
+            # Trying to allocate it two times should raise a Backend error
+            self.assertRaises(BackendError, self.backend.allocate_node,
+                              DEFAULT_EMAIL, DEFAULT_SERVICE)
+
+            # getting the value of it later should also work properly
+            self.assertEquals(
+                    self.backend.get_node(DEFAULT_EMAIL, DEFAULT_SERVICE),
+                    (0, DEFAULT_NODE))
+        finally:
+            restore_defaults()
