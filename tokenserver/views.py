@@ -8,8 +8,11 @@ import json
 from cornice import Service
 from vep.errors import Error as BrowserIDError
 
+from tokenlib import make_token, get_token_secret
+
 from tokenserver.util import JsonError
 from tokenserver.verifiers import get_verifier
+from tokenserver.assignment import INodeAssignment
 
 # A GET on / returns the discovery API
 
@@ -51,24 +54,27 @@ def valid_assertion(request):
 
     try:
         verifier = get_verifier()
-        verifier.verify(assertion)
+        assertion = verifier.verify(assertion)
     except BrowserIDError:
         _raise_unauthorized()
 
     # everything sounds good, add the assertion to the list of validated fields
     # and continue
-
     request.validated['assertion'] = assertion
 
 
 def valid_app(request):
+    """Checks that the given application is one of the compatible ones.
+
+    If it's not the case, a 404 is issued with the appropriate information.
+    """
     supported = request.registry.settings['tokenserver.applications']
     application = request.matchdict.get('application')
     version = request.matchdict.get('version')
 
     if application not in supported:
         raise JsonError(404, location='url', name='application',
-                        description='Unknown application')
+                        description='Unsupported application')
     else:
         request.validated['application'] = application
 
@@ -76,19 +82,33 @@ def valid_app(request):
 
     if version not in supported_versions:
         raise JsonError(404, location='url', name=version,
-                        description='Unknown application version')
+                        description='Unsupported application version')
     else:
         request.validated['version'] = version
 
 
 @token.get(validators=(valid_app, valid_assertion))
 def return_token(request):
+    # at this stage, we are sure that the assertion, application and version
+    # number were valid, so let's build the authentication token and return it.
 
-    # XXX here, build the token
-    assertion = request.validated['assertion']
+    backend = request.registry.getUtility(INodeAssignment)
+    email = request.validated['assertion']['email']
     application = request.validated['application']
-    version = request.validated['version']
-    #email = request.validated['email']
-    secrets = request.registry.settings['tokenserver.secrets_file']
 
-    return {'service_entry': 'http://example.com'}
+    # get the node or allocate one if none is already set
+    uid, node = backend.get_node(email, application)
+    if node is None or uid is None:
+        uid, node = backend.allocate_node(email, application)
+
+    secrets = request.registry.settings['tokenserver.secrets_file']
+    node_secrets = secrets.get(node)
+    if not node_secrets:
+        raise Exception("The specified node does not have any shared secret")
+    secret = node_secrets[-1]  # the last one is the most recent one
+
+    token = make_token({'uid': uid, 'service_entry': node}, secret=secret)
+    secret = get_token_secret(token, secret=secret)
+
+    # FIXME add the algo used to generate the token
+    return {'id': token, 'key': secret, 'service_entry': node}
