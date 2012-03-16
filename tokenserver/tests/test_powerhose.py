@@ -28,6 +28,8 @@ from tokenserver.tests.support import (
 from vep.errors import InvalidSignatureError
 
 TOKEN_URI = '/1.0/sync/2.1'
+DEFAULT_EMAIL = "alexis@mozilla.com"
+DEFAULT_NODE = "example.com"
 
 
 class TestPowerHoseVerifier(unittest.TestCase):
@@ -36,19 +38,19 @@ class TestPowerHoseVerifier(unittest.TestCase):
         # giving a valid assertion should return True
         worker = CryptoWorker(CERTS_LOCATION)
         verifier = PowerHoseVerifier(runner=PurePythonRunner(worker))
-        self.assertTrue(verifier.verify(get_assertion("alexis@mozilla.com")))
+        self.assertTrue(verifier.verify(get_assertion(DEFAULT_EMAIL)))
 
         # giving a wrong assertion (invalid bundled certificate) raise an
         # exception
 
         self.assertRaises(InvalidSignatureError, verifier.verify,
-                get_assertion("alexis@mozilla.com", bad_issuer_cert=True))
+                get_assertion(DEFAULT_EMAIL, bad_issuer_cert=True))
 
         self.assertRaises(InvalidSignatureError, verifier.verify,
-                get_assertion("alexis@mozilla.com", bad_email_cert=True))
+                get_assertion(DEFAULT_EMAIL, bad_email_cert=True))
 
         self.assertRaises(InvalidSignatureError, verifier.verify,
-                get_assertion("alexis@mozilla.com", bad_email_cert=True,
+                get_assertion(DEFAULT_EMAIL, bad_email_cert=True,
                               bad_issuer_cert=True))
 
 
@@ -83,10 +85,10 @@ class TestPowerService(unittest.TestCase):
         time.sleep(1.)
 
     def test_valid_app(self):
-        assertion = get_assertion("alexis@mozilla.com")
+        assertion = get_assertion(DEFAULT_EMAIL)
         headers = {'Authorization': 'Browser-ID %s' % assertion}
         res = self.app.get(TOKEN_URI, headers=headers)
-        self.assertEqual(res.json['service_entry'], 'http://example.com')
+        self.assertEqual(res.json['service_entry'], DEFAULT_NODE)
 
     def test_authentication_failures(self):
         # sending a request without any authentication header should result in
@@ -106,7 +108,7 @@ class TestPowerService(unittest.TestCase):
 
         # if the headers are good but the given assertion is not valid, a 401
         # should be raised as well.
-        wrong_assertion = get_assertion("alexis@mozilla.com",
+        wrong_assertion = get_assertion(DEFAULT_EMAIL,
                                         bad_issuer_cert=True)
         headers = {'Authorization': 'Browser-ID %s' % wrong_assertion}
         res = self.app.get(TOKEN_URI, headers=headers, status=401)
