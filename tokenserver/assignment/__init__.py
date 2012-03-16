@@ -9,5 +9,5 @@ class INodeAssignment(Interface):
         If no mapping is found, return None.
         """
 
-    def create_node(self, email, service):
+    def allocate_node(self, email, service):
         """Sets the node for the given email, service and node"""
