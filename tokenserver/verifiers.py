@@ -3,10 +3,10 @@ import time
 from pyramid.threadlocal import get_current_registry
 from zope.interface import implements, Interface
 
-from tokenserver.crypto.master import IPowerhoseRunner
-
 from vep.verifiers.local import LocalVerifier as LocalVerifier_
 from vep.errors import InvalidSignatureError, ExpiredSignatureError
+
+from tokenserver.crypto.master import get_runner
 
 
 def get_verifier():
@@ -33,7 +33,7 @@ class PowerHoseVerifier(LocalVerifier):
         # registry and use it for the internal operations
         runner = kwargs.pop('runner', None)
         if runner is None:
-            runner = get_current_registry().getUtility(IPowerhoseRunner)
+            runner = get_runner()
 
         self.runner = runner
         super(PowerHoseVerifier, self).__init__(warning=False, *args, **kwargs)

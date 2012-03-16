@@ -5,6 +5,7 @@ import functools
 import threading
 
 from zope.interface import implements, Interface
+from pyramid.threadlocal import get_current_registry
 
 from powerhose.jobrunner import JobRunner
 from powerhose.client.workers import Workers
@@ -27,6 +28,13 @@ PROTOBUF_CLASSES = {
 # registry
 class IPowerhoseRunner(Interface):
     pass
+
+
+def get_runner():
+    """Utility function returning the powerhose runner actually in the
+    registry.
+    """
+    return get_current_registry().getUtility(IPowerhoseRunner)
 
 
 # some signal handling to exit when on SIGINT or SIGTERM
