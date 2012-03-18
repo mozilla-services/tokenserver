@@ -14,6 +14,8 @@ class TestPythonCryptoWorker(TestCase):
     def setUp(self):
         self.worker = CryptoWorker(path=CERTS_LOCATION)
         self.runner = PurePythonRunner(self.worker)
+
+        # on start, the worker should load the certs in the folder.
         self.assertEquals(len(self.worker.certs), 1)
 
     def test_check_signature(self):
