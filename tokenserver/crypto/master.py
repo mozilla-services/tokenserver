@@ -122,7 +122,7 @@ class PowerHoseRunner(object):
     methods = ['derivate_key', 'check_signature', 'check_signature_with_cert']
 
     def __init__(self, endpoint, workers_cmd, num_workers=5, working_dir=None,
-                 env=None, ipc_path=None):
+                 env=None):
 
         # initialisation
         self.endpoint = endpoint
@@ -143,8 +143,7 @@ class PowerHoseRunner(object):
             _workers[self.endpoint] = CryptoWorkers(self.workers_cmd,
                                                     num_workers=num_workers,
                                                     working_dir=working_dir,
-                                                    env=envdict,
-                                                    ipc_path=ipc_path)
+                                                    env=envdict)
         self.runner = _runners[self.endpoint]
         logger.debug('Starting powerhose master')
 

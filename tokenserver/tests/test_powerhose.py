@@ -37,7 +37,8 @@ class TestPowerHoseVerifier(unittest.TestCase):
     def test_assertion_verification(self):
         # giving a valid assertion should return True
         worker = CryptoWorker(CERTS_LOCATION)
-        verifier = PowerHoseVerifier(runner=PurePythonRunner(worker))
+        verifier = PowerHoseVerifier(runner=PurePythonRunner(worker),
+                                     audiences=('*',))
         self.assertTrue(verifier.verify(get_assertion(DEFAULT_EMAIL)))
 
         # giving a wrong assertion (invalid bundled certificate) raise an
