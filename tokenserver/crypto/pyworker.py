@@ -6,9 +6,9 @@ from powerhose.client.worker import Worker
 from tokenserver import logger
 from tokenserver.crypto.master import Response, PROTOBUF_CLASSES
 
-from vep._m2_monkeypatch import DSA as _DSA
-from vep._m2_monkeypatch import RSA as _RSA
-from vep import jwt
+from browserid._m2_monkeypatch import DSA as _DSA
+from browserid._m2_monkeypatch import RSA as _RSA
+from browserid import jwt
 
 from M2Crypto import BIO
 

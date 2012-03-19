@@ -3,8 +3,8 @@ import time
 from pyramid.threadlocal import get_current_registry
 from zope.interface import implements, Interface
 
-from vep.verifiers.local import LocalVerifier as LocalVerifier_
-from vep.errors import InvalidSignatureError, ExpiredSignatureError
+from browserid.verifiers.local import LocalVerifier as LocalVerifier_
+from browserid.errors import InvalidSignatureError, ExpiredSignatureError
 
 from tokenserver.crypto.master import get_runner
 
@@ -26,7 +26,7 @@ class LocalVerifier(LocalVerifier_):
 
 
 class PowerHoseVerifier(LocalVerifier):
-    """PyVEP verifier using powerhose for cryptographic operations."""
+    """PyBrowserID verifier using powerhose for cryptographic operations."""
 
     def __init__(self, *args, **kwargs):
         # At instanciation, this verifier gets the powerhose runner from the

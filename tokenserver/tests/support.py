@@ -4,9 +4,9 @@ import random
 import time
 import os
 
-from vep.verifiers.local import LocalVerifier
-from vep.tests.support import make_assertion
-from vep import jwt
+from browserid.verifiers.local import LocalVerifier
+from browserid.tests.support import make_assertion
+from browserid import jwt
 
 from tokenserver.crypto.pyworker import _RSA
 from tokenserver.crypto.master import PowerHoseRunner
@@ -141,8 +141,8 @@ def get_assertion(email, audience='*', hostname='browserid.org',
     }
 
     # We remove the issuer_keypair and email_keypair arguments, which will let
-    # the underlying make_assertion function from vep use its internal test
-    # certificates, which are not the same as the one we use for the
+    # the underlying make_assertion function from browserid use its internal
+    # test certificates, which are not the same as the one we use for the
     # tokenserver.
 
     if bad_issuer_cert:

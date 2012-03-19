@@ -7,7 +7,7 @@ import json
 import os
 from pyramid import testing
 
-from vep.tests.support import (
+from browserid.tests.support import (
     patched_urlopen,
     fetch_public_key,
     make_assertion

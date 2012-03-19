@@ -4,7 +4,7 @@
 from setuptools import setup, find_packages
 
 
-requires = ['cornice', 'mozsvc', 'powerhose', 'circus', 'wimms', 'PyVEP']
+requires = ['cornice', 'mozsvc', 'powerhose', 'circus', 'wimms', 'PyBrowserID']
 
 setup(name='tokenserver',
       version='0.1',

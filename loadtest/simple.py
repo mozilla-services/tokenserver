@@ -1,14 +1,10 @@
-import random
 import json
 import unittest
-import vep
-from vep import DummyVerifier
+from browserid import DummyVerifier
 
 #import patch
 
 from funkload.FunkLoadTestCase import FunkLoadTestCase
-from funkload.utils import Data
-
 
 
 class SimpleTest(FunkLoadTestCase):

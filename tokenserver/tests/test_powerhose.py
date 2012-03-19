@@ -25,7 +25,7 @@ from tokenserver.tests.support import (
     get_assertion
 )
 
-from vep.errors import InvalidSignatureError
+from browserid.errors import InvalidSignatureError
 
 TOKEN_URI = '/1.0/sync/2.1'
 DEFAULT_EMAIL = "alexis@mozilla.com"
