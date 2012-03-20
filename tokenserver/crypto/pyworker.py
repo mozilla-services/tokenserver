@@ -139,6 +139,8 @@ def get_worker(endpoint, path, prefix='tokenserver'):
 
 
 if __name__ == '__main__':
+    if len(sys.argv) < 1:
+        raise ValueError("You should specify the certificates folder")
     worker = get_worker(*sys.argv[1:])
     try:
         worker.run()
