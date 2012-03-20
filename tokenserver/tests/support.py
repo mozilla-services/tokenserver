@@ -8,6 +8,7 @@ from browserid.verifiers.local import LocalVerifier
 from browserid.tests.support import make_assertion
 from browserid import jwt
 
+from powerhose.util import serialize
 from tokenserver.crypto.pyworker import _RSA
 from tokenserver.crypto.master import PowerHoseRunner
 
@@ -116,7 +117,8 @@ class PurePythonRunner(PowerHoseRunner):
     def __init__(self, runner):
         self.runner = runner
 
-        def patched_runner(blah, data):
+        def patched_runner(job):
+            data = serialize('JOB', job.serialize())
             return self.runner(data)
 
         setattr(self.runner, 'execute', patched_runner)
