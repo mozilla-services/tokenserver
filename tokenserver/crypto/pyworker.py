@@ -3,6 +3,9 @@ import sys
 import os
 
 from powerhose.client.worker import Worker
+from powerhose.util import unserialize
+from powerhose.job import Job
+
 from tokenserver import logger
 from tokenserver.crypto.master import Response, PROTOBUF_CLASSES
 
@@ -80,9 +83,11 @@ class CryptoWorker(object):
         if isinstance(msg, list):
             msg = msg[1]
 
+        __, data = unserialize(msg)
+        job = Job.load_from_string(data)
         try:
             try:
-                function_id, serialized_data = msg.split('::', 1)
+                function_id, serialized_data = job.data.split('::', 1)
                 obj = PROTOBUF_CLASSES[function_id]()
                 obj.ParseFromString(serialized_data)
                 data = {}
