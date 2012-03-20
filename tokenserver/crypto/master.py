@@ -8,6 +8,7 @@ from zope.interface import implements, Interface
 from pyramid.threadlocal import get_current_registry
 
 from powerhose.jobrunner import JobRunner
+from powerhose.job import Job
 from powerhose.client.workers import Workers
 from powerhose import logger
 
@@ -75,6 +76,8 @@ class CryptoWorkers(threading.Thread):
     def run(self):
         logger.debug('Starting powerhose workers')
         self.workers.run()
+        logger.debug('Powerhose workers ended')
+
 
     def stop(self):
         logger.debug('Stopping powerhose workers')
@@ -183,8 +186,10 @@ class PowerHoseRunner(object):
         for key, value in data.items():
             setattr(obj, key, value)
 
-        serialized_resp = self.runner.execute("GAZOLINE",
-                "::".join((function_id, obj.SerializeToString())))
+        # XXX use headers here
+        data = "::".join((function_id, obj.SerializeToString()))
+        job = Job(data)
+        serialized_resp = self.runner.execute(job)
 
         resp = Response()
         resp.ParseFromString(serialized_resp)
