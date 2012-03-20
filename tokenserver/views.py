@@ -6,7 +6,7 @@ import os
 import json
 
 from cornice import Service
-from vep.errors import Error as BrowserIDError
+from browserid.errors import Error as BrowserIDError
 
 from tokenlib import make_token, get_token_secret
 
