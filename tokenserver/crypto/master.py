@@ -12,6 +12,7 @@ from powerhose.job import Job
 from powerhose.client.workers import Workers
 from powerhose import logger
 
+from google.protobuf.message import DecodeError
 from tokenserver.crypto.messages import (
     CheckSignature,
     CheckSignatureWithCert,
@@ -190,9 +191,11 @@ class PowerHoseRunner(object):
         data = "::".join((function_id, obj.SerializeToString()))
         job = Job(data)
         serialized_resp = self.runner.execute(job)
-
         resp = Response()
-        resp.ParseFromString(serialized_resp)
+        try:
+            resp.ParseFromString(serialized_resp)
+        except DecodeError:
+            raise Exception(serialized_resp)
 
         if resp.error:
             raise Exception(resp.error)
