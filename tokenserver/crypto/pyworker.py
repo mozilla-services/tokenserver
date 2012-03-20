@@ -1,6 +1,7 @@
 import json
 import sys
 import os
+import traceback
 
 from powerhose.client.worker import Worker
 from powerhose.util import unserialize
@@ -80,12 +81,15 @@ class CryptoWorker(object):
     def __call__(self, msg):
         """proxy to the functions exposed by the worker"""
         logger.info('worker called with the message %s' % msg)
-        if isinstance(msg, list):
-            msg = msg[1]
-
-        __, data = unserialize(msg)
-        job = Job.load_from_string(data)
         try:
+            if isinstance(msg, list):
+                data= msg[0]
+            else:
+                data = msg
+
+            data = unserialize(data)
+            job = Job.load_from_string(data[-1])
+
             try:
                 function_id, serialized_data = job.data.split('::', 1)
                 obj = PROTOBUF_CLASSES[function_id]()
@@ -103,7 +107,10 @@ class CryptoWorker(object):
             res = getattr(self, function_id)(**data)
             return Response(value=res).SerializeToString()
         except Exception as e:
-            return Response(error=e.message).SerializeToString()
+            exc_type, exc_value, exc_traceback = sys.exc_info()
+            exc = traceback.format_tb(exc_traceback)
+            exc.insert(0, str(e))
+            return Response(error='\n'.join(exc)).SerializeToString()
 
     def error(self, message):
         """returns an error message"""
