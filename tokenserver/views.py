@@ -111,4 +111,4 @@ def return_token(request):
     secret = get_token_secret(token, secret=secret)
 
     # FIXME add the algo used to generate the token
-    return {'id': token, 'key': secret, 'service_entry': node}
+    return {'id': token, 'key': secret, 'service_entry': node, 'uid': uid}
