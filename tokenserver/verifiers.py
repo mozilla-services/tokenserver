@@ -31,12 +31,15 @@ class PowerHoseVerifier(LocalVerifier):
     def __init__(self, *args, **kwargs):
         # At instanciation, this verifier gets the powerhose runner from the
         # registry and use it for the internal operations
-        runner = kwargs.pop('runner', None)
-        if runner is None:
-            runner = get_runner()
+        self._runner = kwargs.pop('runner', None)
 
-        self.runner = runner
         super(PowerHoseVerifier, self).__init__(warning=False, *args, **kwargs)
+
+    @property
+    def runner(self):
+        if self._runner is None:
+            self._runner = get_runner()
+        return self._runner
 
     def verify_certificate_chain(self, certificates, now=None):
         """Verify a certificate chain using a powerhose worker.
