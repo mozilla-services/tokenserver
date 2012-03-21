@@ -7,7 +7,7 @@ from collections import defaultdict
 
 from mozsvc.config import get_configurator
 from mozsvc.plugin import load_and_register
-from tokenlib.secrets import Secrets
+from mozsvc.secrets import Secrets
 
 
 logger = logging.getLogger('tokenserver')
