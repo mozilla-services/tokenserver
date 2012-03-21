@@ -14,6 +14,9 @@ setup(name='tokenserver',
       entry_points="""\
       [paste.app_factory]
       main = tokenserver:main
+      [console_scripts]
+      generate-secret = tokenserver.scripts:generate_secret
+      display-secrets = tokenserver.scripts:display_secrets
       """,
       install_requires=requires,
       tests_require=requires,
