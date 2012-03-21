@@ -159,6 +159,9 @@ class PowerHoseRunner(object):
         # ... and the workers
         self.workers.start()
 
+        # wait a bit
+        time.sleep(1.)
+
     def __getattr__(self, attr):
         """magic method getter to be able to do direct function calls on this
         object.

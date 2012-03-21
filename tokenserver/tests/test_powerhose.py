@@ -85,11 +85,14 @@ class TestPowerService(unittest.TestCase):
         self.app = TestApp(wsgiapp)
         time.sleep(1.)
 
-    def test_valid_app(self):
+    def _test_valid_app(self):
         assertion = get_assertion(DEFAULT_EMAIL)
         headers = {'Authorization': 'Browser-ID %s' % assertion}
         res = self.app.get(TOKEN_URI, headers=headers)
         self.assertEqual(res.json['service_entry'], DEFAULT_NODE)
+
+    def test_authentication_failures2(self):
+        self.test_authentication_failures()
 
     def test_authentication_failures(self):
         # sending a request without any authentication header should result in
