@@ -29,15 +29,17 @@ class TestShardedNode(TestCase):
         self.backend = self.config.registry.getUtility(INodeAssignment)
 
         # adding a node with 100 slots
-        self.backend._safe_execute('sync',
+        self.backend._safe_execute(
               """insert into nodes (`node`, `service`, `version`, `available`,
                     `capacity`, `current_load`, `downed`, `backoff`)
-                  values ("phx12", "sync", "1.0", 100, 100, 0, 0, 0)""")
+                  values ("phx12", "sync", "1.0", 100, 100, 0, 0, 0)""",
+                  service='sync')
 
         self._sqlite = self.backend._dbs['sync'][0].driver == 'pysqlite'
 
     def tearDown(self):
-        for engine, __, __ in self.backend._dbs.values():
+        for val in self.backend._dbs.values():
+            engine = val[0]
             if engine.driver == 'pysqlite':
                 sqluri = str(engine.url)
                 filename = sqluri.split('sqlite://')[-1]
