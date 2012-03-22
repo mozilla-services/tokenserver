@@ -1,11 +1,6 @@
-import json
 import unittest
 
-from browserid.tests.support import make_assertion
-
-#from browserid.certificates import CertificatesManager
-#import patch
-
+from tokenserver.tests.support import get_assertion
 from funkload.FunkLoadTestCase import FunkLoadTestCase
 
 
@@ -20,15 +15,14 @@ class SimpleTest(FunkLoadTestCase):
 
     def _getassertion(self):
         email = 'tarek@mozilla.com'
-        url = 'http://tokenserver.services.mozilla.com'
-        return make_assertion(email, url)
+        return get_assertion(email)
 
     def test_simple(self):
         # get a token
         # GET /1.0/simple_storage/2.0
         assertion = self._getassertion()
         self.setHeader('Authorization', 'Browser-ID %s' % assertion)
-        res = self.get(self.root + '/1.0/sync/1.0')
+        res = self.get(self.root + '/1.0/aitc/1.0')
         self.assertEquals(res.code, 200)
 
 
