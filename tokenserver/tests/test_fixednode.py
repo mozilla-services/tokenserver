@@ -13,7 +13,7 @@ from mozsvc.config import load_into_settings
 from mozsvc.exceptions import BackendError
 
 DEFAULT_EMAIL = "alexis@mozilla.com"
-DEFAULT_NODE = "example.com"
+DEFAULT_NODE = "https://example.com"
 DEFAULT_SERVICE = "sync"
 DEFAULT_VERSION = "1.0"
 

@@ -32,7 +32,7 @@ class TestShardedNode(TestCase):
         self.backend._safe_execute('sync',
               """insert into nodes (`node`, `service`, `version`, `available`,
                     `capacity`, `current_load`, `downed`, `backoff`)
-                  values ("phx12", "sync", "1.0", 100, 100, 0, 0, 0)""")
+                  values ("https://phx12", "sync", "1.0", 100, 100, 0, 0, 0)""")
 
         self._sqlite = self.backend._dbs['sync'][0].driver == 'pysqlite'
 
@@ -57,9 +57,9 @@ class TestShardedNode(TestCase):
         res = self.backend.allocate_node("tarek@mozilla.com", "sync", "1.0")
 
         if self._sqlite:
-            wanted = (1, u'phx12')
+            wanted = (1, u'https://phx12')
         else:
-            wanted = (0, u'phx12')
+            wanted = (0, u'https://phx12')
 
         self.assertEqual(res, wanted)
         self.assertEqual(wanted,

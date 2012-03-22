@@ -111,5 +111,12 @@ def return_token(request):
     token = make_token({'uid': uid, 'service_entry': node}, secret=secret)
     secret = get_token_secret(token, secret=secret)
 
+    pattern = request.registry['endpoints_patterns'].get(
+            (application, version))
+
+    api_endpoint = pattern.format(uid=uid, service=application,
+                                  version=version)
+
     # FIXME add the algo used to generate the token
-    return {'id': token, 'key': secret, 'service_entry': node, 'uid': uid}
+    return {'id': token, 'key': secret, 'uid': uid,
+            'api_endpoint': api_endpoint}

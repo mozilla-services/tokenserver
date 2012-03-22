@@ -2,15 +2,15 @@ from unittest2 import TestCase
 import os
 
 from pyramid import testing
+from pyramid.threadlocal import get_current_registry
 from mozsvc.config import load_into_settings
 from mozsvc.plugin import load_and_register
-from sqlalchemy.exc import IntegrityError
 
-from tokenserver import logger
 from tokenserver.assignment import INodeAssignment
+from tokenserver import read_endpoints
 
 
-class TestLDAPNode(TestCase):
+class TestSQLBackend(TestCase):
 
     def setUp(self):
         super(TestCase, self).setUp()
@@ -32,8 +32,14 @@ class TestLDAPNode(TestCase):
         self.backend._safe_execute(
               """insert into nodes (`node`, `service`, `version`, `available`,
                     `capacity`, `current_load`, `downed`, `backoff`)
-                  values ("phx12", "sync", "1.0", 100, 100, 0, 0, 0)""")
+                  values ("https://phx12", "sync", "1.0", 100, 100, 0, 0, 0)""")
+        self.backend._safe_execute(
+                """insert into service_pattern
+                (`service`, `version`, `pattern`)
+                values
+                ("sync", "1.0", "{node}/{version}/{uid}")""")
         self._sqlite = self.backend._engine.driver == 'pysqlite'
+        read_endpoints(self.config)
 
     def tearDown(self):
         if self._sqlite:
@@ -43,9 +49,9 @@ class TestLDAPNode(TestCase):
         else:
             self.backend._safe_execute('delete from nodes')
             self.backend._safe_execute('delete from user_nodes')
+            self.backend._safe_execute('delete from service_pattern')
 
     def test_get_node(self):
-
         unassigned = None, None
         self.assertEquals(unassigned,
                           self.backend.get_node("tarek@mozilla.com", "sync",
@@ -54,11 +60,17 @@ class TestLDAPNode(TestCase):
         res = self.backend.allocate_node("tarek@mozilla.com", "sync", "1.0")
 
         if self._sqlite:
-            wanted = (1, u'phx12')
+            wanted = (1, u'https://phx12')
         else:
-            wanted = (0, u'phx12')
+            wanted = (0, u'https://phx12')
 
         self.assertEqual(res, wanted)
         self.assertEqual(wanted,
                          self.backend.get_node("tarek@mozilla.com", "sync",
                              "1.0"))
+
+    def test_get_patterns(self):
+        # patterns should have been populated
+        patterns = get_current_registry()['endpoints_patterns']
+        self.assertDictEqual(patterns,
+                {('sync', '1.0'): '{node}/{version}/{uid}'})

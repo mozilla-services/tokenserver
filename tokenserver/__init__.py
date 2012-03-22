@@ -5,6 +5,8 @@ import logging
 from ConfigParser import NoSectionError
 from collections import defaultdict
 
+from tokenserver.assignment import INodeAssignment
+
 from mozsvc.config import get_configurator
 from mozsvc.plugin import load_and_register
 from mozsvc.secrets import Secrets
@@ -47,6 +49,23 @@ def includeme(config):
     # load the secrets file
     key = 'tokenserver.secrets_file'
     settings[key] = Secrets(settings[key])
+    read_endpoints(config)
+
+
+def read_endpoints(config):
+    """If there is a section "endpoints", load it the format is
+    service-version = pattern, and a dict will be built with those.
+    """
+    endpoints = dict([(key.split('.')[-1].split('-'), value)
+                     for key, value in config.registry.settings.items()
+                     if key.startswith('endpoints.')])
+
+    if not endpoints:
+        # otherwise, try to ask the assignment backend the list of endpoints
+        backend = config.registry.getUtility(INodeAssignment)
+        endpoints = backend.get_patterns()
+
+    config.registry['endpoints_patterns'] = endpoints
 
 
 def main(global_config, **settings):
