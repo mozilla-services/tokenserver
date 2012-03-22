@@ -30,9 +30,9 @@ class TestShardedNode(TestCase):
 
         # adding a node with 100 slots
         self.backend._safe_execute('sync',
-              """insert into nodes (`node`, `service`, `available`,
+              """insert into nodes (`node`, `service`, `version`, `available`,
                     `capacity`, `current_load`, `downed`, `backoff`)
-                  values ("phx12", "sync", 100, 100, 0, 0, 0)""")
+                  values ("phx12", "sync", "1.0", 100, 100, 0, 0, 0)""")
 
         self._sqlite = self.backend._dbs['sync'][0].driver == 'pysqlite'
 
@@ -51,9 +51,10 @@ class TestShardedNode(TestCase):
 
         unassigned = None, None
         self.assertEquals(unassigned,
-                          self.backend.get_node("tarek@mozilla.com", "sync"))
+                          self.backend.get_node("tarek@mozilla.com", "sync",
+                                                "1.0"))
 
-        res = self.backend.allocate_node("tarek@mozilla.com", "sync")
+        res = self.backend.allocate_node("tarek@mozilla.com", "sync", "1.0")
 
         if self._sqlite:
             wanted = (1, u'phx12')
@@ -62,4 +63,5 @@ class TestShardedNode(TestCase):
 
         self.assertEqual(res, wanted)
         self.assertEqual(wanted,
-                         self.backend.get_node("tarek@mozilla.com", "sync"))
+                         self.backend.get_node("tarek@mozilla.com", "sync",
+                             "1.0"))

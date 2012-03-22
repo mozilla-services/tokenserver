@@ -95,11 +95,12 @@ def return_token(request):
     backend = request.registry.getUtility(INodeAssignment)
     email = request.validated['assertion']['email']
     application = request.validated['application']
+    version = request.validated['version']
 
     # get the node or allocate one if none is already set
-    uid, node = backend.get_node(email, application)
+    uid, node = backend.get_node(email, application, version)
     if node is None or uid is None:
-        uid, node = backend.allocate_node(email, application)
+        uid, node = backend.allocate_node(email, application, version)
 
     secrets = request.registry.settings['tokenserver.secrets_file']
     node_secrets = secrets.get(node)
