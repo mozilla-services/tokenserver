@@ -70,7 +70,7 @@ class TestService(unittest.TestCase):
     def test_valid_app(self):
         headers = {'Authorization': 'Browser-ID %s' % self._getassertion()}
         res = self.app.get('/1.0/aitc/1.0', headers=headers)
-        self.assertEqual(res.json['api_endpoint'], 'https://example.com/1.0/0')
+        self.assertIn('https://example.com/1.0', res.json['api_endpoint'])
 
     def test_discovery(self):
         res = self.app.get('/')
