@@ -69,7 +69,7 @@ build:
 	$(INSTALL) WebTest
 	$(INSTALL) wsgi_intercept
 	$(INSTALL) pyzmq
-	$(INSTALL) cython
+	bin/pip install cython
 	$(INSTALL) https://bitbucket.org/tarek/gevent/get/48b7c5262cca.tar.gz
 	$(INSTALL) https://github.com/mozilla/PyBrowserID/zipball/master 
 	$(INSTALL) https://github.com/tarekziade/gevent-zeromq/zipball/master 
