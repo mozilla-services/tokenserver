@@ -115,7 +115,7 @@ def return_token(request):
             (application, version))
 
     api_endpoint = pattern.format(uid=uid, service=application,
-                                  version=version)
+                                  version=version, node=node)
 
     # FIXME add the algo used to generate the token
     return {'id': token, 'key': secret, 'uid': uid,
