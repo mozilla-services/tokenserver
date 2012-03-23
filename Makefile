@@ -1,5 +1,5 @@
 APPNAME = tokenserver
-DEPS =
+DEPS = powerhose, wimms
 VIRTUALENV = virtualenv
 PYTHON = $(CURDIR)/bin/python
 NOSE = bin/nosetests -s --with-xunit
@@ -19,14 +19,15 @@ CHANNEL = dev
 RPM_CHANNEL = dev
 PIP_CACHE = /tmp/pip-cache
 INSTALL = bin/pip install --download-cache=$(PIP_CACHE)
-BUILDAPP = bin/buildapp --download-cache=$(PIP_CACHE) 
-BUILDRPMS = bin/buildrpms --download-cache=$(PIP_CACHE) 
+BUILDAPP = bin/buildapp --download-cache=$(PIP_CACHE)
+BUILDRPMS = bin/buildrpms --download-cache=$(PIP_CACHE)
 INSTALLOPTIONS = -U -i $(PYPI)
 TIMEOUT = 300
 DURATION = 30
 CYCLES = 5:10:20
 HOST = http://localhost:5000
 BIN = ../bin
+RPMDIR= $(CURDIR)/rpms
 
 ifdef PYPIEXTRAS
 	PYPIOPTIONS += -e $(PYPIEXTRAS)
@@ -46,7 +47,7 @@ endif
 
 INSTALL += $(INSTALLOPTIONS)
 
-.PHONY: all build build_rpms test update
+.PHONY: all build build_rpms test update custom_builds
 
 all:	build
 
@@ -59,7 +60,6 @@ build_mcrypto:
 	cd /tmp; wget $(PYPI2)/source/M/M2Crypto/M2Crypto-0.21.1.tar.gz#md5=f93d8462ff7646397a9f77a2fe602d17
 	cd /tmp && tar -xzvf M2Crypto-0.21.1.tar.gz && cd M2Crypto-0.21.1 && sed -i -e 's/opensslconf\./opensslconf-x86_64\./' SWIG/_ec.i && sed -i -e 's/opensslconf\./opensslconf-x86_64\./' SWIG/_evp.i && SWIG_FEATURES=-cpperraswarn $(PYTHON) setup.py install
 	rm -rf /tmp/M2Crypto*
-	bin/pip install --download-cache=$(PIP_CACHE) PyVEP==0.3.1
 	$(BUILDAPP) -t $(TIMEOUT) -c $(CHANNEL) $(PYPIOPTIONS) $(DEPS)
 
 build:
@@ -68,7 +68,13 @@ build:
 	$(INSTALL) nose
 	$(INSTALL) WebTest
 	$(INSTALL) wsgi_intercept
-	$(INSTALL) PyVEP==0.3.1
+	$(INSTALL) pyzmq
+	bin/pip install cython
+	$(INSTALL) https://bitbucket.org/tarek/gevent/get/48b7c5262cca.tar.gz
+	$(INSTALL) https://github.com/mozilla/PyBrowserID/zipball/master 
+	$(INSTALL) https://github.com/tarekziade/gevent-zeromq/zipball/master 
+
+
 	$(BUILDAPP) -t $(TIMEOUT) -c $(CHANNEL) $(PYPIOPTIONS) $(DEPS)
 
 update:
@@ -80,11 +86,8 @@ test:
 build_rpms:
 	rm -rf rpms
 	mkdir rpms
-	cd /tmp; wget $(PYPI2)/source/M/M2Crypto/M2Crypto-0.21.1.tar.gz#md5=f93d8462ff7646397a9f77a2fe602d17
-	cd /tmp && tar -xzvf M2Crypto-0.21.1.tar.gz && cd M2Crypto-0.21.1 && sed -i -e 's/opensslconf\./opensslconf-x86_64\./' SWIG/_ec.i && sed -i -e 's/opensslconf\./opensslconf-x86_64\./' SWIG/_evp.i && SWIG_FEATURES=-cpperraswarn $(PYTHON) setup.py install
-	rm -rf /tmp/M2Crypto*
-	bin/pip install --download-cache=$(PIP_CACHE) PyVEP==0.3.1
 	$(BUILDRPMS) -t $(TIMEOUT) -c $(RPM_CHANNEL) $(DEPS)
+	custom_builds
 
 mach: build build_rpms
 	mach clean
@@ -96,3 +99,31 @@ mach: build build_rpms
 
 clean:
 	rm -rf bin lib include local docs/build
+
+custom_builds:
+	bin/pip install cython
+	cd /tmp; rm -f /tmp/master.zip
+	cd /tmp; wget https://github.com/zeromq/pyzmq/zipball/master --no-check-certificate
+	cd /tmp; mv master master.zip
+	bin/pypi2rpm.py /tmp/master.zip --dist-dir=$(CURDIR)
+	cd /tmp; rm -f /tmp/master.zip
+	cd /tmp; wget https://github.com/mozilla/PyBrowserID/zipball/master --no-check-certificate
+	cd /tmp; mv master master.zip
+	bin/pypi2rpm.py /tmp/master.zip --dist-dir=$(CURDIR)
+	cd /tmp; rm -f /tmp/master.zip
+	cd /tmp; wget https://github.com/mozilla-services/powerhose/zipball/master --no-check-certificate
+	cd /tmp; mv master master.zip
+	bin/pypi2rpm.py /tmp/master.zip --dist-dir=$(CURDIR)
+	cd /tmp; rm -f /tmp/master.zip
+	cd /tmp; wget https://github.com/tarekziade/gevent-zeromq/zipball/master --no-check-certificate
+	cd /tmp; mv master master.zip
+	bin/pypi2rpm.py /tmp/master.zip --dist-dir=$(CURDIR)
+	cd /tmp; rm -f /tmp/master.zip
+	cd /tmp; wget https://github.com/mozilla-services/wimms/zipball/master --no-check-certificate
+	cd /tmp; mv master master.zip
+	bin/pypi2rpm.py /tmp/master.zip --dist-dir=$(CURDIR)
+	cd /tmp; rm -f /tmp/master.zip
+	cd /tmp; wget https://github.com/Pylons/pyramid/zipball/master --no-check-certificate
+	cd /tmp; mv master master.zip
+	bin/pypi2rpm.py /tmp/master.zip --dist-dir=$(CURDIR)
+
