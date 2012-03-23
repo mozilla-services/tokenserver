@@ -8,7 +8,6 @@ mozsvc
 cornice
 circus
 protobuf
-#pyzmq
 SQLAlchemy
 Chameleon
 Jinja2
@@ -18,7 +17,6 @@ Paste
 PasteDeploy
 PasteScript
 WebOb
-pyramid
 pyramid_jinja2
 pyramid_debugtoolbar
 repoze.lru
