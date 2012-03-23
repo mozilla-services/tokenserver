@@ -19,14 +19,15 @@ CHANNEL = dev
 RPM_CHANNEL = dev
 PIP_CACHE = /tmp/pip-cache
 INSTALL = bin/pip install --download-cache=$(PIP_CACHE)
-BUILDAPP = bin/buildapp --download-cache=$(PIP_CACHE) 
-BUILDRPMS = bin/buildrpms --download-cache=$(PIP_CACHE) 
+BUILDAPP = bin/buildapp --download-cache=$(PIP_CACHE)
+BUILDRPMS = bin/buildrpms --download-cache=$(PIP_CACHE)
 INSTALLOPTIONS = -U -i $(PYPI)
 TIMEOUT = 300
 DURATION = 30
 CYCLES = 5:10:20
 HOST = http://localhost:5000
 BIN = ../bin
+RPMDIR= $(CURDIR)/rpms
 
 ifdef PYPIEXTRAS
 	PYPIOPTIONS += -e $(PYPIEXTRAS)
@@ -79,6 +80,7 @@ build_rpms:
 	rm -rf rpms
 	mkdir rpms
 	$(BUILDRPMS) -t $(TIMEOUT) -c $(RPM_CHANNEL) $(DEPS)
+	custom_builds
 
 mach: build build_rpms
 	mach clean
@@ -90,3 +92,26 @@ mach: build build_rpms
 
 clean:
 	rm -rf bin lib include local docs/build
+
+custom_builds:
+	bin/pip install cython
+	cd /tmp; rm -f /tmp/master.zip
+	cd /tmp; wget https://github.com/zeromq/pyzmq/zipball/master --no-check-certificate
+	cd /tmp; mv master master.zip
+	bin/pypi2rpm.py /tmp/master.zip --dist-dir=$(CURDIR)
+	cd /tmp; rm -f /tmp/master.zip
+	cd /tmp; wget https://github.com/mozilla/PyBrowserID/zipball/master --no-check-certificate
+	cd /tmp; mv master master.zip
+	bin/pypi2rpm.py /tmp/master.zip --dist-dir=$(CURDIR)
+	cd /tmp; rm -f /tmp/master.zip
+	cd /tmp; wget https://github.com/mozilla-services/powerhose/zipball/master --no-check-certificate
+	cd /tmp; mv master master.zip
+	bin/pypi2rpm.py /tmp/master.zip --dist-dir=$(CURDIR)
+	cd /tmp; rm -f /tmp/master.zip
+	cd /tmp; wget https://github.com/tarekziade/gevent-zeromq/zipball/master --no-check-certificate
+	cd /tmp; mv master master.zip
+	bin/pypi2rpm.py /tmp/master.zip --dist-dir=$(CURDIR)
+	cd /tmp; rm -f /tmp/master.zip
+	cd /tmp; wget https://github.com/mozilla-services/wimms/zipball/master --no-check-certificate
+	cd /tmp; mv master master.zip
+	bin/pypi2rpm.py /tmp/master.zip --dist-dir=$(CURDIR)
