@@ -7,6 +7,7 @@ from tokenserver.assignment import INodeAssignment
 from tokenserver import logger
 
 from mozsvc.exceptions import BackendError
+from mozsvc.http_helpers import get_url
 from wimms.sql import SQLMetadata
 from wimms.shardedsql import ShardedSQLMetadata
 
