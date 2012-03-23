@@ -56,9 +56,11 @@ def read_endpoints(config):
     """If there is a section "endpoints", load it the format is
     service-version = pattern, and a dict will be built with those.
     """
-    endpoints = dict([(key.split('.')[-1].split('-'), value)
-                     for key, value in config.registry.settings.items()
-                     if key.startswith('endpoints.')])
+    endpoints = {}
+    for key, value in [(key.split('.', 1)[-1].split('-'), value)
+                      for key, value in config.registry.settings.items()
+                      if key.startswith('endpoints.')]:
+        endpoints[tuple(key)] = value
 
     if not endpoints:
         # otherwise, try to ask the assignment backend the list of endpoints
