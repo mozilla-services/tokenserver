@@ -47,7 +47,7 @@ endif
 
 INSTALL += $(INSTALLOPTIONS)
 
-.PHONY: all build build_rpms test update
+.PHONY: all build build_rpms test update custom_builds
 
 all:	build
 
