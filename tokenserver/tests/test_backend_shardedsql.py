@@ -4,10 +4,9 @@ import os
 from pyramid import testing
 from mozsvc.config import load_into_settings
 from mozsvc.plugin import load_and_register
-from sqlalchemy.exc import IntegrityError
 
-from tokenserver import logger
 from tokenserver.assignment import INodeAssignment
+from tokenserver import read_endpoints
 
 
 class TestShardedNode(TestCase):
@@ -30,11 +29,18 @@ class TestShardedNode(TestCase):
 
         # adding a node with 100 slots
         self.backend._safe_execute('sync',
-              """insert into nodes (`node`, `service`, `version`, `available`,
-                    `capacity`, `current_load`, `downed`, `backoff`)
-                  values ("https://phx12", "sync", "1.0", 100, 100, 0, 0, 0)""")
+          """insert into nodes (`node`, `service`, `version`, `available`,
+                `capacity`, `current_load`, `downed`, `backoff`)
+              values ("https://phx12", "sync", "1.0", 100, 100, 0, 0, 0)""")
+
+        self.backend._safe_execute('sync',
+                """insert into service_pattern
+                (`service`, `version`, `pattern`)
+                values
+                ("sync", "1.0", "{node}/{version}/{uid}")""")
 
         self._sqlite = self.backend._dbs['sync'][0].driver == 'pysqlite'
+        read_endpoints(self.config)
 
     def tearDown(self):
         for engine, __, __ in self.backend._dbs.values():
@@ -46,6 +52,7 @@ class TestShardedNode(TestCase):
             else:
                 engine.execute('delete from nodes')
                 engine.execute('delete from user_nodes')
+                engine.execute('delete from service_pattern')
 
     def test_get_node(self):
 
