@@ -52,22 +52,34 @@ def includeme(config):
     read_endpoints(config)
 
 
+class LazyDict(dict):
+    def __init__(self, callable):
+        self.callable = callable
+        self._loaded = False
+
+    def __getitem__(self, name):
+        if not self._loaded:
+            self.callable(self)
+        return super(LazyDict, self).__getitem__(name)
+
+
 def read_endpoints(config):
     """If there is a section "endpoints", load it the format is
     service-version = pattern, and a dict will be built with those.
     """
-    endpoints = {}
-    for key, value in [(key.split('.', 1)[-1].split('-'), value)
-                      for key, value in config.registry.settings.items()
-                      if key.startswith('endpoints.')]:
-        endpoints[tuple(key)] = value
+    def _read(self):
+        for key, value in [(key.split('.', 1)[-1].split('-'), value)
+                        for key, value in config.registry.settings.items()
+                        if key.startswith('endpoints.')]:
+            self[tuple(key)] = value
 
-    if not endpoints:
-        # otherwise, try to ask the assignment backend the list of endpoints
-        backend = config.registry.getUtility(INodeAssignment)
-        endpoints = backend.get_patterns()
+        if not endpoints:
+            # otherwise, try to ask the assignment backend the list of endpoints
+            backend = config.registry.getUtility(INodeAssignment)
+            self.clear()
+            self.update(backend.get_patterns())
 
-    config.registry['endpoints_patterns'] = endpoints
+    config.registry['endpoints_patterns'] = LazyDict(_read)
 
 
 def main(global_config, **settings):
