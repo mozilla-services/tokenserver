@@ -1,6 +1,5 @@
 venusian==1.0a2
 cornice==0.7
-circus==0.2
 SQLAlchemy==0.7.3
 Chameleon==2.5.3
 Jinja2==2.6
