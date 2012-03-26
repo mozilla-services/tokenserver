@@ -47,7 +47,7 @@ endif
 
 INSTALL += $(INSTALLOPTIONS)
 
-.PHONY: all build build_rpms test update custom_builds
+.PHONY: all build build_rpms test update build_rpms2
 
 all:	build
 
@@ -88,6 +88,10 @@ test:
 	$(NOSE) $(TESTS)
 
 build_rpms:
+	build_rpms: build_rpms2
+	$(BUILDRPMS) -t $(TIMEOUT) -c $(RPM_CHANNEL) $(DEPS)
+
+build_rpms2:
 	rm -rf rpms
 	mkdir rpms
 	bin/pip install cython
@@ -108,7 +112,6 @@ build_rpms:
 	cd /tmp; mv master master.zip
 	bin/pypi2rpm.py /tmp/master.zip --dist-dir=$(RPMDIR)
 	bin/pypi2rpm.py http://pypi.python.org/packages/source/n/nose/nose-0.11.4.tar.gz --dist-dir=$(RPMDIR)
-	$(BUILDRPMS) -t $(TIMEOUT) -c $(RPM_CHANNEL) $(DEPS)
 
 mock: build build_rpms
 	mock init
