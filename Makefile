@@ -1,5 +1,5 @@
 APPNAME = tokenserver
-DEPS = powerhose, wimms
+DEPS = https://github.com/mozilla-services/powerhose,https://github.com/mozilla-services/wimms
 VIRTUALENV = virtualenv
 PYTHON = $(CURDIR)/bin/python
 NOSE = bin/nosetests -s --with-xunit
@@ -73,8 +73,6 @@ build:
 	bin/pip install https://bitbucket.org/tarek/gevent/get/48b7c5262cca.tar.gz
 	$(INSTALL) https://github.com/mozilla/PyBrowserID/zipball/master 
 	$(INSTALL) https://github.com/tarekziade/gevent-zeromq/zipball/master 
-
-
 	$(BUILDAPP) -t $(TIMEOUT) -c $(CHANNEL) $(PYPIOPTIONS) $(DEPS)
 
 update:
