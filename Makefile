@@ -116,7 +116,6 @@ build_rpms:
 	cd /tmp; mv master master.zip
 	bin/pypi2rpm.py /tmp/master.zip --dist-dir=$(CURDIR)
 	$(BUILDRPMS) -t $(TIMEOUT) -c $(RPM_CHANNEL) $(DEPS)
-	custom_builds
 
 mach: build build_rpms
 	mach clean
