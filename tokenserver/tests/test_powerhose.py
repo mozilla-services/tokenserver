@@ -29,7 +29,7 @@ from browserid.errors import InvalidSignatureError
 
 TOKEN_URI = '/1.0/sync/2.1'
 DEFAULT_EMAIL = "alexis@mozilla.com"
-DEFAULT_NODE = "example.com"
+DEFAULT_NODE = "https://example.com"
 
 
 class TestPowerHoseVerifier(unittest.TestCase):
@@ -89,7 +89,7 @@ class TestPowerService(unittest.TestCase):
         assertion = get_assertion(DEFAULT_EMAIL)
         headers = {'Authorization': 'Browser-ID %s' % assertion}
         res = self.app.get(TOKEN_URI, headers=headers)
-        self.assertEqual(res.json['service_entry'], DEFAULT_NODE)
+        self.assertEqual(res.json['api_endpoint'], DEFAULT_NODE + '/1.0/0')
 
     def test_authentication_failures2(self):
         self.test_authentication_failures()

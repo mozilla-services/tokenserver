@@ -2,8 +2,12 @@
 """
 import json
 from zope.interface import implements
-from tokenserver.assignment import INodeAssignment
 
+from tokenserver.assignment import INodeAssignment
+from tokenserver import logger
+
+from mozsvc.exceptions import BackendError
+from mozsvc.http_helpers import get_url
 from wimms.sql import SQLMetadata
 from wimms.shardedsql import ShardedSQLMetadata
 
@@ -14,6 +18,11 @@ class SQLNodeAssignment(SQLMetadata):
     Silly, isn't it ?
     """
     implements(INodeAssignment)
+
+    def get_patterns(self):
+        patterns = super(SQLNodeAssignment, self).get_patterns()
+        return dict([((service, version), pattern)
+                    for service, version, pattern in patterns])
 
 
 class ShardedSQLNodeAssignment(ShardedSQLMetadata):
@@ -42,7 +51,7 @@ class SecuredShardedSQLNodeAssignment(ShardedSQLMetadata):
             except ValueError:
                 logger.error("bad json body from sreg (%s): %s" %
                                                         (url, body))
-                raise BakenckError('Bad answer from proxy')
+                raise BackendError('Bad answer from proxy')
         return status, body
 
     def allocate_node(self, email, service):

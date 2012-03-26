@@ -3,7 +3,8 @@
 build:
 	virtualenv --no-site-packages --distribute .
 	bin/easy_install funkload
-	bin/easy_install PyBrowserID
+	cd ..
+	loadtest/bin/python setup.py develop
 
 test:
 	bin/fl-run-test simple.py
