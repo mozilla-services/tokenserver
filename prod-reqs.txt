@@ -31,3 +31,4 @@ zope.event
 zope.interface
 unittest2
 psutil
+gevent
