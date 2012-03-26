@@ -25,3 +25,11 @@ zope.interface
 unittest2
 psutil
 gevent
+WebTest
+Sphinx
+docutils
+coverage
+greenlet
+Pygments
+ordereddict
+tokenlib
