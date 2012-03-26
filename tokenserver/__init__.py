@@ -73,7 +73,7 @@ def read_endpoints(config):
                         if key.startswith('endpoints.')]:
             self[tuple(key)] = value
 
-        if not endpoints:
+        if len(self) == 0:
             # otherwise, try to ask the assignment backend the list of endpoints
             backend = config.registry.getUtility(INodeAssignment)
             self.clear()
