@@ -1,4 +1,4 @@
-venusian==1.0a2
+venusian==1.0a3
 cornice==0.7
 SQLAlchemy==0.7.3
 Chameleon==2.5.3
