@@ -31,18 +31,9 @@ python%{pyver} setup.py build
 
 %install
 
-# the config files for Sync apps
-mkdir -p %{buildroot}%{_sysconfdir}/tokenserver
-install -m 0644 etc/tokenserver-prod.ini %{buildroot}%{_sysconfdir}/tokenserver/tokenserver-prod.ini
-
-# nginx config
-mkdir -p %{buildroot}%{_sysconfdir}/nginx
-mkdir -p %{buildroot}%{_sysconfdir}/nginx/conf.d
-install -m 0644 etc/tokenserver.nginx.conf %{buildroot}%{_sysconfdir}/nginx/conf.d/tokenserver.conf
-
-# logging
-mkdir -p %{buildroot}%{_localstatedir}/log
-touch %{buildroot}%{_localstatedir}/log/tokenserver.log
+# the config file
+mkdir -p %{buildroot}%{_sysconfdir}/mozilla-services/token
+install -m 0644 etc/tokenserver-prod.ini %{buildroot}%{_sysconfdir}/mozilla-services/token/production.ini
 
 # the app
 python%{pyver} setup.py install --single-version-externally-managed --root=$RPM_BUILD_ROOT --record=INSTALLED_FILES
@@ -51,17 +42,7 @@ python%{pyver} setup.py install --single-version-externally-managed --root=$RPM_
 rm -rf $RPM_BUILD_ROOT
 
 %post
-touch %{_localstatedir}/log/tokenserver.log
-chown nginx:nginx %{_localstatedir}/log/tokenserver.log
-chmod 640 %{_localstatedir}/log/tokenserver.log
 
 %files -f INSTALLED_FILES
-
-%attr(640, nginx, nginx) %ghost %{_localstatedir}/log/tokenserver.log
-
-%dir %{_sysconfdir}/tokenserver/
-
-%config(noreplace) %{_sysconfdir}/tokenserver/*
-%config(noreplace) %{_sysconfdir}/nginx/conf.d/tokenserver.conf
 
 %defattr(-,root,root)
