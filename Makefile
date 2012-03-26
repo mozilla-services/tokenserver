@@ -88,7 +88,7 @@ test:
 	$(NOSE) $(TESTS)
 
 build_rpms:
-	build_rpms: build_rpms2
+	build_rpms2
 	$(BUILDRPMS) -t $(TIMEOUT) -c $(RPM_CHANNEL) $(DEPS)
 
 build_rpms2:
