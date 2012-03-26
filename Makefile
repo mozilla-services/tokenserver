@@ -51,7 +51,7 @@ INSTALL += $(INSTALLOPTIONS)
 
 all:	build
 
-build_mcrypto:
+build:
 	$(VIRTUALENV) --no-site-packages --distribute .
 	$(INSTALL) MoPyTools
 	$(INSTALL) nose
@@ -68,7 +68,7 @@ build_mcrypto:
 	cd /tmp; unzip master; cd tarekziade-gevent-*; $(PYTHON) setup.py install
 	$(BUILDAPP) -t $(TIMEOUT) -c $(CHANNEL) $(PYPIOPTIONS) $(DEPS)
 
-build:
+build_no_crypto:
 	$(VIRTUALENV) --no-site-packages --distribute .
 	$(INSTALL) MoPyTools
 	$(INSTALL) nose
