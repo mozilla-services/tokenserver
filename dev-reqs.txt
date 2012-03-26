@@ -28,3 +28,4 @@ zope.deprecation
 zope.event
 zope.interface
 unittest2
+nose
