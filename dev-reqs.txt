@@ -1,10 +1,5 @@
 venusian
 setuptools
-#git+git://github.com/mozilla-services/powerhose.git
-#git+git://github.com/mozilla/PyBrowserID.git
-#git+git://github.com/tarekziade/gevent-zeromq.git
-#git+git://github.com/mozilla-services/wimms.git
-mozsvc
 cornice
 circus
 protobuf

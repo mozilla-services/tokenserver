@@ -1,5 +1,5 @@
 APPNAME = tokenserver
-DEPS = https://github.com/mozilla-services/powerhose,https://github.com/mozilla-services/wimms
+DEPS = https://github.com/mozilla-services/powerhose,https://github.com/mozilla-services/wimms,https://github.com/mozilla-services/mozservices
 VIRTUALENV = virtualenv
 PYTHON = $(CURDIR)/bin/python
 NOSE = bin/nosetests -s --with-xunit
