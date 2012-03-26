@@ -64,7 +64,8 @@ build_mcrypto:
 	bin/pip install cython
 	bin/pip install https://bitbucket.org/tarek/gevent/get/48b7c5262cca.tar.gz
 	$(INSTALL) https://github.com/mozilla/PyBrowserID/zipball/master 
-	$(INSTALL) https://github.com/tarekziade/gevent-zeromq/zipball/master 
+	cd /tmp; wget https://github.com/tarekziade/gevent-zeromq/zipball/master
+	cd /tmp; unzip master; cd tarekziade-gevent-*; $(PYTHON) setup.py install
 	$(BUILDAPP) -t $(TIMEOUT) -c $(CHANNEL) $(PYPIOPTIONS) $(DEPS)
 
 build:
