@@ -28,5 +28,6 @@ docutils==0.8.1
 coverage==3.5.1
 greenlet==0.3.4
 Pygments==1.4
+cef==0.3
 protobuf
 gevent
