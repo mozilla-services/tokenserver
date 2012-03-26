@@ -94,29 +94,28 @@ build_rpms:
 	cd /tmp; rm -f /tmp/master.zip
 	cd /tmp; wget https://github.com/zeromq/pyzmq/zipball/master --no-check-certificate
 	cd /tmp; mv master master.zip
-	bin/pypi2rpm.py /tmp/master.zip --dist-dir=$(CURDIR)
+	bin/pypi2rpm.py /tmp/master.zip --dist-dir=$(RPMDIR)
 	cd /tmp; rm -f /tmp/master.zip
 	cd /tmp; wget https://github.com/mozilla/PyBrowserID/zipball/master --no-check-certificate
 	cd /tmp; mv master master.zip
-	bin/pypi2rpm.py /tmp/master.zip --dist-dir=$(CURDIR)
+	bin/pypi2rpm.py /tmp/master.zip --dist-dir=$(RPMDIR)
 	cd /tmp; rm -f /tmp/master.zip
 	cd /tmp; wget https://github.com/mozilla-services/powerhose/zipball/master --no-check-certificate
 	cd /tmp; mv master master.zip
-	bin/pypi2rpm.py /tmp/master.zip --dist-dir=$(CURDIR)
+	bin/pypi2rpm.py /tmp/master.zip --dist-dir=$(RPMDIR)
 	cd /tmp; rm -f /tmp/master.zip
 	cd /tmp; wget https://github.com/tarekziade/gevent-zeromq/zipball/master --no-check-certificate
 	cd /tmp; mv master master.zip
-	bin/pypi2rpm.py /tmp/master.zip --dist-dir=$(CURDIR)
+	bin/pypi2rpm.py /tmp/master.zip --dist-dir=$(RPMDIR)
 	cd /tmp; rm -f /tmp/master.zip
 	cd /tmp; wget https://github.com/mozilla-services/wimms/zipball/master --no-check-certificate
 	cd /tmp; mv master master.zip
-	bin/pypi2rpm.py /tmp/master.zip --dist-dir=$(CURDIR)
+	bin/pypi2rpm.py /tmp/master.zip --dist-dir=$(RPMDIR)
 	cd /tmp; rm -f /tmp/master.zip
 	cd /tmp; wget https://github.com/Pylons/pyramid/zipball/master --no-check-certificate
 	cd /tmp; mv master master.zip
-	bin/pypi2rpm.py /tmp/master.zip --dist-dir=$(CURDIR)
+	bin/pypi2rpm.py /tmp/master.zip --dist-dir=$(RPMDIR)
 	$(BUILDRPMS) -t $(TIMEOUT) -c $(RPM_CHANNEL) $(DEPS)
-
 
 mock: build build_rpms
 	mock init
@@ -125,7 +124,6 @@ mock: build build_rpms
 	cd rpms; wget http://mrepo.mozilla.org/mrepo/5-x86_64/RPMS.mozilla/nginx-0.7.65-4.x86_64.rpm
 	mock --install rpms/*
 	mock --chroot "python2.6 -m tokenserver.run"
-
 
 clean:
 	rm -rf bin lib include local docs/build
