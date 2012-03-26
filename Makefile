@@ -100,19 +100,10 @@ build_rpms:
 	cd /tmp; mv master master.zip
 	bin/pypi2rpm.py /tmp/master.zip --dist-dir=$(RPMDIR)
 	cd /tmp; rm -f /tmp/master.zip
-	cd /tmp; wget https://github.com/mozilla-services/powerhose/zipball/master --no-check-certificate
-	cd /tmp; mv master master.zip
-	bin/pypi2rpm.py /tmp/master.zip --dist-dir=$(RPMDIR)
-	cd /tmp; rm -f /tmp/master.zip
 	cd /tmp; wget https://github.com/tarekziade/gevent-zeromq/zipball/master --no-check-certificate
 	cd /tmp; mv master master.zip
 	bin/pypi2rpm.py /tmp/master.zip --dist-dir=$(RPMDIR)
 	cd /tmp; rm -rf tarekziade-gevent-*
-	cd /tmp; rm -f /tmp/master.zip
-	cd /tmp; wget https://github.com/mozilla-services/wimms/zipball/master --no-check-certificate
-	cd /tmp; mv master master.zip
-	bin/pypi2rpm.py /tmp/master.zip --dist-dir=$(RPMDIR)
-	cd /tmp; rm -f /tmp/master.zip
 	cd /tmp; wget https://github.com/Pylons/pyramid/zipball/master --no-check-certificate
 	cd /tmp; mv master master.zip
 	bin/pypi2rpm.py /tmp/master.zip --dist-dir=$(RPMDIR)
