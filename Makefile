@@ -90,21 +90,6 @@ test:
 build_rpms:
 	rm -rf rpms
 	mkdir rpms
-	$(BUILDRPMS) -t $(TIMEOUT) -c $(RPM_CHANNEL) $(DEPS)
-	custom_builds
-
-mach: build build_rpms
-	mach clean
-	mach yum install python26 python26-setuptools
-	cd rpms; wget http://mrepo.mozilla.org/mrepo/5-x86_64/RPMS.mozilla-services/gunicorn-0.11.2-1moz.x86_64.rpm
-	cd rpms; wget http://mrepo.mozilla.org/mrepo/5-x86_64/RPMS.mozilla/nginx-0.7.65-4.x86_64.rpm
-	mach yum install rpms/*
-	mach chroot python2.6 -m appsync.run
-
-clean:
-	rm -rf bin lib include local docs/build
-
-custom_builds:
 	bin/pip install cython
 	cd /tmp; rm -f /tmp/master.zip
 	cd /tmp; wget https://github.com/zeromq/pyzmq/zipball/master --no-check-certificate
@@ -130,4 +115,16 @@ custom_builds:
 	cd /tmp; wget https://github.com/Pylons/pyramid/zipball/master --no-check-certificate
 	cd /tmp; mv master master.zip
 	bin/pypi2rpm.py /tmp/master.zip --dist-dir=$(CURDIR)
+	$(BUILDRPMS) -t $(TIMEOUT) -c $(RPM_CHANNEL) $(DEPS)
+	custom_builds
 
+mach: build build_rpms
+	mach clean
+	mach yum install python26 python26-setuptools
+	cd rpms; wget http://mrepo.mozilla.org/mrepo/5-x86_64/RPMS.mozilla-services/gunicorn-0.11.2-1moz.x86_64.rpm
+	cd rpms; wget http://mrepo.mozilla.org/mrepo/5-x86_64/RPMS.mozilla/nginx-0.7.65-4.x86_64.rpm
+	mach yum install rpms/*
+	mach chroot python2.6 -m appsync.run
+
+clean:
+	rm -rf bin lib include local docs/build
