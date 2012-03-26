@@ -14,7 +14,7 @@ from ConfigParser import NoSectionError
 os.environ['PYTHON_EGG_CACHE'] = '/tmp/python-eggs'
 
 # setting up logging
-ini_file = '/var/tokenserver/tokenserver-prod.ini'
+ini_file = '/etc/tokenserver/tokenserver-prod.ini'
 ini_file = os.environ.get('TOKEN_INI', ini_file)
 try:
     fileConfig(ini_file)
