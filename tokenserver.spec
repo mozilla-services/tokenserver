@@ -33,7 +33,7 @@ python%{pyver} setup.py build
 
 # the config file
 mkdir -p %{buildroot}%{_sysconfdir}/mozilla-services/token
-install -m 0644 etc/tokenserver-prod.ini %{buildroot}%{_sysconfdir}/mozilla-services/token/production.ini
+install -m 0644 etc/production.ini %{buildroot}%{_sysconfdir}/mozilla-services/token/production.ini
 
 # the app
 python%{pyver} setup.py install --single-version-externally-managed --root=$RPM_BUILD_ROOT --record=INSTALLED_FILES
@@ -44,5 +44,9 @@ rm -rf $RPM_BUILD_ROOT
 %post
 
 %files -f INSTALLED_FILES
+
+%dir %{_sysconfdir}/mozilla-services/token
+
+%config(noreplace) %{_sysconfdir}/mozilla-services/token/*
 
 %defattr(-,root,root)
