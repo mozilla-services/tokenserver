@@ -107,6 +107,7 @@ build_rpms:
 	cd /tmp; wget https://github.com/tarekziade/gevent-zeromq/zipball/master --no-check-certificate
 	cd /tmp; mv master master.zip
 	bin/pypi2rpm.py /tmp/master.zip --dist-dir=$(RPMDIR)
+	cd /tmp; rm -rf tarekziade-gevent-*
 	cd /tmp; rm -f /tmp/master.zip
 	cd /tmp; wget https://github.com/mozilla-services/wimms/zipball/master --no-check-certificate
 	cd /tmp; mv master master.zip
@@ -115,15 +116,12 @@ build_rpms:
 	cd /tmp; wget https://github.com/Pylons/pyramid/zipball/master --no-check-certificate
 	cd /tmp; mv master master.zip
 	bin/pypi2rpm.py /tmp/master.zip --dist-dir=$(RPMDIR)
+	bin/pypi2rpm.py http://pypi.python.org/packages/source/n/nose/nose-0.11.4.tar.gz --dist-dir=$(RPMDIR)
 	$(BUILDRPMS) -t $(TIMEOUT) -c $(RPM_CHANNEL) $(DEPS)
-	cd /tmp; wget $(PYPI2)/source/M/M2Crypto/M2Crypto-0.21.1.tar.gz#md5=f93d8462ff7646397a9f77a2fe602d17
-	cd /tmp && tar -xzvf M2Crypto-0.21.1.tar.gz && cd M2Crypto-0.21.1 && sed -i -e 's/opensslconf\./opensslconf-x86_64\./' SWIG/_ec.i && sed -i -e 's/opensslconf\./opensslconf-x86_64\./' SWIG/_evp.i && SWIG_FEATURES=-cpperraswarn $(PYTHON) setup.py bdist_rpm
-	mv /tmp/M2Crypto-0.21.1/dist/*.rpm rpms/
-	rm -rf /tmp/M2Crypto*
 
 mock: build build_rpms
 	mock init
-	mock --install python26 python26-setuptools openssl
+	mock --install python26 python26-setuptools openssl python26-m2crypto
 	cd rpms; wget http://mrepo.mozilla.org/mrepo/5-x86_64/RPMS.mozilla-services/gunicorn-0.11.2-1moz.x86_64.rpm
 	cd rpms; wget http://mrepo.mozilla.org/mrepo/5-x86_64/RPMS.mozilla/nginx-0.7.65-4.x86_64.rpm
 	mock --install rpms/*

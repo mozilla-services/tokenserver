@@ -27,3 +27,5 @@ zope.component
 zope.deprecation
 zope.event
 zope.interface
+unittest2
+psutil
