@@ -87,7 +87,26 @@ def valid_app(request):
         request.validated['version'] = version
 
 
-@token.get(validators=(valid_app, valid_assertion))
+def pattern_exists(request):
+    """Checks that the given service do have an associated pattern in the db or
+    in the configuration file.
+
+    If not, raises a 500 error.
+    """
+    application = request.validated['application']
+    version = request.validated['version']
+    defined_patterns = request.registry['endpoints_patterns']
+    try:
+        pattern = defined_patterns["%s-%s" % (application, version)]
+    except KeyError:
+        raise JsonError(500,
+                description="The api_endpoint pattern for %s-%s is not known"
+                % (application, version))
+
+    request.validated['pattern'] = pattern
+
+
+@token.get(validators=(valid_app, valid_assertion, pattern_exists))
 def return_token(request):
     # at this stage, we are sure that the assertion, application and version
     # number were valid, so let's build the authentication token and return it.
@@ -96,6 +115,7 @@ def return_token(request):
     email = request.validated['assertion']['email']
     application = request.validated['application']
     version = request.validated['version']
+    pattern = request.validated['pattern']
 
     # get the node or allocate one if none is already set
     uid, node = backend.get_node(email, application, version)
@@ -110,9 +130,6 @@ def return_token(request):
 
     token = make_token({'uid': uid, 'service_entry': node}, secret=secret)
     secret = get_token_secret(token, secret=secret)
-
-    pattern = request.registry['endpoints_patterns'].get(
-            (application, version))
 
     api_endpoint = pattern.format(uid=uid, service=application,
                                   version=version, node=node)

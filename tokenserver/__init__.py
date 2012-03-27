@@ -68,13 +68,14 @@ def read_endpoints(config):
     service-version = pattern, and a dict will be built with those.
     """
     def _read(self):
-        for key, value in [(key.split('.', 1)[-1].split('-'), value)
-                        for key, value in config.registry.settings.items()
-                        if key.startswith('endpoints.')]:
-            self[tuple(key)] = value
+        patterns = dict([(key.split('.', 1)[-1], value)
+                          for key, value in config.registry.settings.items()
+                          if key.startswith('endpoints.')])
+        self.update(patterns)
 
         if len(self) == 0:
-            # otherwise, try to ask the assignment backend the list of endpoints
+            # otherwise, try to ask the assignment backend the list of
+            # endpoints
             backend = config.registry.getUtility(INodeAssignment)
             self.clear()
             self.update(backend.get_patterns())

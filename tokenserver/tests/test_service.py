@@ -72,6 +72,11 @@ class TestService(unittest.TestCase):
         res = self.app.get('/1.0/aitc/1.0', headers=headers)
         self.assertIn('https://example.com/1.0', res.json['api_endpoint'])
 
+    def test_unknown_pattern(self):
+        # sync 2.1 is defined in the .ini file, but  no pattern exists for it.
+        headers = {'Authorization': 'Browser-ID %s' % self._getassertion()}
+        self.app.get('/1.0/sync/2.1', headers=headers, status=500)
+
     def test_discovery(self):
         res = self.app.get('/')
         self.assertEqual(res.json['auth'],
