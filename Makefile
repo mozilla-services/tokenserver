@@ -66,7 +66,7 @@ build:
 	$(INSTALL) pyzmq
 	bin/pip install cython
 	bin/pip install https://bitbucket.org/tarek/gevent/get/48b7c5262cca.tar.gz
-	bin/pip install https://github.com/mozilla/PyBrowserID/zipball/master 
+	bin/pip install https://github.com/mozilla/PyBrowserID/zipball/master
 	cd ${BUILD_TMP} && wget https://github.com/tarekziade/gevent-zeromq/zipball/master
 	cd ${BUILD_TMP} && unzip master; cd tarekziade-gevent-*; $(PYTHON) setup.py install
 	$(BUILDAPP) -t $(TIMEOUT) -c $(CHANNEL) $(PYPIOPTIONS) $(DEPS)
@@ -78,7 +78,7 @@ build_no_crypto:
 	$(INSTALL) WebTest
 	$(INSTALL) wsgi_intercept
 	$(INSTALL) pyzmq
-	$(INSTALL) https://github.com/mozilla/PyBrowserID/zipball/master 
+	$(INSTALL) https://github.com/mozilla/PyBrowserID/zipball/master
 	cd ${PIP_CACHE} && wget https://github.com/tarekziade/gevent-zeromq/zipball/master --no-check-certificate
 	cd ${PIP_CACHE} && unzip master; cd tarekziade-gevent-*; $(PYTHON) setup.py install
 	$(BUILDAPP) -t $(TIMEOUT) -c $(CHANNEL) $(PYPIOPTIONS) $(DEPS)
@@ -106,6 +106,9 @@ build_rpms2:
 	wget -O ${BUILD_TMP}/master.zip https://github.com/Pylons/pyramid/zipball/master --no-check-certificate
 	bin/pypi2rpm.py ${BUILD_TMP}/master.zip --dist-dir=$(RPMDIR)
 	bin/pypi2rpm.py http://pypi.python.org/packages/source/n/nose/nose-0.11.4.tar.gz --dist-dir=$(RPMDIR)
+	cd ${BUILD_TMP} && wget $(PYPI2)/source/M/M2Crypto/M2Crypto-0.21.1.tar.gz#md5=f93d8462ff7646397a9f77a2fe602d17
+	cd ${BUILD_TMP} && tar -xzvf M2Crypto-0.21.1.tar.gz && cd M2Crypto-0.21.1 && sed -i -e 's/opensslconf\./opensslconf-x86_64\./' SWIG/_ec.i && sed -i -e 's/opensslconf\./opensslconf-x86_64\./' SWIG/_evp.i && SWIG_FEATURES=-cpperraswarn $(PYTHON) setup.py --command-packages=pypi2rpm.command bdist_rpm2 --binary-only --dist-dir=$(RPMDIR) --name=python26-m2crypto
+	rm -rf ${BUILD_TMP}/M2Crypto*
 
 mock: build build_rpms
 	mock init
