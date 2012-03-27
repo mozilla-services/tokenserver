@@ -60,6 +60,7 @@ class LazyDict(dict):
     def __getitem__(self, name):
         if not self._loaded:
             self.callable(self)
+            self._loaded = True
         return super(LazyDict, self).__getitem__(name)
 
 
