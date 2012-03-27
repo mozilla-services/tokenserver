@@ -1,6 +1,6 @@
 venusian==1.0a3
 cornice==0.7
-SQLAlchemy==0.7.3
+SQLAlchemy==0.7.6
 Chameleon==2.5.3
 Jinja2==2.6
 Mako==0.5
