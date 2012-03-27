@@ -79,8 +79,9 @@ build_no_crypto:
 	$(INSTALL) wsgi_intercept
 	$(INSTALL) pyzmq
 	$(INSTALL) https://github.com/mozilla/PyBrowserID/zipball/master
-	cd ${PIP_CACHE} && wget https://github.com/tarekziade/gevent-zeromq/zipball/master --no-check-certificate
-	cd ${PIP_CACHE} && unzip master; cd tarekziade-gevent-*; $(PYTHON) setup.py install
+	mkdir -p ${BUILD_TMP}
+	cd ${BUILD_TMP} && wget https://github.com/tarekziade/gevent-zeromq/zipball/master --no-check-certificate
+	cd ${BUILD_TMP} && unzip master; cd tarekziade-gevent-*; $(PYTHON) setup.py install
 	$(BUILDAPP) -t $(TIMEOUT) -c $(CHANNEL) $(PYPIOPTIONS) $(DEPS)
 
 update:
