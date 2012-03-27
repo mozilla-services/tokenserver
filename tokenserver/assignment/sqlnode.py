@@ -20,9 +20,8 @@ class SQLNodeAssignment(SQLMetadata):
     implements(INodeAssignment)
 
     def get_patterns(self):
-        patterns = super(SQLNodeAssignment, self).get_patterns()
-        return dict([((service, version), pattern)
-                    for service, version, pattern in patterns])
+        res = super(SQLNodeAssignment, self).get_patterns()
+        return dict([(pattern.service, pattern.pattern) for pattern in res])
 
 
 class ShardedSQLNodeAssignment(ShardedSQLMetadata):

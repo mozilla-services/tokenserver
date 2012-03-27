@@ -7,7 +7,7 @@ from mozsvc.config import load_into_settings
 from mozsvc.plugin import load_and_register
 
 from tokenserver.assignment import INodeAssignment
-from tokenserver import read_endpoints
+from tokenserver import load_endpoints
 
 
 class TestSQLBackend(TestCase):
@@ -30,16 +30,19 @@ class TestSQLBackend(TestCase):
 
         # adding a node with 100 slots
         self.backend._safe_execute(
-              """insert into nodes (`node`, `service`, `version`, `available`,
+              """insert into nodes (`node`, `service`, `available`,
                     `capacity`, `current_load`, `downed`, `backoff`)
-                  values ("https://phx12", "sync", "1.0", 100, 100, 0, 0, 0)""")
+                  values ("https://phx12", "sync-1.0", 100, 100, 0, 0, 0)""")
         self.backend._safe_execute(
                 """insert into service_pattern
-                (`service`, `version`, `pattern`)
+                (`service`, `pattern`)
                 values
-                ("sync", "1.0", "{node}/{version}/{uid}")""")
+                ("sync-1.0", "{node}/{version}/{uid}")""")
         self._sqlite = self.backend._engine.driver == 'pysqlite'
-        read_endpoints(self.config)
+
+        endpoints = {}
+        load_endpoints(endpoints, self.config)
+        get_current_registry()['endpoints_patterns'] = endpoints
 
     def tearDown(self):
         if self._sqlite:
@@ -54,10 +57,10 @@ class TestSQLBackend(TestCase):
     def test_get_node(self):
         unassigned = None, None
         self.assertEquals(unassigned,
-                          self.backend.get_node("tarek@mozilla.com", "sync",
-                          "1.0"))
+                          self.backend.get_node("tarek@mozilla.com",
+                              "sync-1.0"))
 
-        res = self.backend.allocate_node("tarek@mozilla.com", "sync", "1.0")
+        res = self.backend.allocate_node("tarek@mozilla.com", "sync-1.0")
 
         if self._sqlite:
             wanted = (1, u'https://phx12')
@@ -66,11 +69,12 @@ class TestSQLBackend(TestCase):
 
         self.assertEqual(res, wanted)
         self.assertEqual(wanted,
-                         self.backend.get_node("tarek@mozilla.com", "sync",
-                             "1.0"))
+                         self.backend.get_node("tarek@mozilla.com", "sync-1.0",
+                             ))
 
     def test_get_patterns(self):
         # patterns should have been populated
         patterns = get_current_registry()['endpoints_patterns']
+
         self.assertDictEqual(patterns,
-                {('sync', '1.0'): '{node}/{version}/{uid}'})
+                {'sync-1.0': '{node}/{version}/{uid}'})

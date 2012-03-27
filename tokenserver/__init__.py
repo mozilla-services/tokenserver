@@ -64,22 +64,25 @@ class LazyDict(dict):
         return super(LazyDict, self).__getitem__(name)
 
 
+def load_endpoints(mapping, config):
+    patterns = dict([(key.split('.', 1)[-1], value)
+                        for key, value in config.registry.settings.items()
+                        if key.startswith('endpoints.')])
+    mapping.update(patterns)
+
+    if len(mapping) == 0:
+        # otherwise, try to ask the assignment backend the list of
+        # endpoints
+        backend = config.registry.getUtility(INodeAssignment)
+        mapping.update(backend.get_patterns())
+
+
 def read_endpoints(config):
     """If there is a section "endpoints", load it the format is
     service-version = pattern, and a dict will be built with those.
     """
-    def _read(self):
-        patterns = dict([(key.split('.', 1)[-1], value)
-                          for key, value in config.registry.settings.items()
-                          if key.startswith('endpoints.')])
-        self.update(patterns)
-
-        if len(self) == 0:
-            # otherwise, try to ask the assignment backend the list of
-            # endpoints
-            backend = config.registry.getUtility(INodeAssignment)
-            self.clear()
-            self.update(backend.get_patterns())
+    def _read(mapping):
+        load_endpoints(mapping, config)
 
     config.registry['endpoints_patterns'] = LazyDict(_read)
 

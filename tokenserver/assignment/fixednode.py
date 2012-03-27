@@ -32,17 +32,17 @@ class DefaultNodeAssignmentBackend(object):
             self._service_entry = settings.get('tokenserver.service_entry')
         return self._service_entry
 
-    def get_node(self, email, service, version):
-        uid = _USERS_UIDS.get((service, version), {}).get(email, None)
+    def get_node(self, email, service,):
+        uid = _USERS_UIDS.get(service, {}).get(email, None)
         return uid, self.service_entry
 
-    def allocate_node(self, email, service, version):
-        if self.get_node(email, service, version) != (None, self.service_entry):
+    def allocate_node(self, email, service):
+        if self.get_node(email, service) != (None, self.service_entry):
             raise BackendError("Node already assigned")
 
         global _UID
         uid = _UID
         _UID += 1
-        _USERS_UIDS[service, version][email] = uid
+        _USERS_UIDS[service][email] = uid
 
         return uid, self.service_entry

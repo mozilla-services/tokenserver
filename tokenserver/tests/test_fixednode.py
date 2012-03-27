@@ -14,8 +14,7 @@ from mozsvc.exceptions import BackendError
 
 DEFAULT_EMAIL = "alexis@mozilla.com"
 DEFAULT_NODE = "https://example.com"
-DEFAULT_SERVICE = "sync"
-DEFAULT_VERSION = "1.0"
+DEFAULT_SERVICE = "sync-1.0"
 
 
 def restore_defaults():
@@ -38,7 +37,7 @@ class TestFixedBackend(unittest.TestCase):
     def test_read_config(self):
         self.assertEqual(DEFAULT_NODE,
                 self.backend.allocate_node(DEFAULT_EMAIL, DEFAULT_SERVICE,
-                    DEFAULT_VERSION)[1])
+                    )[1])
 
     def test_assignation(self):
         # restore the default values for testing
@@ -48,23 +47,23 @@ class TestFixedBackend(unittest.TestCase):
             # None and the service entry
             self.assertEquals(
                     self.backend.get_node(DEFAULT_EMAIL, DEFAULT_SERVICE,
-                        DEFAULT_VERSION),
+                        ),
                     (None, DEFAULT_NODE))
 
             # Now allocate an user to a node
             self.assertEquals(
                     self.backend.allocate_node(DEFAULT_EMAIL, DEFAULT_SERVICE,
-                        DEFAULT_VERSION),
+                        ),
                     (0, DEFAULT_NODE))
 
             # Trying to allocate it two times should raise a Backend error
             self.assertRaises(BackendError, self.backend.allocate_node,
-                              DEFAULT_EMAIL, DEFAULT_SERVICE, DEFAULT_VERSION)
+                              DEFAULT_EMAIL, DEFAULT_SERVICE)
 
             # getting the value of it later should also work properly
             self.assertEquals(
                     self.backend.get_node(DEFAULT_EMAIL, DEFAULT_SERVICE,
-                        DEFAULT_VERSION),
+                        ),
                     (0, DEFAULT_NODE))
         finally:
             restore_defaults()

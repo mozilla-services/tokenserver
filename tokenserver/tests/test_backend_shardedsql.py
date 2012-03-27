@@ -9,6 +9,9 @@ from tokenserver.assignment import INodeAssignment
 from tokenserver import read_endpoints
 
 
+_SERVICE = 'sync-1.0'
+
+
 class TestShardedNode(TestCase):
 
     def setUp(self):
@@ -30,17 +33,17 @@ class TestShardedNode(TestCase):
         # adding a node with 100 slots
 
         self.backend._safe_execute(
-              """insert into nodes (`node`, `service`, `version`, `available`,
+              """insert into nodes (`node`, `service`, `available`,
                     `capacity`, `current_load`, `downed`, `backoff`)
-                  values ("phx12", "sync", "1.0", 100, 100, 0, 0, 0)""",
-                  service='sync')
+                  values ("https://phx12", "sync-1.0", 100, 100, 0, 0, 0)""",
+                  service=_SERVICE)
 
         self.backend._safe_execute(
                 """insert into service_pattern
-                (`service`, `version`, `pattern`)
+                (`service`, `pattern`)
                 values
-                ("sync", "1.0", "{node}/{version}/{uid}")""",
-                service='sync')
+                ("sync-1.0", "{node}/{version}/{uid}")""",
+                service="sync-1.0")
 
         self._sqlite = self.backend._dbs['sync'][0].driver == 'pysqlite'
         read_endpoints(self.config)
@@ -62,10 +65,10 @@ class TestShardedNode(TestCase):
 
         unassigned = None, None
         self.assertEquals(unassigned,
-                          self.backend.get_node("tarek@mozilla.com", "sync",
-                                                "1.0"))
+                          self.backend.get_node("tarek@mozilla.com", _SERVICE,
+                                                ))
 
-        res = self.backend.allocate_node("tarek@mozilla.com", "sync", "1.0")
+        res = self.backend.allocate_node("tarek@mozilla.com", _SERVICE)
 
         if self._sqlite:
             wanted = (1, u'https://phx12')
@@ -74,5 +77,4 @@ class TestShardedNode(TestCase):
 
         self.assertEqual(res, wanted)
         self.assertEqual(wanted,
-                         self.backend.get_node("tarek@mozilla.com", "sync",
-                             "1.0"))
+                         self.backend.get_node("tarek@mozilla.com", _SERVICE))

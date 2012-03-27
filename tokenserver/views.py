@@ -20,6 +20,10 @@ discovery = Service(name='discovery', path='/')
 token = Service(name='token', path='/1.0/{application}/{version}')
 
 
+def get_service_name(application, version):
+    return "%s-%s" % (application, version)
+
+
 @discovery.get()
 def _discovery(request):
     discovery = os.path.join(os.path.dirname(__file__), 'discovery.json')
@@ -96,12 +100,13 @@ def pattern_exists(request):
     application = request.validated['application']
     version = request.validated['version']
     defined_patterns = request.registry['endpoints_patterns']
+    service = get_service_name(application, version)
     try:
-        pattern = defined_patterns["%s-%s" % (application, version)]
+        pattern = defined_patterns[service]
     except KeyError:
         raise JsonError(500,
-                description="The api_endpoint pattern for %s-%s is not known"
-                % (application, version))
+                description="The api_endpoint pattern for %r is not known"
+                % service)
 
     request.validated['pattern'] = pattern
 
@@ -116,11 +121,12 @@ def return_token(request):
     application = request.validated['application']
     version = request.validated['version']
     pattern = request.validated['pattern']
+    service = get_service_name(application, version )
 
     # get the node or allocate one if none is already set
-    uid, node = backend.get_node(email, application, version)
+    uid, node = backend.get_node(email, service)
     if node is None or uid is None:
-        uid, node = backend.allocate_node(email, application, version)
+        uid, node = backend.allocate_node(email, service)
 
     secrets = request.registry.settings['tokenserver.secrets_file']
     node_secrets = secrets.get(node)
@@ -131,8 +137,7 @@ def return_token(request):
     token = make_token({'uid': uid, 'service_entry': node}, secret=secret)
     secret = get_token_secret(token, secret=secret)
 
-    api_endpoint = pattern.format(uid=uid, service=application,
-                                  version=version, node=node)
+    api_endpoint = pattern.format(uid=uid, service=service, node=node)
 
     # FIXME add the algo used to generate the token
     return {'id': token, 'key': secret, 'uid': uid,
