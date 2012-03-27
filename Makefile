@@ -17,7 +17,8 @@ PYPI2RPM = bin/pypi2rpm.py --index=$(PYPI)
 PYPIOPTIONS = -i $(PYPI)
 CHANNEL = dev
 RPM_CHANNEL = dev
-PIP_CACHE = /tmp/pip-cache
+PIP_CACHE = /tmp/pip-cache.${USER}
+BUILD_TMP = /tmp/token-build.${USER}
 INSTALL = bin/pip install --download-cache=$(PIP_CACHE)
 BUILDAPP = bin/buildapp --download-cache=$(PIP_CACHE)
 BUILDRPMS = bin/buildrpms --download-cache=$(PIP_CACHE)
@@ -53,20 +54,21 @@ all:	build
 
 build:
 	$(VIRTUALENV) --no-site-packages --distribute .
+	mkdir -p ${BUILD_TMP}
 	$(INSTALL) MoPyTools
 	$(INSTALL) Distribute
 	$(INSTALL) nose
 	$(INSTALL) WebTest
 	$(INSTALL) wsgi_intercept
-	cd /tmp; wget $(PYPI2)/source/M/M2Crypto/M2Crypto-0.21.1.tar.gz#md5=f93d8462ff7646397a9f77a2fe602d17
-	cd /tmp && tar -xzvf M2Crypto-0.21.1.tar.gz && cd M2Crypto-0.21.1 && sed -i -e 's/opensslconf\./opensslconf-x86_64\./' SWIG/_ec.i && sed -i -e 's/opensslconf\./opensslconf-x86_64\./' SWIG/_evp.i && SWIG_FEATURES=-cpperraswarn $(PYTHON) setup.py install
-	rm -rf /tmp/M2Crypto*
+	cd ${BUILD_TMP} && wget $(PYPI2)/source/M/M2Crypto/M2Crypto-0.21.1.tar.gz#md5=f93d8462ff7646397a9f77a2fe602d17
+	cd ${BUILD_TMP} && tar -xzvf M2Crypto-0.21.1.tar.gz && cd M2Crypto-0.21.1 && sed -i -e 's/opensslconf\./opensslconf-x86_64\./' SWIG/_ec.i && sed -i -e 's/opensslconf\./opensslconf-x86_64\./' SWIG/_evp.i && SWIG_FEATURES=-cpperraswarn $(PYTHON) setup.py install
+	rm -rf ${BUILD_TMP}/M2Crypto*
 	$(INSTALL) pyzmq
 	bin/pip install cython
 	bin/pip install https://bitbucket.org/tarek/gevent/get/48b7c5262cca.tar.gz
 	bin/pip install https://github.com/mozilla/PyBrowserID/zipball/master 
-	cd /tmp; wget https://github.com/tarekziade/gevent-zeromq/zipball/master
-	cd /tmp; unzip master; cd tarekziade-gevent-*; $(PYTHON) setup.py install
+	cd ${BUILD_TMP} && wget https://github.com/tarekziade/gevent-zeromq/zipball/master
+	cd ${BUILD_TMP} && unzip master; cd tarekziade-gevent-*; $(PYTHON) setup.py install
 	$(BUILDAPP) -t $(TIMEOUT) -c $(CHANNEL) $(PYPIOPTIONS) $(DEPS)
 
 build_no_crypto:
@@ -77,8 +79,8 @@ build_no_crypto:
 	$(INSTALL) wsgi_intercept
 	$(INSTALL) pyzmq
 	$(INSTALL) https://github.com/mozilla/PyBrowserID/zipball/master 
-	cd /tmp; wget https://github.com/tarekziade/gevent-zeromq/zipball/master --no-check-certificate
-	cd /tmp; unzip master; cd tarekziade-gevent-*; $(PYTHON) setup.py install
+	cd ${PIP_CACHE} && wget https://github.com/tarekziade/gevent-zeromq/zipball/master --no-check-certificate
+	cd ${PIP_CACHE} && unzip master; cd tarekziade-gevent-*; $(PYTHON) setup.py install
 	$(BUILDAPP) -t $(TIMEOUT) -c $(CHANNEL) $(PYPIOPTIONS) $(DEPS)
 
 update:
@@ -92,24 +94,17 @@ build_rpms: build_rpms2
 
 build_rpms2:
 	rm -rf rpms
-	mkdir rpms
+	mkdir -p rpms ${BUILD_TMP}
 	bin/pip install cython
-	cd /tmp; rm -f /tmp/master.zip
-	cd /tmp; wget https://github.com/zeromq/pyzmq/zipball/master --no-check-certificate
-	cd /tmp; mv master master.zip
-	bin/pypi2rpm.py /tmp/master.zip --dist-dir=$(RPMDIR)
-	cd /tmp; rm -f /tmp/master.zip
-	cd /tmp; wget https://github.com/mozilla/PyBrowserID/zipball/master --no-check-certificate
-	cd /tmp; mv master master.zip
-	bin/pypi2rpm.py /tmp/master.zip --dist-dir=$(RPMDIR)
-	cd /tmp; rm -f /tmp/master.zip
-	cd /tmp; wget https://github.com/tarekziade/gevent-zeromq/zipball/master --no-check-certificate
-	cd /tmp; mv master master.zip
-	bin/pypi2rpm.py /tmp/master.zip --dist-dir=$(RPMDIR)
-	cd /tmp; rm -rf tarekziade-gevent-*
-	cd /tmp; wget https://github.com/Pylons/pyramid/zipball/master --no-check-certificate
-	cd /tmp; mv master master.zip
-	bin/pypi2rpm.py /tmp/master.zip --dist-dir=$(RPMDIR)
+	rm -f ${BUILD_TMP}/master.zip
+	wget -O ${BUILD_TMP}/master.zip https://github.com/zeromq/pyzmq/zipball/master --no-check-certificate
+	bin/pypi2rpm.py ${BUILD_TMP}/master.zip --dist-dir=$(RPMDIR)
+	wget -O ${BUILD_TMP}/master.zip https://github.com/mozilla/PyBrowserID/zipball/master --no-check-certificate
+	bin/pypi2rpm.py ${BUILD_TMP}/master.zip --dist-dir=$(RPMDIR)
+	wget -O ${BUILD_TMP}/master.zip https://github.com/tarekziade/gevent-zeromq/zipball/master --no-check-certificate
+	bin/pypi2rpm.py ${BUILD_TMP}/master.zip --dist-dir=$(RPMDIR)
+	wget -O ${BUILD_TMP}/master.zip https://github.com/Pylons/pyramid/zipball/master --no-check-certificate
+	bin/pypi2rpm.py ${BUILD_TMP}/master.zip --dist-dir=$(RPMDIR)
 	bin/pypi2rpm.py http://pypi.python.org/packages/source/n/nose/nose-0.11.4.tar.gz --dist-dir=$(RPMDIR)
 
 mock: build build_rpms
