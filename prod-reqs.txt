@@ -29,7 +29,7 @@ coverage==3.5.1
 greenlet==0.3.4
 Pygments==1.4
 cef==0.3
-pymysql==0.5.1
+PyMySQL==0.5
 pymysql_sa
 protobuf
 gevent
