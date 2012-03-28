@@ -106,7 +106,8 @@ build_rpms2:
 	bin/pypi2rpm.py ${BUILD_TMP}/master.zip --dist-dir=$(RPMDIR)
 	wget -O ${BUILD_TMP}/master.zip https://github.com/Pylons/pyramid/zipball/master --no-check-certificate
 	bin/pypi2rpm.py ${BUILD_TMP}/master.zip --dist-dir=$(RPMDIR)
-	bin/pypi2rpm.py http://pypi.python.org/packages/source/n/nose/nose-0.11.4.tar.gz --dist-dir=$(RPMDIR)
+	wget -O ${BUILD_TMP}/nose-0.11.4.tar.gz http://pypi.python.org/packages/source/n/nose/nose-0.11.4.tar.gz 
+	bin/pypi2rpm.py ${BUILD_TMP}/nose-0.11.4.tar.gz --dist-dir=$(RPMDIR)
 	cd ${BUILD_TMP} && wget $(PYPI2)/source/M/M2Crypto/M2Crypto-0.21.1.tar.gz#md5=f93d8462ff7646397a9f77a2fe602d17
 	cd ${BUILD_TMP} && tar -xzvf M2Crypto-0.21.1.tar.gz && cd M2Crypto-0.21.1 && sed -i -e 's/opensslconf\./opensslconf-x86_64\./' SWIG/_ec.i && sed -i -e 's/opensslconf\./opensslconf-x86_64\./' SWIG/_evp.i && SWIG_FEATURES=-cpperraswarn $(PYTHON) setup.py --command-packages=pypi2rpm.command bdist_rpm2 --binary-only --dist-dir=$(RPMDIR) --name=python26-m2crypto
 	rm -rf ${BUILD_TMP}/M2Crypto*
