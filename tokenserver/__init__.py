@@ -46,9 +46,19 @@ def includeme(config):
 
     settings[key] = applications
 
-    # load the secrets file
+    # load the secrets file(s)
     key = 'tokenserver.secrets_file'
-    settings[key] = Secrets(settings[key])
+    secret_file = settings[key]
+    if not isinstance(secret_file, list):
+        secret_file = [secret_file]
+
+    files = []
+    for line in secret_file:
+        secret_file = [file for file in [file.strip() for file in line.split()]
+                       if file != '']
+        files.extend(secret_file)
+
+    settings[key] = Secrets(files)
     read_endpoints(config)
 
 
