@@ -126,7 +126,8 @@ class CryptoWorker(object):
             except KeyError:
                 self.error('unknown hostname "%s"' % hostname)
         except:
-            self.error('could not check sig')
+            self.error('could not check sig for host %r' % hostname)
+            raise
 
     def check_signature_with_cert(self, cert, signed_data, signature,
                                   algorithm):
@@ -135,6 +136,7 @@ class CryptoWorker(object):
             return cert.verify(signed_data, signature)
         except:
             self.error('could not check sig')
+            raise
 
     def derivate_key(self):
         pass
