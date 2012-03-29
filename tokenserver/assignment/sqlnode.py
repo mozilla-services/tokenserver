@@ -61,4 +61,4 @@ class SecuredShardedSQLNodeAssignment(ShardedSQLMetadata):
         if status != 200:
             raise BackendError('Could not get an allocation')
 
-        return data['uid'], data['node']
+        return body['uid'], body['node']
