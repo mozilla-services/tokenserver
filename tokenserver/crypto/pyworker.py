@@ -140,14 +140,20 @@ class CryptoWorker(object):
         pass
 
 
-def get_worker(endpoint, path, prefix='tokenserver'):
-    identity = 'ipc:///tmp/%s-%s' % (prefix, os.getpid())
+def get_worker(endpoint, path, identity=None):
+    pid = str(os.getpid())
+    if identity is None:
+        identity = 'ipc:///tmp/tokenserver-slave-%s.ipc' % pid
+    else:
+        identity = identity.replace('$PID', pid)
+
     return Worker(endpoint, identity, CryptoWorker(os.path.abspath(path)))
 
 
 if __name__ == '__main__':
     if len(sys.argv) < 1:
         raise ValueError("You should specify the certificates folder")
+
     worker = get_worker(*sys.argv[1:])
     try:
         worker.run()
