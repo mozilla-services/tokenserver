@@ -95,7 +95,7 @@ def pattern_exists(request):
     """Checks that the given service do have an associated pattern in the db or
     in the configuration file.
 
-    If not, raises a 500 error.
+    If not, raises a 503 error.
     """
     application = request.validated['application']
     version = request.validated['version']
@@ -104,7 +104,7 @@ def pattern_exists(request):
     try:
         pattern = defined_patterns[service]
     except KeyError:
-        raise JsonError(500,
+        raise JsonError(503,
                 description="The api_endpoint pattern for %r is not known"
                 % service)
 
