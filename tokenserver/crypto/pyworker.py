@@ -141,7 +141,7 @@ class CryptoWorker(object):
 
 
 def get_worker(endpoint, path, prefix='tokenserver'):
-    identity = 'ipc://%s-%s' % (prefix, os.getpid())
+    identity = 'ipc:///tmp/%s-%s' % (prefix, os.getpid())
     return Worker(endpoint, identity, CryptoWorker(os.path.abspath(path)))
 
 
