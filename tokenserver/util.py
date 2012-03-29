@@ -41,7 +41,7 @@ def generate_secret(filename, node):
     secret = binascii.b2a_hex(os.urandom(256))[:256]
     timestamp = int(time.time())
     with open(filename, 'a+') as f:
-        f.write('%s,%d:%s' % (node, timestamp, secret))
+        f.write('%s,%d:%s\n' % (node, timestamp, secret))
     return node, secret, timestamp
 
 
