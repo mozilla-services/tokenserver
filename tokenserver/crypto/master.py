@@ -3,6 +3,7 @@ import signal
 import sys
 import functools
 import threading
+import thread
 
 from zope.interface import implements, Interface
 from pyramid.threadlocal import get_current_registry
@@ -69,8 +70,12 @@ def stop_runners():
 
 class CryptoWorkers(threading.Thread):
     """Class to spawn powerhose worker in a separate thread"""
-    def __init__(self, workers_cmd, num_workers, working_dir, env, **kw):
+    def __init__(self, workers_cmd, num_workers, working_dir, env, controller,
+                 pubsub_endpoint, **kw):
         threading.Thread.__init__(self)
+        pid = str(thread.get_ident())
+        # XXX will want to set up a tcp port for the circus controller
+
         self.workers = Workers(workers_cmd, num_workers=num_workers,
                                working_dir=working_dir, env=env, **kw)
 
@@ -78,7 +83,6 @@ class CryptoWorkers(threading.Thread):
         logger.debug('Starting powerhose workers')
         self.workers.run()
         logger.debug('Powerhose workers ended')
-
 
     def stop(self):
         logger.debug('Stopping powerhose workers')
@@ -126,11 +130,15 @@ class PowerHoseRunner(object):
     methods = ['derivate_key', 'check_signature', 'check_signature_with_cert']
 
     def __init__(self, endpoint, workers_cmd, num_workers=5, working_dir=None,
-                 env=None):
+                 circus_controller='tcp://127.0.0.1:555',
+                 circus_pubsub_endpoint='tcp://127.0.0.1:5556', env=None):
 
         # initialisation
-        self.endpoint = endpoint
-        self.workers_cmd = workers_cmd
+        pid = str(thread.get_ident())
+        self.endpoint = endpoint.replace('$PID', pid)
+        self.workers_cmd = workers_cmd.replace('$PID', pid)
+        circus_controller = circus_controller.replace('$PID', pid)
+        circus_pubsub_endpoint = circus_pubsub_endpoint.replace('$PID', pid)
         envdict = {}
 
         if env is not None:
@@ -147,6 +155,8 @@ class PowerHoseRunner(object):
             _workers[self.endpoint] = CryptoWorkers(self.workers_cmd,
                                                     num_workers=num_workers,
                                                     working_dir=working_dir,
+                                                    controller=circus_controller,
+                                                    pubsub_endpoint=circus_pubsub_endpoint,
                                                     env=envdict)
         self.runner = _runners[self.endpoint]
         logger.debug('Starting powerhose master')

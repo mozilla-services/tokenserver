@@ -121,7 +121,7 @@ def return_token(request):
     application = request.validated['application']
     version = request.validated['version']
     pattern = request.validated['pattern']
-    service = get_service_name(application, version )
+    service = get_service_name(application, version)
 
     # get the node or allocate one if none is already set
     uid, node = backend.get_node(email, service)
@@ -135,6 +135,8 @@ def return_token(request):
     secret = node_secrets[-1]  # the last one is the most recent one
 
     token = make_token({'uid': uid, 'service_entry': node}, secret=secret)
+    # XXX needs to be renamed as 'get_derived_secret' because
+    # it's not clear here it's a derived
     secret = get_token_secret(token, secret=secret)
 
     api_endpoint = pattern.format(uid=uid, service=service, node=node)

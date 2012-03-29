@@ -2,15 +2,25 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 import unittest
-import urllib2
+from tempfile import mkstemp
+import os
+import time
 
-from tokenserver.tests.support import RegPatcher
+from tokenserver.util import generate_secret
+from mozsvc.secrets import Secrets
 
 
-class TestSReg(unittest.TestCase, RegPatcher):
-    def setUp(self):
-        self.old = urllib2.urlopen
-        urllib2.urlopen = self._response
+class TestUtil(unittest.TestCase):
 
-    def tearDown(self):
-        urllib2.urlopen = self.old
+    def test_secret_append(self):
+
+        fd, filename = mkstemp()
+        os.close(fd)
+        try:
+            generate_secret(filename, 'node')
+            time.sleep(1.1)
+            generate_secret(filename, 'node')
+            secrets = Secrets(filename)
+            self.assertEqual(len(secrets.get('node')), 2)
+        finally:
+            os.remove(filename)

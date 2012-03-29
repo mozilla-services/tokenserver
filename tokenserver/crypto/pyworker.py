@@ -147,8 +147,13 @@ class CryptoWorker(object):
         pass
 
 
-def get_worker(endpoint, memcache=None, prefix='tokenserver', worker=None):
-    identity = 'ipc://%s-%s' % (prefix, os.getpid())
+def get_worker(endpoint, memcache=None, identity=None, prefix='tokenserver',
+               worker=None):
+    pid = str(os.getpid())
+    if identity is None:
+        identity = 'ipc:///tmp/tokenserver-slave-%s.ipc' % pid
+    else:
+        identity = identity.replace('$PID', pid)
     if worker is None:
         worker = CryptoWorker(memcache)
     return Worker(endpoint, identity, worker)
