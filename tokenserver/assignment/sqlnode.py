@@ -56,7 +56,7 @@ class SecuredShardedSQLNodeAssignment(ShardedSQLMetadata):
     def allocate_node(self, email, service):
         """Calls the proxy to get an allocation"""
         url = '%s/1.0/%s' % (self.proxy_uri, service)
-        data = json.dumps({'email': email})
+        data = {'email': email}
         status, body = self._proxy('POST', url, data)
         if status != 200:
             raise BackendError('Could not get an allocation')
