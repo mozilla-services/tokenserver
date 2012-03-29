@@ -121,7 +121,7 @@ def return_token(request):
     application = request.validated['application']
     version = request.validated['version']
     pattern = request.validated['pattern']
-    service = get_service_name(application, version )
+    service = get_service_name(application, version)
 
     # get the node or allocate one if none is already set
     uid, node = backend.get_node(email, service)

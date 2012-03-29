@@ -79,7 +79,6 @@ class CryptoWorkers(threading.Thread):
         self.workers.run()
         logger.debug('Powerhose workers ended')
 
-
     def stop(self):
         logger.debug('Stopping powerhose workers')
         self.workers.stop()

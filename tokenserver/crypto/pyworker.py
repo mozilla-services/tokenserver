@@ -83,7 +83,7 @@ class CryptoWorker(object):
         logger.info('worker called with the message %s' % msg)
         try:
             if isinstance(msg, list):
-                data= msg[0]
+                data = msg[0]
             else:
                 data = msg
 
