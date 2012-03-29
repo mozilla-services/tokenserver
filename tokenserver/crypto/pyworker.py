@@ -13,36 +13,45 @@ from tokenserver.crypto.master import Response, PROTOBUF_CLASSES
 from browserid._m2_monkeypatch import DSA as _DSA
 from browserid._m2_monkeypatch import RSA as _RSA
 from browserid import jwt
+from browserid.certificates import CertificatesManager
 
 from M2Crypto import BIO
 
 
-def load_certificates(path, certs=None):
-    """load all the certificates stored in the given path.
+class CertificatesManagerWithCache(CertificatesManager):
 
-    In case some certificates are already loaded with the same hostname,
-    they will be replaced with the new ones.
-    """
-    logger.info('loading the certificates located in %s' % path)
-    if certs is None:
-        certs = {}
+    def __init__(self, memory=None, memcache=None):
+        if memory is None:
+            memory = {}
 
-    for filename in [os.path.join(path, f) for f in os.listdir(path)
-                     if os.path.isfile(os.path.join(path, f))
-                     and f.endswith('.crt')]:
-        # the files have to be named by the hostname
-        algo, hostname = parse_filename(filename)
-        cert = get_certificate(algo, filename)
-        certs[hostname] = cert
-    return certs
+        self.memory = memory
+        self.memcache = memcache
 
+    def __getitem__(self, hostname):
+        """Get the certificate for the given hostname.
 
-def parse_filename(filename):
-    """return the algorithm and hostname of the given filename"""
-    filename = os.path.basename(filename)
-    algo = filename.split('.')[-2]
-    hostname = '.'.join(filename.split('.')[:-2])
-    return algo, hostname
+        If the certificate is not already in memory, try to get it in the
+        shared memcache. If it's not in the the memcache, download it and store
+        it both in memory and in the memcache.
+        """
+        try:
+            # Use a cached key if available.
+            return self.memory[hostname]
+        except KeyError:
+            # try to get the key from memcache if it doesn't exist in memory
+                try:
+                    # supposely the memcache lookup failed
+                    raise KeyError()
+                    key = self.memcache.get(hostname)
+                    self.memory[hostname] = key
+                    return key
+                except KeyError:
+                    # it doesn't exist in memcache either, so let's get it from
+                    # the issuer host.
+                    key = self.fetch_public_key(hostname)
+                    #self.memcache.set(hostname, key)
+                    self.memory[hostname] = key
+                    return key
 
 
 def get_crypto_obj(algo, filename=None, key=None):
@@ -72,18 +81,16 @@ def get_certificate(algo, filename=None, key=None):
 
 class CryptoWorker(object):
 
-    def __init__(self, path):
+    def __init__(self):
         logger.info('starting a crypto worker')
-        self.serialize = json.dumps
-        self.certs = []
-        self.certs = load_certificates(path)
+        self.certs = CertificatesManagerWithCache()
 
     def __call__(self, msg):
         """proxy to the functions exposed by the worker"""
         logger.info('worker called with the message %s' % msg)
         try:
             if isinstance(msg, list):
-                data= msg[0]
+                data = msg[0]
             else:
                 data = msg
 
@@ -116,15 +123,15 @@ class CryptoWorker(object):
         """returns an error message"""
         raise Exception(message)
 
-    def check_signature(self, hostname, signed_data, signature,
-                        algorithm=None):
-        if algorithm == 'RS':
-            return True
+    def check_signature(self, hostname, signed_data, signature, algorithm):
         try:
             try:
-                return self.certs[hostname].verify(signed_data, signature)
+                data = self.certs[hostname]
             except KeyError:
                 self.error('unknown hostname "%s"' % hostname)
+
+            cert = jwt.load_key(algorithm, data)
+            return cert.verify(signed_data, signature)
         except:
             self.error('could not check sig')
 
@@ -140,16 +147,22 @@ class CryptoWorker(object):
         pass
 
 
-def get_worker(endpoint, path, prefix='tokenserver'):
+def get_worker(endpoint, memcache=None, prefix='tokenserver', worker=None):
     identity = 'ipc://%s-%s' % (prefix, os.getpid())
-    return Worker(endpoint, identity, CryptoWorker(os.path.abspath(path)))
+    if worker is None:
+        worker = CryptoWorker(memcache)
+    return Worker(endpoint, identity, worker)
 
 
-if __name__ == '__main__':
+def main(worker=None):
     if len(sys.argv) < 1:
-        raise ValueError("You should specify the certificates folder")
-    worker = get_worker(*sys.argv[1:])
+        raise ValueError("You should specify the zeromq and the memcache"
+                         "endpoint")
+    worker = get_worker(*sys.argv[1:], worker=worker)
     try:
         worker.run()
     finally:
         worker.stop()
+
+if __name__ == '__main__':
+    main()

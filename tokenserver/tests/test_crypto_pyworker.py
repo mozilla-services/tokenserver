@@ -1,40 +1,50 @@
 from unittest import TestCase
-import os
 
 from tokenserver.crypto.pyworker import CryptoWorker
+from tokenserver.tests.mockworker import MockCryptoWorker
 from tokenserver.tests.support import (
-    CERTS_LOCATION,
     sign_data,
     PurePythonRunner
 )
+from browserid.tests.support import patched_key_fetching, get_public_cert
 
 
 class TestPythonCryptoWorker(TestCase):
 
     def setUp(self):
-        self.worker = CryptoWorker(path=CERTS_LOCATION)
+        self.worker = CryptoWorker()
         self.runner = PurePythonRunner(self.worker)
-
-        # on start, the worker should load the certs in the folder.
-        self.assertEquals(len(self.worker.certs), 1)
 
     def test_check_signature(self):
         hostname = 'browserid.org'
         data = 'NOBODY EXPECTS THE SPANISH INQUISITION!'
 
+        with patched_key_fetching():
+            sig = sign_data(hostname, data)
+            result = self.runner.check_signature(hostname=hostname,
+                    signed_data=data, signature=sig, algorithm="DS128")
+        self.assertTrue(result)
+
+    def test_the_crypto_tester(self):
+        self.worker = MockCryptoWorker()
+        self.runner = PurePythonRunner(self.worker)
+
+        hostname = 'browserid.org'
+        data = 'NOBODY EXPECTS THE SPANISH INQUISITION!'
+
         sig = sign_data(hostname, data)
         result = self.runner.check_signature(hostname=hostname,
-                signed_data=data, signature=sig)
+                signed_data=data, signature=sig, algorithm="DS128")
         self.assertTrue(result)
 
     def test_check_signature_with_key(self):
         hostname = 'browserid.org'
         data = 'NOBODY EXPECTS THE SPANISH INQUISITION!'
+        return
+        # Not implemented yet.
 
         sig = sign_data(hostname, data)
-        filename = os.path.join(CERTS_LOCATION, 'browserid.org.RS256.crt')
-        with open(filename, 'rb') as f:
-            cert = f.read()
+        cert = get_public_cert(hostname)
 
         result = self.runner.check_signature_with_cert(cert=cert,
                 signed_data=data, signature=sig, algorithm='RS256')

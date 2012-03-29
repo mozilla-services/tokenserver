@@ -5,7 +5,7 @@ import time
 import os
 
 from browserid.verifiers.local import LocalVerifier
-from browserid.tests.support import make_assertion
+from browserid.tests.support import make_assertion, get_keypair
 from browserid import jwt
 
 from powerhose.util import serialize
@@ -103,9 +103,7 @@ CERTS_LOCATION = os.path.join(os.path.dirname(__file__), 'certs')
 
 
 def load_key(hostname):
-    filename = os.path.join(CERTS_LOCATION, '%s.key' % hostname)
-    obj = _RSA.load_key(filename)
-    return jwt.RS256Key(obj=obj)
+    return get_keypair(hostname)[1]
 
 
 def sign_data(hostname, data, key=None):
@@ -133,24 +131,13 @@ def get_assertion(email, audience='*', hostname='browserid.org',
     the case if you set the bad_issuer_cert or the bad_email cert arguments to
     True.
     """
-
-    key = load_key(hostname)
-    pub = key.rsa.pub()[1].decode('latin-1')
-
-    kwargs = {
-        'issuer_keypair': (pub, key),
-        'email_keypair': (pub, key)
-    }
-
-    # We remove the issuer_keypair and email_keypair arguments, which will let
-    # the underlying make_assertion function from browserid use its internal
-    # test certificates, which are not the same as the one we use for the
-    # tokenserver.
-
+    kwargs = {}
     if bad_issuer_cert:
-        del kwargs['issuer_keypair']
+        kwargs['issuer_keypair'] =\
+                get_keypair(hostname="not-the-right-host.com")
 
     if bad_email_cert:
-        del kwargs['email_keypair']
+        kwargs['email_keypair'] =\
+                get_keypair(hostname="not-the-right-host.com")
 
     return make_assertion(email, audience, **kwargs)

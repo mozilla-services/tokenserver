@@ -18,10 +18,9 @@ from tokenserver.assignment import INodeAssignment
 from tokenserver.crypto.master import stop_runners
 
 from tokenserver.verifiers import PowerHoseVerifier
-from tokenserver.crypto.pyworker import CryptoWorker
+from tokenserver.tests.mockworker import MockCryptoWorker
 from tokenserver.tests.support import (
     PurePythonRunner,
-    CERTS_LOCATION,
     get_assertion
 )
 
@@ -36,7 +35,7 @@ class TestPowerHoseVerifier(unittest.TestCase):
 
     def test_assertion_verification(self):
         # giving a valid assertion should return True
-        worker = CryptoWorker(CERTS_LOCATION)
+        worker = MockCryptoWorker()
         verifier = PowerHoseVerifier(runner=PurePythonRunner(worker),
                                      audiences=('*',))
         self.assertTrue(verifier.verify(get_assertion(DEFAULT_EMAIL)))
