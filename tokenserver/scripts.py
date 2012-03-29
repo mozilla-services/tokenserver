@@ -9,8 +9,8 @@ def generate_secret():
     if len(sys.argv) != 3:
         raise ValueError('You need to specify the path to the secret file '
                          'and the name of the node.')
-    node, secret, timestamp = _generate_secret(*sys.argv[1:])
-    print('generated a new secret for node %s: %s' % (node, secret))
+    node, secret = _generate_secret(*sys.argv[1:])
+    print('Inserted a new secret for node %s: %s' % (node, secret))
 
 
 def display_secrets():

@@ -4,9 +4,7 @@
 import json
 from base64 import b32encode
 from hashlib import sha1
-import binascii
 import os
-import time
 
 from pyramid.httpexceptions import HTTPError
 from webob import Response
@@ -30,6 +28,7 @@ class JsonError(HTTPError):
         self.content_type = 'application/json'
 
 
+# XXXX needs to move into mozsvc.secrets.Secrets
 def generate_secret(filename, node):
     """Generates a new secret for the given node and saves it to a secrets
     file.
@@ -38,13 +37,17 @@ def generate_secret(filename, node):
                      secret into.
     :param node: the node we want to generate the secret for.
     """
-    secret = binascii.b2a_hex(os.urandom(256))[:256]
-    timestamp = int(time.time())
-    with open(filename, 'a+') as f:
-        f.write('%s,%d:%s\n' % (node, timestamp, secret))
-    return node, secret, timestamp
+    if os.path.exists(filename):
+        secrets = Secrets(filename)
+    else:
+        secrets = Secrets()
+
+    secrets.add(node)
+    secrets.save(filename)
+    return node, secrets.get(node)[0]
 
 
+# XXXX needs to move into mozsvc.secrets.Secrets
 def display_secrets(filename, node=None):
     """Read a secret file and return its content.
 
