@@ -3,6 +3,7 @@ import signal
 import sys
 import functools
 import threading
+import thread
 
 from zope.interface import implements, Interface
 from pyramid.threadlocal import get_current_registry
@@ -128,8 +129,9 @@ class PowerHoseRunner(object):
                  env=None):
 
         # initialisation
-        self.endpoint = endpoint
-        self.workers_cmd = workers_cmd
+        pid = str(thread.get_ident())
+        self.endpoint = endpoint.replace('$PID', pid)
+        self.workers_cmd = workers_cmd.replace('$PID', pid)
         envdict = {}
 
         if env is not None:
