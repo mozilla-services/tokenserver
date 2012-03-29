@@ -72,6 +72,12 @@ class CryptoWorkers(threading.Thread):
     """Class to spawn powerhose worker in a separate thread"""
     def __init__(self, workers_cmd, num_workers, working_dir, env, **kw):
         threading.Thread.__init__(self)
+        pid = str(thread.get_ident())
+        # XXX will want to set up a tcp port for the circus controller
+        # later
+        kw['pubsub_endpoint'] = 'ipc://pse-%s' % pid
+        kw['controller'] = 'ipc://cte-%s' % pid
+
         self.workers = Workers(workers_cmd, num_workers=num_workers,
                                working_dir=working_dir, env=env, **kw)
 
