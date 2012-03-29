@@ -75,8 +75,8 @@ class CryptoWorkers(threading.Thread):
         pid = str(thread.get_ident())
         # XXX will want to set up a tcp port for the circus controller
         # later
-        kw['pubsub_endpoint'] = 'ipc://pse-%s' % pid
-        kw['controller'] = 'ipc://cte-%s' % pid
+        kw['pubsub_endpoint'] = 'ipc:///tmp/pse-%s' % pid
+        kw['controller'] = 'ipc:///tmp/cte-%s' % pid
 
         self.workers = Workers(workers_cmd, num_workers=num_workers,
                                working_dir=working_dir, env=env, **kw)
