@@ -6,7 +6,7 @@ from tokenserver.tests.support import (
     sign_data,
     PurePythonRunner
 )
-from browserid.tests.support import patched_key_fetching, get_public_cert
+from browserid.tests.support import patched_key_fetching
 
 
 class TestPythonCryptoWorker(TestCase):
@@ -44,7 +44,7 @@ class TestPythonCryptoWorker(TestCase):
         # Not implemented yet.
 
         sig = sign_data(hostname, data)
-        cert = get_public_cert(hostname)
+        #cert = get_public_cert(hostname)
 
         result = self.runner.check_signature_with_cert(cert=cert,
                 signed_data=data, signature=sig, algorithm='RS256')
