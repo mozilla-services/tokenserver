@@ -75,7 +75,7 @@ class TestService(unittest.TestCase):
     def test_unknown_pattern(self):
         # sync 2.1 is defined in the .ini file, but  no pattern exists for it.
         headers = {'Authorization': 'Browser-ID %s' % self._getassertion()}
-        self.app.get('/1.0/sync/2.1', headers=headers, status=500)
+        self.app.get('/1.0/sync/2.1', headers=headers, status=503)
 
     def test_discovery(self):
         res = self.app.get('/')
