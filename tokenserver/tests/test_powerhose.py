@@ -40,18 +40,10 @@ class TestPowerHoseVerifier(unittest.TestCase):
                                      audiences=('*',))
         self.assertTrue(verifier.verify(get_assertion(DEFAULT_EMAIL)))
 
-        # giving a wrong assertion (invalid bundled certificate) raise an
-        # exception
+        # An assertion not signed with the root issuer certificate should fail.
 
         self.assertRaises(InvalidSignatureError, verifier.verify,
                 get_assertion(DEFAULT_EMAIL, bad_issuer_cert=True))
-
-        self.assertRaises(InvalidSignatureError, verifier.verify,
-                get_assertion(DEFAULT_EMAIL, bad_email_cert=True))
-
-        self.assertRaises(InvalidSignatureError, verifier.verify,
-                get_assertion(DEFAULT_EMAIL, bad_email_cert=True,
-                              bad_issuer_cert=True))
 
 
 class TestPowerService(unittest.TestCase):

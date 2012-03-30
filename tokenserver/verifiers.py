@@ -1,4 +1,5 @@
 import time
+import json
 
 from pyramid.threadlocal import get_current_registry
 from zope.interface import implements, Interface
@@ -70,13 +71,13 @@ class PowerHoseVerifier(LocalVerifier):
         current_key = None
         for cert in certificates:
             _check_cert_validity(cert)
-            if not self.check_token_signature(cert, None, hostname=issuer,
-                                              key=current_key):
+            if not self.check_token_signature(cert, current_key,
+                                              hostname=issuer):
                 raise InvalidSignatureError("bad signature in chain")
             current_key = cert.payload["public-key"]
         return cert
 
-    def check_token_signature(self, data, cert=None, hostname=None, key=None):
+    def check_token_signature(self, data, cert=None, hostname=None):
         """Check the signature of the given data according the the given
         certificate or hostname.
 
@@ -91,16 +92,17 @@ class PowerHoseVerifier(LocalVerifier):
         :param hostname: the hostname to get the certificate from
         :param key: if provided, this key will be used to check the signature.
         """
-        if hostname is None and cert is None and key is None:
-            raise ValueError("You should specify either cert, hostname or key")
+        if hostname is None and cert is None:
+            raise ValueError("You should specify either cert or hostname")
 
-        if key:
-            return self.runner.check_signature_with_key(
-                    key=key, signed_data=data.signed_data,
-                    signature=data.signature, algorithm=data.algorithm)
+        if cert:
+            key = json.dumps(cert.payload['public-key'])
+            return self.runner.check_signature_with_cert(cert=key,
+                    signed_data=data.signed_data, signature=data.signature,
+                    algorithm=data.algorithm)
 
-        hostname = hostname or cert.payload["iss"]
-        return self.runner.check_signature(hostname=hostname,
+        valid = self.runner.check_signature(hostname=hostname,
                                            signed_data=data.signed_data,
                                            signature=data.signature,
                                            algorithm=data.algorithm)
+        return valid

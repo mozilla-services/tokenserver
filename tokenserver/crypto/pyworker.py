@@ -139,7 +139,8 @@ class CryptoWorker(object):
     def check_signature_with_cert(self, cert, signed_data, signature,
                                   algorithm):
         try:
-            cert = get_certificate(key=cert, algo=algorithm)
+            data = json.loads(cert)
+            cert = jwt.load_key(algorithm, data)
             return cert.verify(signed_data, signature)
         except:
             self.error('could not check sig')
