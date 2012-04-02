@@ -1,4 +1,4 @@
-from tokenserver.crypto.pyworker import main, CryptoWorker
+from tokenserver.crypto.pyworker import CryptoWorker
 from browserid.tests.support import patched_key_fetching
 
 
@@ -12,5 +12,4 @@ class MockCryptoWorker(CryptoWorker):
                     .check_signature(*args, **kwargs)
 
 
-if __name__ == '__main__':
-    main(worker=MockCryptoWorker())
+crypto_worker = MockCryptoWorker()

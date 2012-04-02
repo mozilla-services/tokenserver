@@ -1,11 +1,6 @@
 import json
 import sys
-import os
 import traceback
-
-from powerhose.client.worker import Worker
-from powerhose.util import unserialize
-from powerhose.job import Job
 
 from tokenserver import logger
 from tokenserver.crypto.master import Response, PROTOBUF_CLASSES
@@ -85,18 +80,10 @@ class CryptoWorker(object):
         logger.info('starting a crypto worker')
         self.certs = CertificatesManagerWithCache()
 
-    def __call__(self, msg):
+    def __call__(self, job):
         """proxy to the functions exposed by the worker"""
-        logger.info('worker called with the message %s' % msg)
+        logger.info('worker called with the message %s' % job)
         try:
-            if isinstance(msg, list):
-                data = msg[0]
-            else:
-                data = msg
-
-            data = unserialize(data)
-            job = Job.load_from_string(data[-1])
-
             try:
                 function_id, serialized_data = job.data.split('::', 1)
                 obj = PROTOBUF_CLASSES[function_id]()
@@ -150,27 +137,4 @@ class CryptoWorker(object):
         pass
 
 
-def get_worker(endpoint, memcache=None, identity=None, prefix='tokenserver',
-               worker=None):
-    pid = str(os.getpid())
-    if identity is None:
-        identity = 'ipc:///tmp/tokenserver-slave-%s.ipc' % pid
-    else:
-        identity = identity.replace('$PID', pid)
-    if worker is None:
-        worker = CryptoWorker(memcache)
-    return Worker(endpoint, identity, worker)
-
-
-def main(worker=None):
-    if len(sys.argv) < 1:
-        raise ValueError("You should specify the zeromq and the memcache"
-                         "endpoint")
-    worker = get_worker(*sys.argv[1:], worker=worker)
-    try:
-        worker.run()
-    finally:
-        worker.stop()
-
-if __name__ == '__main__':
-    main()
+crypto_worker = CryptoWorker()

@@ -1,19 +1,12 @@
-import time
-import signal
-import sys
 import functools
-import threading
 import thread
 
 from zope.interface import implements, Interface
 from pyramid.threadlocal import get_current_registry
 
-from powerhose.jobrunner import JobRunner
-from powerhose.job import Job
-from powerhose.client.workers import Workers
-from powerhose import logger
-
+from powerhose.client import Client
 from google.protobuf.message import DecodeError
+
 from tokenserver.crypto.messages import (
     CheckSignature,
     CheckSignatureWithCert,
@@ -40,56 +33,6 @@ def get_runner():
     return get_current_registry().getUtility(IPowerhoseRunner)
 
 
-# some signal handling to exit when on SIGINT or SIGTERM
-def bye(*args, **kw):
-    stop_runners()
-    sys.exit(1)
-
-signal.signal(signal.SIGTERM, bye)
-signal.signal(signal.SIGINT, bye)
-
-# to keep track of the runners and workers already instanciated
-_runners = {}
-_workers = {}
-
-
-def stop_runners():
-    logger.debug("stop_runner starts")
-
-    for workers in _workers.values():
-        workers.stop()
-
-    logger.debug("workers killed")
-
-    for runner in _runners.values():
-        logger.debug('Stopping powerhose master')
-        runner.stop()
-
-    logger.debug("stop_runner ends")
-
-
-class CryptoWorkers(threading.Thread):
-    """Class to spawn powerhose worker in a separate thread"""
-    def __init__(self, workers_cmd, num_workers, working_dir, env, controller,
-                 pubsub_endpoint, **kw):
-        threading.Thread.__init__(self)
-        pid = str(thread.get_ident())
-        # XXX will want to set up a tcp port for the circus controller
-
-        self.workers = Workers(workers_cmd, num_workers=num_workers,
-                               working_dir=working_dir, env=env, **kw)
-
-    def run(self):
-        logger.debug('Starting powerhose workers')
-        self.workers.run()
-        logger.debug('Powerhose workers ended')
-
-    def stop(self):
-        logger.debug('Stopping powerhose workers')
-        self.workers.stop()
-        self.join()
-
-
 class PowerHoseRunner(object):
     """Implements a simple powerhose runner.
 
@@ -102,14 +45,6 @@ class PowerHoseRunner(object):
 
     :param endpoint: the zmq endpoint used to communicate between the powerhose
                      master process and the workers.
-    :param workers_cmd: the command to run in the workers.
-    :param num_workers: the number of workers to spawn
-    :param working_dir: the working directory
-    :param env: additional environment variables. Can either be a dict or a
-                string with the following syntax:
-                "ENV_VAR=value;ENV_VAR2=value". This is to be able to load this
-                class with settings coming from an ini file.
-
 
     This class also provides methods to ease the communication with the
     workers. You can directly send information to the workers by using the
@@ -129,48 +64,12 @@ class PowerHoseRunner(object):
 
     methods = ['derivate_key', 'check_signature', 'check_signature_with_cert']
 
-    def __init__(self, endpoint, workers_cmd, num_workers=5, working_dir=None,
-                 circus_controller='tcp://127.0.0.1:555',
-                 circus_pubsub_endpoint='tcp://127.0.0.1:5556', env=None):
+    def __init__(self, endpoint, **kw):
 
         # initialisation
         pid = str(thread.get_ident())
         self.endpoint = endpoint.replace('$PID', pid)
-        self.workers_cmd = workers_cmd.replace('$PID', pid)
-        circus_controller = circus_controller.replace('$PID', pid)
-        circus_pubsub_endpoint = circus_pubsub_endpoint.replace('$PID', pid)
-        envdict = {}
-
-        if env is not None:
-            if isinstance(env, dict):
-                envdict = env
-            else:
-                for pair in env.split(';'):
-                    key, value = pair.split('=', 1)
-                    envdict[key] = value
-
-        # register the runner and the workers in the global vars.
-        if self.endpoint not in _runners:
-            _runners[self.endpoint] = JobRunner(self.endpoint)
-            _workers[self.endpoint] = CryptoWorkers(self.workers_cmd,
-                                                    num_workers=num_workers,
-                                                    working_dir=working_dir,
-                                                    controller=circus_controller,
-                                                    pubsub_endpoint=circus_pubsub_endpoint,
-                                                    env=envdict)
-        self.runner = _runners[self.endpoint]
-        logger.debug('Starting powerhose master')
-
-        # start the runner ...
-        self.runner.start()
-        time.sleep(.5)
-        self.workers = _workers[self.endpoint]
-
-        # ... and the workers
-        self.workers.start()
-
-        # wait a bit
-        time.sleep(1.)
+        self.phose_client = Client(self.endpoint)
 
     def __getattr__(self, attr):
         """magic method getter to be able to do direct function calls on this
@@ -202,8 +101,7 @@ class PowerHoseRunner(object):
 
         # XXX use headers here
         data = "::".join((function_id, obj.SerializeToString()))
-        job = Job(data)
-        serialized_resp = self.runner.execute(job)
+        serialized_resp = self.phose_client.execute(data)
         resp = Response()
         try:
             resp.ParseFromString(serialized_resp)

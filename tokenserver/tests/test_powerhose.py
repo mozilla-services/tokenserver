@@ -14,9 +14,9 @@ from cornice.tests import CatchErrors
 from mozsvc.config import load_into_settings
 from mozsvc.plugin import load_and_register
 
-from tokenserver.assignment import INodeAssignment
-from tokenserver.crypto.master import stop_runners
+from powerhose import get_cluster
 
+from tokenserver.assignment import INodeAssignment
 from tokenserver.verifiers import PowerHoseVerifier
 from tokenserver.tests.mockworker import MockCryptoWorker
 from tokenserver.tests.support import (
@@ -65,10 +65,14 @@ class TestPowerService(unittest.TestCase):
         cls.config.include("tokenserver")
         load_and_register("tokenserver", cls.config)
         cls.backend = cls.config.registry.getUtility(INodeAssignment)
+        cls.cluster = get_cluster('tokenserver.tests.mockworker.crypto_worker',
+                                  numprocesses=1, background=True, debug=True)
+        cls.cluster.start()
+        time.sleep(0.5)
 
     @classmethod
     def tearDownClass(cls):
-        stop_runners()
+        cls.cluster.stop()
 
     def setUp(self):
         wsgiapp = TestPowerService.config.make_wsgi_app()

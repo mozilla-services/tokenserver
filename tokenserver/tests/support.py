@@ -6,10 +6,8 @@ import os
 
 from browserid.verifiers.local import LocalVerifier
 from browserid.tests.support import make_assertion, get_keypair
-from browserid import jwt
 
-from powerhose.util import serialize
-from tokenserver.crypto.pyworker import _RSA
+from powerhose.job import Job
 from tokenserver.crypto.master import PowerHoseRunner
 
 try:
@@ -113,11 +111,11 @@ def sign_data(hostname, data, key=None):
 
 class PurePythonRunner(PowerHoseRunner):
     def __init__(self, runner):
+        self.phose_client = runner
         self.runner = runner
 
         def patched_runner(job):
-            data = serialize('JOB', job.serialize())
-            return self.runner(data)
+            return self.runner(Job(job))
 
         setattr(self.runner, 'execute', patched_runner)
 
