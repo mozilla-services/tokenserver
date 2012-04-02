@@ -9,3 +9,11 @@ The following picture describes how the token server integrates with other
 pieces of software we developped.
 
 .. img:: http://ziade.org/token-org.png
+
+
+How to run the tokenserver
+==========================
+
+To run the tokenserver, you just need to run::
+
+    $ bin/paster serve etc/tokenserver-dev.ini
