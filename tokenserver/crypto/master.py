@@ -70,13 +70,13 @@ class PowerHoseRunner(object):
         self.endpoint = endpoint.replace('$PID', pid)
         self._phose = {}
 
-    def get_phose(self):
+    def execute(self, data):
         id = thread.get_ident()
         if id not in self._phose:
             # one client per
             self._phose[id] = Client(self.endpoint)
 
-        return self._phose[id]
+        return self._phose[id].execute(data)
 
     def __getattr__(self, attr):
         """magic method getter to be able to do direct function calls on this
@@ -84,7 +84,7 @@ class PowerHoseRunner(object):
         """
         if attr in self.methods:
             return functools.partial(self._execute, attr)
-        return super(PowerHoseRunner, self).__getattr__(attr)
+        return super(PowerHoseRunner, self).__getattribute__(attr)
 
     def _execute(self, function_id, **data):
         """Send a message to the underlying runner.
@@ -108,7 +108,7 @@ class PowerHoseRunner(object):
 
         # XXX use headers here
         data = "::".join((function_id, obj.SerializeToString()))
-        serialized_resp = self.get_phose().execute(data)
+        serialized_resp = self.execute(data)
         resp = Response()
         try:
             resp.ParseFromString(serialized_resp)

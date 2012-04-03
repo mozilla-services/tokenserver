@@ -112,10 +112,11 @@ def sign_data(hostname, data, key=None):
 class PurePythonRunner(PowerHoseRunner):
     def __init__(self, runner):
         self.runner = runner
+
         def patched_runner(job):
             return self.runner(Job(job))
 
-        setattr(self.runner, 'execute', patched_runner)
+        setattr(self, 'execute', patched_runner)
 
 
 def get_assertion(email, audience='*', hostname='browserid.org',
