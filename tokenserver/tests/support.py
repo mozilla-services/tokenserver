@@ -111,9 +111,7 @@ def sign_data(hostname, data, key=None):
 
 class PurePythonRunner(PowerHoseRunner):
     def __init__(self, runner):
-        self.phose_client = runner
         self.runner = runner
-
         def patched_runner(job):
             return self.runner(Job(job))
 

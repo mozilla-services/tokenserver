@@ -1,5 +1,6 @@
 import functools
 import thread
+import os
 
 from zope.interface import implements, Interface
 from pyramid.threadlocal import get_current_registry
@@ -65,11 +66,17 @@ class PowerHoseRunner(object):
     methods = ['derivate_key', 'check_signature', 'check_signature_with_cert']
 
     def __init__(self, endpoint, **kw):
-
-        # initialisation
-        pid = str(thread.get_ident())
+        pid = str(os.getpid())
         self.endpoint = endpoint.replace('$PID', pid)
-        self.phose_client = Client(self.endpoint)
+        self._phose = {}
+
+    def get_phose(self):
+        id = thread.get_ident()
+        if id not in self._phose:
+            # one client per
+            self._phose[id] = Client(self.endpoint)
+
+        return self._phose[id]
 
     def __getattr__(self, attr):
         """magic method getter to be able to do direct function calls on this
@@ -101,7 +108,7 @@ class PowerHoseRunner(object):
 
         # XXX use headers here
         data = "::".join((function_id, obj.SerializeToString()))
-        serialized_resp = self.phose_client.execute(data)
+        serialized_resp = self.get_phose().execute(data)
         resp = Response()
         try:
             resp.ParseFromString(serialized_resp)
