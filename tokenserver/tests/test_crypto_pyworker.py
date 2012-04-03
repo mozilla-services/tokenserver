@@ -51,6 +51,21 @@ class TestPythonCryptoWorker(TestCase):
 
         self.assertTrue(result)
 
+    def test_loadtest_mode(self):
+        # when in loadtest mode, the crypto worker should be able to verify
+        # signatures issued by loadtest.localdomain
+        self.worker = CryptoWorker(loadtest_mode=True)
+        hostname = 'loadtest.localdomain'
+        data = "All your base are belong to us."
+
+        signature = sign_data(hostname, data)
+
+        # as you may have noticed, we are not mocking the key fetching here.
+        result = self.runner.check_signature(hostname=hostname,
+                signed_data=data, signature=signature, algorithm="DS128")
+
+        self.assertTrue(result)
+
     def test_key_derivation(self):
         return
         # result = self.call_worker('derivate_key')
