@@ -19,6 +19,7 @@ from powerhose import get_cluster
 from tokenserver.assignment import INodeAssignment
 from tokenserver.verifiers import PowerHoseVerifier
 from tokenserver.tests.mockworker import MockCryptoWorker
+from tokenserver.crypto.pyworker import CryptoWorker
 from tokenserver.tests.support import (
     PurePythonRunner,
     get_assertion
@@ -44,6 +45,14 @@ class TestPowerHoseVerifier(unittest.TestCase):
 
         self.assertRaises(InvalidSignatureError, verifier.verify,
                 get_assertion(DEFAULT_EMAIL, bad_issuer_cert=True))
+
+    def test_loadtest_mode(self):
+        worker = CryptoWorker(loadtest_mode=True)
+        verifier = PowerHoseVerifier(runner=PurePythonRunner(worker),
+                                     audiences=('*',))
+        result = verifier.verify(get_assertion('alexis@loadtest.local',
+                                               issuer='loadtest.local'))
+        self.assertTrue(result)
 
 
 class TestPowerService(unittest.TestCase):
