@@ -9,18 +9,25 @@ from browserid._m2_monkeypatch import DSA as _DSA
 from browserid._m2_monkeypatch import RSA as _RSA
 from browserid import jwt
 from browserid.certificates import CertificatesManager
+from browserid.tests.support import fetch_public_key
 
 from M2Crypto import BIO
 
 
 class CertificatesManagerWithCache(CertificatesManager):
 
-    def __init__(self, memory=None, memcache=None):
+    def __init__(self, memory=None, memcache=None, loadtest_mode=False):
+        """If the loadtest mode is set, when looking for loadtest.local, the
+        certificate bundled in browserid.tests.support will be returned instead
+        of failing."""
         if memory is None:
             memory = {}
 
         self.memory = memory
         self.memcache = memcache
+
+        if loadtest_mode is True:
+            self.memory['loadtest.local'] = fetch_public_key('loadtest.local')
 
     def __getitem__(self, hostname):
         """Get the certificate for the given hostname.
@@ -76,9 +83,9 @@ def get_certificate(algo, filename=None, key=None):
 
 class CryptoWorker(object):
 
-    def __init__(self):
+    def __init__(self, loadtest_mode=False):
         logger.info('starting a crypto worker')
-        self.certs = CertificatesManagerWithCache()
+        self.certs = CertificatesManagerWithCache(loadtest_mode=loadtest_mode)
 
     def __call__(self, job):
         """proxy to the functions exposed by the worker"""
