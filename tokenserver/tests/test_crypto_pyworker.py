@@ -53,9 +53,10 @@ class TestPythonCryptoWorker(TestCase):
 
     def test_loadtest_mode(self):
         # when in loadtest mode, the crypto worker should be able to verify
-        # signatures issued by loadtest.localdomain
+        # signatures issued by loadtest.local
         self.worker = CryptoWorker(loadtest_mode=True)
-        hostname = 'loadtest.localdomain'
+        self.runner = PurePythonRunner(self.worker)
+        hostname = 'loadtest.local'
         data = "All your base are belong to us."
 
         signature = sign_data(hostname, data)
