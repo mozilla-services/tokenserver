@@ -1,6 +1,6 @@
 from unittest import TestCase
 
-from tokenserver.crypto.pyworker import CryptoWorker
+from tokenserver.crypto.pyworker import CryptoWorker, TTLedDict
 from tokenserver.tests.mockworker import MockCryptoWorker
 from tokenserver.tests.support import (
     sign_data,
@@ -50,6 +50,11 @@ class TestPythonCryptoWorker(TestCase):
                 signed_data=data, signature=sig, algorithm='RS256')
 
         self.assertTrue(result)
+
+    def test_ttled_dict(self):
+
+        cache = TTLedDict(100)
+        cache['foo'] = 'bar'
 
     def test_key_derivation(self):
         return

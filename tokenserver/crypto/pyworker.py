@@ -1,6 +1,7 @@
 import json
 import sys
 import traceback
+import time
 
 from tokenserver import logger
 from tokenserver.crypto.master import Response, PROTOBUF_CLASSES
@@ -12,6 +13,34 @@ from browserid.certificates import CertificatesManager
 from browserid.tests.support import fetch_public_key
 
 from M2Crypto import BIO
+
+
+class TTLedDict(object):
+    """A simple TTLed in memory cache.
+
+    :param ttl: the time-to-leave for records. The cache will return a KeyError
+                once the TTL is over for its records, and remove the items from
+                its cache.
+    """
+
+    def __init__(self, ttl, storage=None):
+        if storage is None:
+            storage = {}
+
+        self.ttl = ttl
+        self._storage = storage
+
+    def __setitem__(self, key, value):
+        self._storage[key] = time.time(), value
+
+    def __getitem__(self, key):
+        ttl, value = self.storage[key]
+        if ttl > time.time():
+            # if the ttl is expired, remove the key from the cache and return a
+            # key error
+            del self._storage[key]
+            raise KeyError(key)
+        return value
 
 
 class CertificatesManagerWithCache(CertificatesManager):

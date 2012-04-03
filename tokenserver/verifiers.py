@@ -77,6 +77,7 @@ class PowerHoseVerifier(LocalVerifier):
             current_key = cert.payload["public-key"]
         return cert
 
+
     def check_token_signature(self, data, cert=None, hostname=None):
         """Check the signature of the given data according the the given
         certificate or hostname.
