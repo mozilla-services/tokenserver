@@ -51,7 +51,7 @@ class TestPowerHoseVerifier(unittest.TestCase):
         verifier = PowerHoseVerifier(runner=PurePythonRunner(worker),
                                      audiences=('*',))
         result = verifier.verify(get_assertion('alexis@loadtest.local',
-                                               hostname='loadtest.local'))
+                                               issuer='loadtest.local'))
         self.assertTrue(result)
 
 
