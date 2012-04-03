@@ -84,7 +84,7 @@ class PowerHoseRunner(object):
         """
         if attr in self.methods:
             return functools.partial(self._execute, attr)
-        raise KeyError("'%s' is not supported by the powerhose runner" % attr)
+        return super(PowerHoseRunner, self).__getattr__(attr)
 
     def _execute(self, function_id, **data):
         """Send a message to the underlying runner.
