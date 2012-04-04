@@ -1,6 +1,7 @@
 from unittest import TestCase
+import time
 
-from tokenserver.crypto.pyworker import CryptoWorker, TTLedDict
+from tokenserver.crypto.pyworker import CryptoWorker, TTLedDict, ExpiredValue
 from tokenserver.tests.mockworker import MockCryptoWorker
 from tokenserver.tests.support import (
     sign_data,
@@ -51,11 +52,6 @@ class TestPythonCryptoWorker(TestCase):
 
         self.assertTrue(result)
 
-    def test_ttled_dict(self):
-
-        cache = TTLedDict(100)
-        cache['foo'] = 'bar'
-
     def test_loadtest_mode(self):
         # when in loadtest mode, the crypto worker should be able to verify
         # signatures issued by loadtest.local
@@ -75,3 +71,32 @@ class TestPythonCryptoWorker(TestCase):
     def test_key_derivation(self):
         return
         # result = self.call_worker('derivate_key')
+
+
+class TestTTledDict(TestCase):
+
+    def test_ttled_dict(self):
+
+        # setup a dict with an expiration of 100ms.
+        cache = TTLedDict(1)
+        # asking for something not defined raises an exception
+        with self.assertRaises(KeyError):
+            cache['foo']
+
+        cache['foo'] = 'bar'
+
+        # should be available just now
+        self.assertEquals(cache['foo'], 'bar')
+        # even if we are asking twice
+        self.assertEquals(cache['foo'], 'bar')
+
+        # but if we wait a bit more it should'n be present.
+        time.sleep(1)
+        with self.assertRaises(ExpiredValue):
+            cache['foo']
+
+        # we have a way to put never-expiring values in the cache
+        cache['bar'] = 'baz'
+        cache.set_ttl('bar', 0)
+        time.sleep(1)
+        self.assertEquals(cache['bar'], 'baz')

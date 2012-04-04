@@ -15,12 +15,16 @@ from browserid.tests.support import fetch_public_key
 from M2Crypto import BIO
 
 
+class ExpiredValue(KeyError):
+    pass
+
+
 class TTLedDict(object):
     """A simple TTLed in memory cache.
 
-    :param ttl: the time-to-leave for records. The cache will return a KeyError
-                once the TTL is over for its records, and remove the items from
-                its cache.
+    :param ttl: the time-to-leave for records, in seconds.
+                The cache will return an ExpiredValue once the TTL is over for
+                its records, and remove the items from its cache.
     """
 
     def __init__(self, ttl, storage=None):
@@ -34,13 +38,17 @@ class TTLedDict(object):
         self._storage[key] = time.time(), value
 
     def __getitem__(self, key):
-        ttl, value = self.storage[key]
-        if ttl > time.time():
+        insert_date, value = self._storage[key]
+        if insert_date != 0 and insert_date + self.ttl < time.time():
             # if the ttl is expired, remove the key from the cache and return a
             # key error
             del self._storage[key]
-            raise KeyError(key)
+            raise ExpiredValue(key)
         return value
+
+    def set_ttl(self, key, ttl):
+        _, value = self._storage[key]
+        self._storage[key] = ttl, value
 
 
 class CertificatesManagerWithCache(CertificatesManager):
@@ -50,7 +58,7 @@ class CertificatesManagerWithCache(CertificatesManager):
         certificate bundled in browserid.tests.support will be returned instead
         of failing."""
         if memory is None:
-            memory = {}
+            memory = TTLedDict(60 * 10)  # TTL of 10 minutes for the certs
 
         self.memory = memory
         self.memcache = memcache
