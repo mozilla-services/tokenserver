@@ -33,3 +33,4 @@ PyMySQL==0.5
 pymysql_sa
 protobuf
 gevent
+pylibmc==1.2.2
