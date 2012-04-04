@@ -25,6 +25,8 @@ class TTLedDict(object):
     :param ttl: the time-to-leave for records, in seconds.
                 The cache will return an ExpiredValue once the TTL is over for
                 its records, and remove the items from its cache.
+
+                A ttl of 0 means the record never expires.
     """
 
     def __init__(self, ttl, storage=None):
@@ -65,6 +67,7 @@ class CertificatesManagerWithCache(CertificatesManager):
 
         if loadtest_mode is True:
             self.memory['loadtest.local'] = fetch_public_key('loadtest.local')
+            self.memory.set_ttl('loadtest.local', 0)  # never expire
 
     def __getitem__(self, hostname):
         """Get the certificate for the given hostname.
