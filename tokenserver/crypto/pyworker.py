@@ -13,6 +13,7 @@ from browserid.certificates import CertificatesManager
 from browserid.tests.support import fetch_public_key
 
 from M2Crypto import BIO
+import pylibmc
 
 
 class ExpiredValue(KeyError):
@@ -58,9 +59,18 @@ class CertificatesManagerWithCache(CertificatesManager):
     def __init__(self, memory=None, memcache=None, loadtest_mode=False):
         """If the loadtest mode is set, when looking for loadtest.local, the
         certificate bundled in browserid.tests.support will be returned instead
-        of failing."""
+        of failing.
+
+        setting :param memory: or :param memcache: to False will cause the
+        certificates manager to not use them
+        """
         if memory is None:
             memory = TTLedDict(60 * 10)  # TTL of 10 minutes for the certs
+
+        if memcache is None:
+            memcache = False
+        else:
+            memcache = pylibmc.Client((memcache, ))
 
         self.memory = memory
         self.memcache = memcache
@@ -76,24 +86,23 @@ class CertificatesManagerWithCache(CertificatesManager):
         shared memcache. If it's not in the the memcache, download it and store
         it both in memory and in the memcache.
         """
-        try:
-            # Use a cached key if available.
+        if self.memory and hostname in self.memory:
             return self.memory[hostname]
-        except KeyError:
+        else:
             # try to get the key from memcache if it doesn't exist in memory
-                try:
-                    # supposely the memcache lookup failed
-                    raise KeyError()
-                    key = self.memcache.get(hostname)
+            if self.memcache and hostname in self.memcache:
+                key = self.memcache.get(hostname)
+                self.memory[hostname] = key
+                return key
+            else:
+                # it doesn't exist in memcache either, so let's get it from
+                # the issuer host.
+                key = self.fetch_public_key(hostname)
+                if self.memcache is not False:
+                    self.memcache[hostname] = key
+                if self.memory is not False:
                     self.memory[hostname] = key
-                    return key
-                except KeyError:
-                    # it doesn't exist in memcache either, so let's get it from
-                    # the issuer host.
-                    key = self.fetch_public_key(hostname)
-                    #self.memcache.set(hostname, key)
-                    self.memory[hostname] = key
-                    return key
+                return key
 
 
 def get_crypto_obj(algo, filename=None, key=None):
