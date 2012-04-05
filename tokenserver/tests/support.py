@@ -5,10 +5,12 @@ import time
 import os
 
 from browserid.verifiers.local import LocalVerifier
-from browserid.tests.support import make_assertion, get_keypair
+from browserid.tests.support import (make_assertion, get_keypair,
+                                     patched_key_fetching)
 
 from powerhose.job import Job
 from tokenserver.crypto.master import PowerHoseRunner
+from tokenserver.crypto.pyworker import CryptoWorker
 
 try:
     import ldap
@@ -117,6 +119,16 @@ class PurePythonRunner(PowerHoseRunner):
             return self.runner(Job(job))
 
         setattr(self, 'execute', patched_runner)
+
+
+class MockCryptoWorker(CryptoWorker):
+    """Test implementation of the crypto worker, using the patched certificate
+    handling.
+    """
+    def check_signature(self, *args, **kwargs):
+        with patched_key_fetching():
+            return super(MockCryptoWorker, self)\
+                    .check_signature(*args, **kwargs)
 
 
 def get_assertion(email, audience='*', issuer='browserid.org',
