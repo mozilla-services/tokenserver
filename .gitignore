@@ -6,4 +6,5 @@ man
 tokenserver.egg-info
 .Python
 loadtest/*.xml*
+loadtest/assertions.py
 loadtest/html

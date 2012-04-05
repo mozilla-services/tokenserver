@@ -3,14 +3,13 @@
 build:
 	virtualenv --no-site-packages --distribute .
 	bin/easy_install funkload
-	cd ..
-	loadtest/bin/python setup.py develop
+	../bin/python generate_assertions.py
 
 test:
-	bin/fl-run-test simple.py
+	bin/fl-run-test loadtest.py
 
 bench:
-	bin/fl-run-bench simple.py SimpleTest.test_simple
+	bin/fl-run-bench loadtest.py NodeAssignmentTest
 
 report:
 	bin/fl-build-report --html -o html simple-bench.xml

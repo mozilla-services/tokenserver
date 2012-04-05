@@ -122,3 +122,17 @@ class TestPowerService(unittest.TestCase):
                                         bad_issuer_cert=True)
         headers = {'Authorization': 'Browser-ID %s' % wrong_assertion}
         res = self.app.get(TOKEN_URI, headers=headers, status=401)
+
+        # test the different cases of bad assertions.
+        assertion = get_assertion('alexis@loadtest.local',
+                                  bad_issuer_cert=True)
+        headers = {'Authorization': 'Browser-ID %s' % assertion}
+        res = self.app.get(TOKEN_URI, headers=headers, status=401)
+
+        assertion = get_assertion('alexis@mozilla.com',
+                                   issuer='loadtest.local')
+        res = self.app.get(TOKEN_URI, headers=headers, status=401)
+
+        assertion = get_assertion('alexis@mozilla.com',
+                                exp=int(time.time() - 60) * 1000)
+        res = self.app.get(TOKEN_URI, headers=headers, status=401)
