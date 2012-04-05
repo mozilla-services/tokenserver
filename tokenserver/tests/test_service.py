@@ -26,7 +26,7 @@ class TestService(unittest.TestCase):
 
     def get_ini(self):
         return os.path.join(os.path.dirname(__file__),
-                            'test_fixednode.ini')
+                            'test_powerhose.ini')
 
     def setUp(self):
         self.config = testing.setUp()
