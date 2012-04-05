@@ -1,3 +1,4 @@
+import os
 import json
 import sys
 import traceback
@@ -14,6 +15,19 @@ from browserid.tests.support import fetch_public_key
 
 from M2Crypto import BIO
 import pylibmc
+
+
+class MemcacheClient(pylibmc.Client):
+
+    def __init__(self, *args, **kwargs):
+        self.ttl = kwargs.pop('ttl', 0)
+        super(MemcacheClient, self).__init__(*args, **kwargs)
+
+    def set(self, key, value, time=None, *args, **kwargs):
+        if time is None:
+            time = self.ttl
+        return super(MemcacheClient, self).set(str(key), value, time, *args,
+                                               **kwargs)
 
 
 class ExpiredValue(KeyError):
@@ -63,14 +77,15 @@ class CertificatesManagerWithCache(CertificatesManager):
 
         setting :param memory: or :param memcache: to False will cause the
         certificates manager to not use them
+
+        :param memory: the dict to use for in-memory cache
+        :param memcache: the memcache instance, already configured.
         """
         if memory is None:
             memory = TTLedDict(60 * 10)  # TTL of 10 minutes for the certs
 
         if memcache is None:
             memcache = False
-        else:
-            memcache = pylibmc.Client((memcache, ))
 
         self.memory = memory
         self.memcache = memcache
@@ -86,6 +101,7 @@ class CertificatesManagerWithCache(CertificatesManager):
         shared memcache. If it's not in the the memcache, download it and store
         it both in memory and in the memcache.
         """
+        hostname = str(hostname)
         if self.memory and hostname in self.memory:
             return self.memory[hostname]
         else:
@@ -130,11 +146,33 @@ def get_certificate(algo, filename=None, key=None):
     return cls(obj=obj)
 
 
+def get_certificate_manager(loadtest_mode=False):
+    """look at the environment variables and return an appropritatly configured
+    certificate manager.
+    """
+    mc_host = os.environ.get('MEMCACHE_HOST', None)
+    if mc_host is not None:
+        mc_ttl = os.environ.get('MEMCACHE_TTL', 60 * 30)
+        memcache = MemcacheClient((mc_host,), ttl=mc_ttl)
+    else:
+        memcache = False
+
+    mem_ttl = os.environ.get('MEMORY_TTL', 60 * 10)
+    memory = TTLedDict(ttl=mem_ttl)
+
+    return CertificatesManagerWithCache(
+        loadtest_mode=loadtest_mode,
+        memory=memory,
+        memcache=memcache)
+
+
 class CryptoWorker(object):
 
-    def __init__(self, loadtest_mode=False):
+    def __init__(self, loadtest_mode=False, certs=None):
         logger.info('starting a crypto worker')
-        self.certs = CertificatesManagerWithCache(loadtest_mode=loadtest_mode)
+        if certs is None:
+            certs = get_certificate_manager(loadtest_mode=loadtest_mode)
+        self.certs = certs
 
     def __call__(self, job):
         """proxy to the functions exposed by the worker"""

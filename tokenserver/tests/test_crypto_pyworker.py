@@ -1,7 +1,8 @@
 from unittest import TestCase
 import time
 
-from tokenserver.crypto.pyworker import CryptoWorker, TTLedDict, ExpiredValue
+from tokenserver.crypto.pyworker import (CryptoWorker, TTLedDict, ExpiredValue,
+                                         CertificatesManagerWithCache)
 from tokenserver.tests.mockworker import MockCryptoWorker
 from tokenserver.tests.support import (
     sign_data,
@@ -76,7 +77,6 @@ class TestPythonCryptoWorker(TestCase):
 class TestTTledDict(TestCase):
 
     def test_ttled_dict(self):
-
         # setup a dict with an expiration of 100ms.
         cache = TTLedDict(1)
         # asking for something not defined raises an exception
