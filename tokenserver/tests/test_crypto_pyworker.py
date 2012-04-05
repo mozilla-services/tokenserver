@@ -6,7 +6,8 @@ from tokenserver.crypto.pyworker import (CryptoWorker, TTLedDict, ExpiredValue,
 from tokenserver.tests.mockworker import MockCryptoWorker
 from tokenserver.tests.support import (
     sign_data,
-    PurePythonRunner
+    PurePythonRunner,
+    patched_environ
 )
 from browserid.tests.support import patched_key_fetching
 
@@ -14,8 +15,9 @@ from browserid.tests.support import patched_key_fetching
 class TestPythonCryptoWorker(TestCase):
 
     def setUp(self):
-        self.worker = CryptoWorker()
-        self.runner = PurePythonRunner(self.worker)
+        with patched_environ():
+            self.worker = CryptoWorker()
+            self.runner = PurePythonRunner(self.worker)
 
     def test_check_signature(self):
         hostname = 'browserid.org'
@@ -28,8 +30,9 @@ class TestPythonCryptoWorker(TestCase):
         self.assertTrue(result)
 
     def test_the_crypto_tester(self):
-        self.worker = MockCryptoWorker()
-        self.runner = PurePythonRunner(self.worker)
+        with patched_environ():
+            self.worker = MockCryptoWorker()
+            self.runner = PurePythonRunner(self.worker)
 
         hostname = 'browserid.org'
         data = 'NOBODY EXPECTS THE SPANISH INQUISITION!'
@@ -56,8 +59,9 @@ class TestPythonCryptoWorker(TestCase):
     def test_loadtest_mode(self):
         # when in loadtest mode, the crypto worker should be able to verify
         # signatures issued by loadtest.local
-        self.worker = CryptoWorker(loadtest_mode=True)
-        self.runner = PurePythonRunner(self.worker)
+        with patched_environ():
+            self.worker = CryptoWorker(loadtest_mode=True)
+            self.runner = PurePythonRunner(self.worker)
         hostname = 'loadtest.local'
         data = "All your base are belong to us."
 

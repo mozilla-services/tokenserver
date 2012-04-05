@@ -22,7 +22,8 @@ from tokenserver.tests.mockworker import MockCryptoWorker
 from tokenserver.crypto.pyworker import CryptoWorker
 from tokenserver.tests.support import (
     PurePythonRunner,
-    get_assertion
+    get_assertion,
+    patched_environ,
 )
 
 from browserid.errors import InvalidSignatureError
@@ -36,23 +37,26 @@ class TestPowerHoseVerifier(unittest.TestCase):
 
     def test_assertion_verification(self):
         # giving a valid assertion should return True
-        worker = MockCryptoWorker()
-        verifier = PowerHoseVerifier(runner=PurePythonRunner(worker),
-                                     audiences=('*',))
-        self.assertTrue(verifier.verify(get_assertion(DEFAULT_EMAIL)))
+        with patched_environ():
+            worker = MockCryptoWorker()
+            verifier = PowerHoseVerifier(runner=PurePythonRunner(worker),
+                                         audiences=('*',))
+            self.assertTrue(verifier.verify(get_assertion(DEFAULT_EMAIL)))
 
-        # An assertion not signed with the root issuer certificate should fail.
+            # An assertion not signed with the root issuer certificate should
+            # fail.
 
-        self.assertRaises(InvalidSignatureError, verifier.verify,
-                get_assertion(DEFAULT_EMAIL, bad_issuer_cert=True))
+            self.assertRaises(InvalidSignatureError, verifier.verify,
+                    get_assertion(DEFAULT_EMAIL, bad_issuer_cert=True))
 
     def test_loadtest_mode(self):
-        worker = CryptoWorker(loadtest_mode=True)
-        verifier = PowerHoseVerifier(runner=PurePythonRunner(worker),
-                                     audiences=('*',))
-        result = verifier.verify(get_assertion('alexis@loadtest.local',
-                                               issuer='loadtest.local'))
-        self.assertTrue(result)
+        with patched_environ():
+            worker = CryptoWorker(loadtest_mode=True)
+            verifier = PowerHoseVerifier(runner=PurePythonRunner(worker),
+                                         audiences=('*',))
+            result = verifier.verify(get_assertion('alexis@loadtest.local',
+                                                   issuer='loadtest.local'))
+            self.assertTrue(result)
 
 
 class TestPowerService(unittest.TestCase):
@@ -77,7 +81,6 @@ class TestPowerService(unittest.TestCase):
         cls.cluster = get_cluster('tokenserver.tests.mockworker.crypto_worker',
                                   numprocesses=1, background=True, debug=True)
         cls.cluster.start()
-        time.sleep(0.5)
 
     @classmethod
     def tearDownClass(cls):
@@ -87,7 +90,6 @@ class TestPowerService(unittest.TestCase):
         wsgiapp = TestPowerService.config.make_wsgi_app()
         wsgiapp = CatchErrors(wsgiapp)
         self.app = TestApp(wsgiapp)
-        time.sleep(1.)
 
     def _test_valid_app(self):
         assertion = get_assertion(DEFAULT_EMAIL)

@@ -3,6 +3,7 @@ import json
 import random
 import time
 import os
+from contextlib import contextmanager
 
 from browserid.verifiers.local import LocalVerifier
 from browserid.tests.support import (make_assertion, get_keypair,
@@ -121,10 +122,20 @@ class PurePythonRunner(PowerHoseRunner):
         setattr(self, 'execute', patched_runner)
 
 
+@contextmanager
+def patched_environ():
+    os.environ['MEMORY_TTL'] = '3600'
+    yield
+    del os.environ['MEMORY_TTL']
+
+
 class MockCryptoWorker(CryptoWorker):
     """Test implementation of the crypto worker, using the patched certificate
     handling.
     """
+    def __init__(self, *args, **kwargs):
+        super(MockCryptoWorker, self).__init__(*args, **kwargs)
+
     def check_signature(self, *args, **kwargs):
         with patched_key_fetching():
             return super(MockCryptoWorker, self)\

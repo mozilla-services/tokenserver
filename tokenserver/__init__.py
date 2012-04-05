@@ -2,6 +2,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 import logging
+import os
 from ConfigParser import NoSectionError
 from collections import defaultdict
 
@@ -19,9 +20,14 @@ def includeme(config):
     config.include("cornice")
     config.include("mozsvc")
     config.scan("tokenserver.views")
+    settings = config.registry.settings
 
     # initializes the assignment backend
     load_and_register("tokenserver", config)
+
+    for key, value in [(s.split('.')[2], settings[s]) for s in settings\
+                       if s.startswith('powerhose.worker')]:
+        os.environ[key.upper()] = str(value)
 
     # initialize the powerhose and browserid backends if they exist
     for section in ("powerhose", "browserid"):
@@ -31,7 +37,6 @@ def includeme(config):
             pass
 
     # load apps and set them up back in the setting
-    settings = config.registry.settings
     key = 'tokenserver.applications'
     applications = defaultdict(list)
     for element in settings.get(key, '').split(','):

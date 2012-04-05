@@ -149,12 +149,12 @@ def get_certificate_manager(loadtest_mode=False):
     """
     mc_host = os.environ.get('MEMCACHE_HOST', None)
     if mc_host is not None:
-        mc_ttl = os.environ.get('MEMCACHE_TTL', 60 * 30)
+        mc_ttl = int(os.environ['MEMCACHE_TTL'])
         memcache = MemcacheClient((mc_host,), ttl=mc_ttl)
     else:
         memcache = False
 
-    mem_ttl = os.environ.get('MEMORY_TTL', 60 * 10)
+    mem_ttl = int(os.environ['MEMORY_TTL'])
     memory = TTLedDict(ttl=mem_ttl)
 
     return CertificatesManagerWithCache(
@@ -203,29 +203,28 @@ class CryptoWorker(object):
 
     def check_signature(self, hostname, signed_data, signature, algorithm):
         try:
-            try:
-                data = self.certs[hostname]
-            except KeyError:
-                self.error('unknown hostname "%s"' % hostname)
+            data = self.certs[hostname]
+        except KeyError:
+            self.error('unknown hostname "%s"' % hostname)
 
-            cert = jwt.load_key(algorithm, data)
-            return cert.verify(signed_data, signature)
-        except:
-            self.error('could not check sig for host %r' % hostname)
-            raise
+        cert = jwt.load_key(algorithm, data)
+        return cert.verify(signed_data, signature)
 
     def check_signature_with_cert(self, cert, signed_data, signature,
                                   algorithm):
-        try:
-            data = json.loads(cert)
-            cert = jwt.load_key(algorithm, data)
-            return cert.verify(signed_data, signature)
-        except:
-            self.error('could not check sig')
-            raise
+        data = json.loads(cert)
+        cert = jwt.load_key(algorithm, data)
+        return cert.verify(signed_data, signature)
 
     def derivate_key(self):
         pass
 
 
-crypto_worker = CryptoWorker()
+_class = None
+
+
+def crypto_worker(job):
+    global _class
+    if _class is None:
+        _class = CryptoWorker()
+    return _class(job)
