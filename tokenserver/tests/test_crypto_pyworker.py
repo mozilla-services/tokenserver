@@ -100,3 +100,24 @@ class TestTTledDict(TestCase):
         cache.set_ttl('bar', 0)
         time.sleep(1)
         self.assertEquals(cache['bar'], 'baz')
+
+
+class TestCertificatesManager(TestCase):
+
+    def test_without_memory_nor_memcache(self):
+        # this should make a request each time
+        with patched_key_fetching():
+            cm = CertificatesManagerWithCache(memory=False, memcache=False)
+            self.assertFalse(cm.memory)
+            self.assertFalse(cm.memcache)
+            cm['browserid.org']
+
+    def test_memory(self):
+        with patched_key_fetching():
+            cm = CertificatesManagerWithCache(memcache=False)
+            self.assertFalse(cm.memcache)
+            self.assertEquals(len(cm.memory), 0)
+
+            # getting something should populate the memory
+            cm['browserid.org']
+            self.assertEquals(len(cm.memory), 1)

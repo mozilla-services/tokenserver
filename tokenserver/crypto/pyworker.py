@@ -34,7 +34,7 @@ class ExpiredValue(KeyError):
     pass
 
 
-class TTLedDict(object):
+class TTLedDict(dict):
     """A simple TTLed in memory cache.
 
     :param ttl: the time-to-leave for records, in seconds.
@@ -44,28 +44,25 @@ class TTLedDict(object):
                 A ttl of 0 means the record never expires.
     """
 
-    def __init__(self, ttl, storage=None):
-        if storage is None:
-            storage = {}
-
+    def __init__(self, ttl):
         self.ttl = ttl
-        self._storage = storage
+        super(TTLedDict, self).__init__()
 
     def __setitem__(self, key, value):
-        self._storage[key] = time.time(), value
+        return super(TTLedDict, self).__setitem__(key, (time.time(), value))
 
     def __getitem__(self, key):
-        insert_date, value = self._storage[key]
+        insert_date, value = super(TTLedDict, self).__getitem__(key)
         if insert_date != 0 and insert_date + self.ttl < time.time():
             # if the ttl is expired, remove the key from the cache and return a
             # key error
-            del self._storage[key]
+            del self[key]
             raise ExpiredValue(key)
         return value
 
     def set_ttl(self, key, ttl):
-        _, value = self._storage[key]
-        self._storage[key] = ttl, value
+        _, value = super(TTLedDict, self).__getitem__(key)
+        super(TTLedDict, self).__setitem__(key, (ttl, value))
 
 
 class CertificatesManagerWithCache(CertificatesManager):
