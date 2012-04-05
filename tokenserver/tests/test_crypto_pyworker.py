@@ -1,15 +1,20 @@
-from unittest import TestCase
+import json
 import time
+from unittest import TestCase
 
-from tokenserver.crypto.pyworker import (CryptoWorker, TTLedDict, ExpiredValue,
-                                         CertificatesManagerWithCache)
 from tokenserver.tests.mockworker import MockCryptoWorker
+from browserid.tests.support import patched_key_fetching, fetch_public_key
+from tokenserver.crypto.pyworker import (
+    CryptoWorker,
+    TTLedDict,
+    ExpiredValue,
+    CertificatesManagerWithCache
+)
 from tokenserver.tests.support import (
     sign_data,
     PurePythonRunner,
-    patched_environ
+    patched_environ,
 )
-from browserid.tests.support import patched_key_fetching
 
 
 class TestPythonCryptoWorker(TestCase):
@@ -45,14 +50,12 @@ class TestPythonCryptoWorker(TestCase):
     def test_check_signature_with_key(self):
         hostname = 'browserid.org'
         data = 'NOBODY EXPECTS THE SPANISH INQUISITION!'
-        return
-        # Not implemented yet.
 
         sig = sign_data(hostname, data)
-        #cert = get_public_cert(hostname)
+        cert = json.dumps(fetch_public_key(hostname))
 
         result = self.runner.check_signature_with_cert(cert=cert,
-                signed_data=data, signature=sig, algorithm='RS256')
+                signed_data=data, signature=sig, algorithm='DS128')
 
         self.assertTrue(result)
 
