@@ -1,22 +1,20 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
-from webtest import TestApp
 import unittest
-import json
 import os
-from pyramid import testing
 
-from browserid.tests.support import (
-    patched_urlopen,
-    fetch_public_key,
-    make_assertion
-)
+from webtest import TestApp
+from pyramid import testing
 
 from cornice.tests import CatchErrors
 from mozsvc.config import load_into_settings
 from mozsvc.plugin import load_and_register
 from tokenserver.assignment import INodeAssignment
+from browserid.tests.support import (
+    make_assertion,
+    patched_key_fetching
+)
 
 
 here = os.path.dirname(__file__)
@@ -40,15 +38,7 @@ class TestService(unittest.TestCase):
         wsgiapp = CatchErrors(wsgiapp)
         self.app = TestApp(wsgiapp)
 
-        def urlopen(url, data): # NOQA
-            class response(object):
-                @staticmethod
-                def read():
-                    key = fetch_public_key("browserid.org")
-                    return json.dumps({"public-key": key})
-            return response
-
-        self.patched = patched_urlopen(urlopen)
+        self.patched = patched_key_fetching()
         self.patched.__enter__()
 
     def tearDown(self):
