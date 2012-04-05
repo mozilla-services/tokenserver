@@ -5,7 +5,7 @@ import os
 from zope.interface import implements, Interface
 from pyramid.threadlocal import get_current_registry
 
-from powerhose.client import Client
+from powerhose.client import Pool
 from google.protobuf.message import DecodeError
 
 from tokenserver.crypto.messages import (
@@ -68,15 +68,10 @@ class PowerHoseRunner(object):
     def __init__(self, endpoint, **kw):
         pid = str(os.getpid())
         self.endpoint = endpoint.replace('$PID', pid)
-        self._phose = {}
+        self.pool = Pool(int(kw.get('pool_size', 5)), self.endpoint)
 
     def execute(self, data):
-        id = thread.get_ident()
-        if id not in self._phose:
-            # one client per
-            self._phose[id] = Client(self.endpoint)
-
-        return self._phose[id].execute(data)
+        return self.pool.execute(data)
 
     def __getattr__(self, attr):
         """magic method getter to be able to do direct function calls on this

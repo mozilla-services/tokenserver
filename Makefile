@@ -1,5 +1,5 @@
 APPNAME = tokenserver
-DEPS = https://github.com/mozilla-services/powerhose,https://github.com/mozilla-services/wimms,https://github.com/mozilla-services/mozservices,https://github.com/mozilla-services/tokenlib,https://github.com/mozilla-services/circus
+DEPS = https://github.com/mozilla-services/powerhose,https://github.com/mozilla-services/wimms,https://github.com/mozilla-services/mozservices,https://github.com/mozilla-services/tokenlib
 VIRTUALENV = virtualenv
 PYTHON = $(CURDIR)/bin/python
 NOSE = bin/nosetests -s --with-xunit
@@ -69,6 +69,7 @@ build:
 	bin/pip install https://github.com/mozilla/PyBrowserID/zipball/master
 	cd ${BUILD_TMP} && wget https://github.com/tarekziade/gevent-zeromq/zipball/master
 	cd ${BUILD_TMP} && unzip master; cd tarekziade-gevent-*; $(PYTHON) setup.py install
+	bin/pip install circus
 	$(BUILDAPP) -t $(TIMEOUT) -c $(CHANNEL) $(PYPIOPTIONS) $(DEPS)
 
 build_no_crypto:
