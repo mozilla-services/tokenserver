@@ -120,7 +120,7 @@ class PurePythonRunner(PowerHoseRunner):
 
 
 def get_assertion(email, audience='*', issuer='browserid.org',
-        bad_issuer_cert=False, bad_email_cert=False):
+        bad_issuer_cert=False, bad_email_cert=False, exp=None):
     """Creates a browserid assertion for the given email, audience and
     hostname.
 
@@ -128,7 +128,7 @@ def get_assertion(email, audience='*', issuer='browserid.org',
     the case if you set the bad_issuer_cert or the bad_email cert arguments to
     True.
     """
-    kwargs = {}
+    kwargs = {'exp': exp}
     if bad_issuer_cert:
         kwargs['issuer_keypair'] =\
                 get_keypair(hostname="not-the-right-host.com")
