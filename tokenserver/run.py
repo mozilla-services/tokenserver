@@ -23,4 +23,5 @@ except NoSectionError:
 
 # running the app using Paste
 from paste.deploy import loadapp
+
 application = loadapp('config:%s' % ini_file)
