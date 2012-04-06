@@ -25,7 +25,7 @@ class MemcacheClient(pylibmc.Client):
 
     def set(self, key, value, time=None, *args, **kwargs):
         if time is None:
-            time = self.ttl
+            time = self.ttl     # NOQA
         return super(MemcacheClient, self).set(str(key), value, time, *args,
                                                **kwargs)
 

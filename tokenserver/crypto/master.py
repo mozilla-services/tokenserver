@@ -1,5 +1,4 @@
 import functools
-import thread
 import os
 
 from zope.interface import implements, Interface

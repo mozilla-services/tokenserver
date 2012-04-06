@@ -43,18 +43,18 @@ class TestPythonCryptoWorker(TestCase):
         self.assertTrue(result)
 
     def test_check_signature_with_key(self):
-        hostname = 'browserid.org'
-        data = 'NOBODY EXPECTS THE SPANISH INQUISITION!'
+        #hostname = 'browserid.org'
+        #data = 'NOBODY EXPECTS THE SPANISH INQUISITION!'
         return
         # Not implemented yet.
 
-        sig = sign_data(hostname, data)
+        #sig = sign_data(hostname, data)
         #cert = get_public_cert(hostname)
 
-        result = self.runner.check_signature_with_cert(cert=cert,
-                signed_data=data, signature=sig, algorithm='RS256')
+        #result = self.runner.check_signature_with_cert(cert=cert,
+        #        signed_data=data, signature=sig, algorithm='RS256')
 
-        self.assertTrue(result)
+        #self.assertTrue(result)
 
     def test_loadtest_mode(self):
         # when in loadtest mode, the crypto worker should be able to verify
