@@ -77,8 +77,38 @@ class TestPythonCryptoWorker(TestCase):
         self.assertTrue(result)
 
     def test_key_derivation(self):
+        # derivating the key twice with the same parameters should return the
+        # same key.
+        with patched_environ():
+            self.worker = CryptoWorker()
+            self.runner = PurePythonRunner(self.worker)
+
+        # taken from the tokenlib
+        hashmod = "sha256"
+        IKM = "0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b"
+        salt = "000102030405060708090a0b0c"
+        info = "f0f1f2f3f4f5f6f7f8f9"
+        L = 42
+        OKM = "3cb25f25faacd57a90434f64d0362f2a"\
+              "2d2d0a90cf1a5a4c5db02d56ecc4c5bf"\
+              "34007208d5b887185865"
+        result = self.runner.derivate_key(ikm=IKM, salt=salt, info=info,
+                                          l=L, hashmod=hashmod)
+        self.assertEquals(result, OKM)
         return
-        # result = self.call_worker('derivate_key')
+
+        hashmod = 'sha1'
+        IKM = "0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c".decode("hex")
+        salt = None
+        info = ""
+        L = 42
+        OKM = "2c91117204d745f3500d636a62f64f0a".decode("hex") +\
+              "b3bae548aa53d423b0d1f27ebba6f5e5".decode("hex") +\
+              "673a081d70cce7acfc48".decode("hex")
+
+        result = self.runner.derivate_key(ikm=IKM, salt=salt, info=info,
+                                          l=L, hashmod=hashmod)
+        self.assertEquals(result, OKM)
 
 
 class TestTTledDict(TestCase):

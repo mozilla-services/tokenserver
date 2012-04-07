@@ -5,13 +5,16 @@ import traceback
 import time
 
 from tokenserver import logger
-from tokenserver.crypto.master import Response, PROTOBUF_CLASSES
+from tokenserver.crypto.master import PROTOBUF_CLASSES
 
 from browserid._m2_monkeypatch import DSA as _DSA
 from browserid._m2_monkeypatch import RSA as _RSA
 from browserid import jwt
 from browserid.certificates import CertificatesManager
 from browserid.tests.support import fetch_public_key
+
+from tokenlib.utils import HKDF
+import hashlib
 
 from M2Crypto import BIO
 import pylibmc
@@ -174,10 +177,11 @@ class CryptoWorker(object):
     def __call__(self, job):
         """proxy to the functions exposed by the worker"""
         logger.info('worker called with the message %s' % job)
+        function_id, serialized_data = job.data.split('::', 1)
+        req_cls, resp_cls = PROTOBUF_CLASSES[function_id]
+        obj = req_cls()
         try:
             try:
-                function_id, serialized_data = job.data.split('::', 1)
-                obj = PROTOBUF_CLASSES[function_id]()
                 obj.ParseFromString(serialized_data)
                 data = {}
                 for field, value in obj.ListFields():
@@ -190,12 +194,12 @@ class CryptoWorker(object):
                 raise ValueError('the function does not exists')
 
             res = getattr(self, function_id)(**data)
-            return Response(value=res).SerializeToString()
+            return resp_cls(value=res).SerializeToString()
         except Exception as e:
             exc_type, exc_value, exc_traceback = sys.exc_info()
             exc = traceback.format_tb(exc_traceback)
             exc.insert(0, str(e))
-            return Response(error='\n'.join(exc)).SerializeToString()
+            return resp_cls(error='\n'.join(exc)).SerializeToString()
 
     def error(self, message):
         """returns an error message"""
@@ -216,8 +220,11 @@ class CryptoWorker(object):
         cert = jwt.load_key(algorithm, data)
         return cert.verify(signed_data, signature)
 
-    def derivate_key(self):
-        pass
+    def derivate_key(self, ikm, salt, info, l, hashmod):
+        hashmod = getattr(hashlib, hashmod)
+        derivated = HKDF(ikm.decode("hex"), salt.decode("hex"),
+                         info.decode("hex"), l, hashmod)
+        return derivated.encode("hex")
 
 
 _class = None
