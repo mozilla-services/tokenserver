@@ -175,27 +175,21 @@ class CryptoWorker(object):
         """proxy to the functions exposed by the worker"""
         logger.info('worker called with the message %s' % job)
         try:
-            try:
-                function_id, serialized_data = job.data.split('::', 1)
-                obj = PROTOBUF_CLASSES[function_id]()
-                obj.ParseFromString(serialized_data)
-                data = {}
-                for field, value in obj.ListFields():
-                    data[field.name] = value
+            function_id, serialized_data = job.data.split('::', 1)
+            obj = PROTOBUF_CLASSES[function_id]()
+            obj.ParseFromString(serialized_data)
+            data = {}
+            for field, value in obj.ListFields():
+                data[field.name] = value
 
-            except ValueError:
-                raise ValueError('could not parse data')
+        except ValueError:
+            raise ValueError('could not parse data')
 
-            if not hasattr(self, function_id):
-                raise ValueError('the function does not exists')
+        if not hasattr(self, function_id):
+            raise ValueError('the function does not exists')
 
-            res = getattr(self, function_id)(**data)
-            return Response(value=res).SerializeToString()
-        except Exception as e:
-            exc_type, exc_value, exc_traceback = sys.exc_info()
-            exc = traceback.format_tb(exc_traceback)
-            exc.insert(0, str(e))
-            return Response(error='\n'.join(exc)).SerializeToString()
+        res = getattr(self, function_id)(**data)
+        return Response(value=res).SerializeToString()
 
     def error(self, message):
         """returns an error message"""
