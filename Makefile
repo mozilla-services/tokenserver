@@ -68,6 +68,7 @@ build:
 	bin/pip install https://bitbucket.org/tarek/gevent/get/48b7c5262cca.tar.gz
 	bin/pip install https://github.com/mozilla/PyBrowserID/zipball/master
 	cd ${BUILD_TMP} && wget https://github.com/tarekziade/gevent-zeromq/zipball/master
+	rm -rf ${BUILD_TMP}/tarekziade-gevent-*
 	cd ${BUILD_TMP} && unzip master; cd tarekziade-gevent-*; $(PYTHON) setup.py install
 	bin/pip install circus
 	$(BUILDAPP) -t $(TIMEOUT) -c $(CHANNEL) $(PYPIOPTIONS) $(DEPS)
@@ -82,6 +83,7 @@ build_no_crypto:
 	$(INSTALL) https://github.com/mozilla/PyBrowserID/zipball/master
 	mkdir -p ${BUILD_TMP}
 	cd ${BUILD_TMP} && wget https://github.com/tarekziade/gevent-zeromq/zipball/master --no-check-certificate
+	rm -rf ${BUILD_TMP}/tarekziade-gevent-*
 	cd ${BUILD_TMP} && unzip master; cd tarekziade-gevent-*; $(PYTHON) setup.py install
 	$(BUILDAPP) -t $(TIMEOUT) -c $(CHANNEL) $(PYPIOPTIONS) $(DEPS)
 
@@ -112,6 +114,10 @@ build_rpms2:
 	cd ${BUILD_TMP} && wget $(PYPI2)/source/M/M2Crypto/M2Crypto-0.21.1.tar.gz#md5=f93d8462ff7646397a9f77a2fe602d17
 	cd ${BUILD_TMP} && tar -xzvf M2Crypto-0.21.1.tar.gz && cd M2Crypto-0.21.1 && sed -i -e 's/opensslconf\./opensslconf-x86_64\./' SWIG/_ec.i && sed -i -e 's/opensslconf\./opensslconf-x86_64\./' SWIG/_evp.i && SWIG_FEATURES=-cpperraswarn $(PYTHON) setup.py --command-packages=pypi2rpm.command bdist_rpm2 --binary-only --dist-dir=$(RPMDIR) --name=python26-m2crypto
 	rm -rf ${BUILD_TMP}/M2Crypto*
+	wget -O $(BUILD_TMP)/certifi-0.0.8.tar.gz http://pypi.python.org/packages/source/c/certifi/certifi-0.0.8.tar.gz
+	cd $(BUILD_TMP) && tar xzf certifi-0.0.8.tar.gz
+	echo 'include README.rst' >> $(BUILD_TMP)/certifi-0.0.8/MANIFEST.in
+	$(PYPI2RPM) --dist-dir=$(RPMDIR) $(BUILD_TMP)/certifi-0.0.8
 
 mock: build build_rpms
 	mock init
