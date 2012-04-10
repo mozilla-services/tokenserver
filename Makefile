@@ -128,7 +128,7 @@ mock: build build_rpms
 	mock --chroot "python2.6 -m tokenserver.run"
 
 protobuf:
-	cd tokenserver/crypto && protoc messages.pb --python_out=. && mv messages/pb_pb2.py messages.py && rm -rf messages
+	cd tokenserver/crypto && protoc messages.pb --python_out=. && echo "# flake8: noqa" > messages.py && cat messages/pb_pb2.py >> messages.py && rm -rf messages
 
 
 clean:
