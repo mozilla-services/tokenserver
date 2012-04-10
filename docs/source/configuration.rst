@@ -104,6 +104,20 @@ endpoint
     the value is the pattern. When this section is not provided, and an SQL
     backend is provided, fall backs to using the patterns table in the SQL DB.
 
+    Patterns are used to find the api endpoint for a given user for a given service.
+
+    For example, *aitc-1.0 = {node}/1.0/{uid}* means that the api end point for the
+    user of id **1** for the aitc service will be something like:
+
+    http://some.node/1.0/1
+
+    Variables that gets replaced:
+
+    - node: the service node root url
+    - uid: the user id for that service
+    - service: the service name (name+version)
+
+
 browserid
 ~~~~~~~~~
      **backend**
