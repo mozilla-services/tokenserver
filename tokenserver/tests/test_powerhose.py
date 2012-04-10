@@ -11,7 +11,7 @@ from ConfigParser import NoSectionError
 
 from cornice.tests import CatchErrors
 from mozsvc.config import load_into_settings
-from mozsvc.plugin import load_and_register
+from mozsvc.plugin import load_and_register, load_from_settings
 
 from powerhose import get_cluster
 
@@ -75,6 +75,9 @@ class TestPowerService(unittest.TestCase):
             pass
         load_into_settings(cls.get_ini(), settings)
         cls.config.add_settings(settings)
+        metlog_wrapper = load_from_settings('metlog',
+                cls.config.registry.settings)
+        cls.config.registry['metlog'] = metlog_wrapper.client
         cls.config.include("tokenserver")
         load_and_register("tokenserver", cls.config)
         cls.backend = cls.config.registry.getUtility(INodeAssignment)

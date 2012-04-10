@@ -7,6 +7,7 @@ from hashlib import sha1
 import os
 
 from pyramid.httpexceptions import HTTPError
+from pyramid.threadlocal import get_current_registry
 from webob import Response
 
 from mozsvc.secrets import Secrets
@@ -71,3 +72,7 @@ def display_secrets(filename, node=None):
     else:
         for node in secrets._secrets:
             _display_node(secrets, node)
+
+
+def get_logger():
+    return get_current_registry()['metlog']

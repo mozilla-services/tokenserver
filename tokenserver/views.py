@@ -42,6 +42,8 @@ def valid_assertion(request):
     If not, add errors in the response so that the client can know what
     happened.
     """
+    metlog = request.registry['metlog']
+
     def _raise_unauthorized():
         raise JsonError(401, description='Unauthorized')
 
@@ -63,10 +65,12 @@ def valid_assertion(request):
         verifier = get_verifier()
         assertion = verifier.verify(assertion)
     except BrowserIDError:
+        metlog.incr('token.assertion.verify_failure')
         _raise_unauthorized()
 
     # everything sounds good, add the assertion to the list of validated fields
     # and continue
+    metlog.incr('token.assertion.verify_success')
     request.validated['assertion'] = assertion
 
 
