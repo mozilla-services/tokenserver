@@ -2,7 +2,6 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 import os
-import unittest
 from pyramid import testing
 import time
 
@@ -24,6 +23,7 @@ from tokenserver.tests.support import (
     PurePythonRunner,
     get_assertion,
     patched_environ,
+    unittest,
 )
 
 from browserid.errors import InvalidSignatureError

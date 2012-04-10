@@ -1,4 +1,3 @@
-from unittest2 import TestCase
 import os
 
 from pyramid import testing
@@ -8,12 +7,13 @@ from mozsvc.plugin import load_and_register
 
 from tokenserver.assignment import INodeAssignment
 from tokenserver import load_endpoints
+from tokenserver.tests.support import unittest
 
 
-class TestSQLBackend(TestCase):
+class TestSQLBackend(unittest.TestCase):
 
     def setUp(self):
-        super(TestCase, self).setUp()
+        super(TestSQLBackend, self).setUp()
 
         # get the options from the config
         self.config = testing.setUp()
