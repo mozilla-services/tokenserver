@@ -101,8 +101,7 @@ class PowerHoseVerifier(LocalVerifier):
                     signed_data=data.signed_data, signature=data.signature,
                     algorithm=data.algorithm)
 
-        valid = self.runner.check_signature(hostname=hostname,
+        return self.runner.check_signature(hostname=hostname,
                                            signed_data=data.signed_data,
                                            signature=data.signature,
                                            algorithm=data.algorithm)
-        return valid

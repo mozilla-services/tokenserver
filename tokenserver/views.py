@@ -13,6 +13,7 @@ from tokenlib import make_token, get_token_secret
 from tokenserver.util import JsonError
 from tokenserver.verifiers import get_verifier
 from tokenserver.assignment import INodeAssignment
+from powerhose.exc import ExecutionError
 
 # A GET on / returns the discovery API
 
@@ -62,7 +63,7 @@ def valid_assertion(request):
     try:
         verifier = get_verifier()
         assertion = verifier.verify(assertion)
-    except BrowserIDError:
+    except (BrowserIDError, ExecutionError):
         _raise_unauthorized()
 
     # everything sounds good, add the assertion to the list of validated fields
