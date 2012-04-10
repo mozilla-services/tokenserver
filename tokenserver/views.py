@@ -26,6 +26,9 @@ def get_service_name(application, version):
 
 @discovery.get()
 def _discovery(request):
+    """Returns a JSON file containing the list of services supported byt the
+    server"""
+
     discovery = os.path.join(os.path.dirname(__file__), 'discovery.json')
 
     with open(discovery) as f:
@@ -113,6 +116,18 @@ def pattern_exists(request):
 
 @token.get(validators=(valid_app, valid_assertion, pattern_exists))
 def return_token(request):
+    """This service does the following process:
+
+    - validates the Browser-ID assertion provided on the Authorization header
+    - allocates when necessary a node to the user for the required service
+    - returns a JSON mapping containing the following values:
+
+        - **id** -- a signed authorization token, containing the
+          user's id for hthe application and the node.
+        - **secret** -- a secret derived from the shared secret
+        - **uid** -- the user id for this servic
+        - **api_endpoint** -- the root URL for the user for the service.
+    """
     # at this stage, we are sure that the assertion, application and version
     # number were valid, so let's build the authentication token and return it.
 

@@ -1,59 +1,78 @@
 Configuration
--------------
+=============
 
-Circus can be configured using an ini-style configuration file.
+The token server comes with a main configuration file that's used to
+run it. It's located at :file:`etc/tokenserver-dev.ini` and is a
+typical Paste configuration file.
+
+Relevant sections:
+
+- tokenserver
+- endpoints
+- browserid
+- powerhose
 
 Example::
 
-    [circus]
-    check_delay = 5
-    endpoint = tcp://127.0.0.1:5555
+    [tokenserver]
+    backend = tokenserver.assignment.fixednode.DefaultNodeAssignmentBackend
+    service_entry = example.com
+    applications = sync-1.0, aitc-1.0
+    secrets_file = tokenserver/tests/secrets
 
-    [watcher:myprogram]
-    cmd = python
-    args = -u myprogram.py $WID
-    warmup_delay = 0
-    numprocesses = 5
+    [endpoints]
+    aitc-1.0 = {node}/1.0/{uid}
 
-circus (single section)
-~~~~~~~~~~~~~~~~~~~~~~~
-    **endpoint**
-        The endpoint to which the ZMQ socket will be bound.
-    **check_delay**
-        The polling interval for the ZMQ socket.
-    **include**
-        List of config files to include.
-    **include_dir**
-        List of config directories. All files matching `*.ini` under each
-        directory will be included.
+    [browserid]
+    backend = tokenserver.verifiers.LocalVerifier
+    audiences = *
+
+    [powerhose]
+    backend = tokenserver.tests.support.PowerHoseVerifier
+    worker.memory_ttl = 1800
+
+tokenserver
+~~~~~~~~~~~
+    **backend**
+        The class used to assign a node to the user.
+
+        Possible values:
+
+        - :class:`tokenserver.assignment.fixednode.DefaultNodeAssignmentBackend`
+        - :class:`tokenserver.assignment.sqlnode.SQLNodeAssignment`
+        - :class:`tokenserver.assignment.sqlnode.ShardedSQLNodeAssignment`
+        - :class:`tokenserver.assignment.sqlnode.SecuredShardedSQLNodeAssignment`
+
+        See :ref:`nodeassign` for more information.
+
+    **service_entry**
+        The node returned for all users when using :class:`DefaultNodeAssignmentBackend`
+
+    **applications**
+        The list of supported services, separated by commas. A service is composed
+        of a name and a version.
+
+    **secrets_file**
+        The path to the secrets files. Can be one to multiple files - one per line.
 
 
-watcher:NAME (as many sections as you want)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    **NAME**
-        The name of the watcher. This name is used for example in **circusctl**
-    **cmd**
-        The executable program to run.
-    **args**
-        Command-line arguments to pass to the program
-    **shell**
-        If True, the flies are run in the shell (default: False)
-    **working_dir**
-        The working dir for the processes (default: None)
-    **uid**
-        The user id used to run the flies (default: None)
-    **gid**
-        The group id used to run the flies (default: None)
-    **env**
-        The environment passed to the flies (default: None)
-    **warmup_delay**
-        The delay (in seconds) between running processes.
-    **numprocesses**
-        The number of processes to run for this watcher.
-    **rlimit_LIMIT**
-        Set resource limit LIMIT for the watched processes. The
-        config name should match the RLIMIT_* constants (not case
-        sensitive) listed in the `Python resource module reference
-        <http://docs.python.org/library/resource.html#resource-limits>`_.
-        For example, the config line 'rlimit_nofile = 500' sets the maximum
-        number of open files to 500.
+endpoint
+~~~~~~~~
+    List of patterns for the api endpoints. The variable is the application name,
+    the value is the pattern. When this section is not provided, and an SQL
+    backend is provided, fall backs to using the patterns table in the SQL DB.
+
+browserid
+~~~~~~~~~
+     **backend**
+        The class used to verify a Browser-ID assertion
+
+        Possible values:
+
+        - :class:`tokenserver.verifiers.LocalVerifier`
+        - :class:`tokenserver.verifiers.PowerHoseVerifier`
+
+        See :ref:`verifiers` for more information.
+
+    **audience**
+        A whitelist of supported audience. "*" for all
