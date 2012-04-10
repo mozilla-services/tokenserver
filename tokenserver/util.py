@@ -5,12 +5,14 @@ import json
 from base64 import b32encode
 from hashlib import sha1
 import os
+import logging
 
 from pyramid.httpexceptions import HTTPError
 from pyramid.threadlocal import get_current_registry
 from webob import Response
 
 from mozsvc.secrets import Secrets
+from metlog.client import SEVERITY
 
 
 def hash_email(email):
@@ -76,3 +78,31 @@ def display_secrets(filename, node=None):
 
 def get_logger():
     return get_current_registry()['metlog']
+
+
+class MetlogHandler(logging.Handler):
+    def __init__(self, metlog):
+        logging.Handler.__init__(self)
+        self.metlog = metlog
+
+    def emit(self, record):
+        if record.levelno == logging.DEBUG:
+            severity = SEVERITY.DEBUG
+        elif record.levelno == logging.INFO:
+            severity = SEVERITY.INFORMATIONAL
+        elif record.levelno == logging.WARNING:
+            severity = SEVERITY.WARNING
+        elif record.levelno == logging.ERROR:
+            severity = SEVERITY.ERROR
+        else:   # critical
+            severity = SEVERITY.CRITICAL
+
+        self.metlog.metlog(type='oldstyle', severity=severity,
+                    payload=record.msg)
+
+
+def hook_metlog_handler(metlog, name):
+    logger = logging.getLogger(name)
+    handler = MetlogHandler(metlog)
+    handler.setLevel(logging.DEBUG)
+    logger.addHandler(handler)
