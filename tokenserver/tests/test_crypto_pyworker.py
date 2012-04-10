@@ -1,6 +1,5 @@
 import json
 import time
-from unittest import TestCase
 
 from tokenserver.tests.mockworker import MockCryptoWorker
 from browserid.tests.support import patched_key_fetching, fetch_public_key
@@ -15,9 +14,10 @@ from tokenserver.tests.support import (
     PurePythonRunner,
     patched_environ,
 )
+from tokenserver.tests.support import unittest
 
 
-class TestPythonCryptoWorker(TestCase):
+class TestPythonCryptoWorker(unittest.TestCase):
 
     def setUp(self):
         with patched_environ():
@@ -111,7 +111,7 @@ class TestPythonCryptoWorker(TestCase):
         self.assertEquals(result, OKM)
 
 
-class TestTTledDict(TestCase):
+class TestTTledDict(unittest.TestCase):
 
     def test_ttled_dict(self):
         # setup a dict with an expiration of 100ms.
@@ -139,7 +139,7 @@ class TestTTledDict(TestCase):
         self.assertEquals(cache['bar'], 'baz')
 
 
-class TestCertificatesManager(TestCase):
+class TestCertificatesManager(unittest.TestCase):
 
     def test_without_memory_nor_memcache(self):
         # this should make a request each time

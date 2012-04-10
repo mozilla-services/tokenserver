@@ -1,4 +1,3 @@
-from unittest2 import TestCase
 import os
 
 from pyramid import testing
@@ -7,15 +6,16 @@ from mozsvc.plugin import load_and_register
 
 from tokenserver.assignment import INodeAssignment
 from tokenserver import read_endpoints
+from tokenserver.tests.support import unittest
 
 
 _SERVICE = 'sync-1.0'
 
 
-class TestShardedNode(TestCase):
+class TestShardedNode(unittest.TestCase):
 
     def setUp(self):
-        super(TestCase, self).setUp()
+        super(TestShardedNode, self).setUp()
 
         # get the options from the config
         self.config = testing.setUp()
