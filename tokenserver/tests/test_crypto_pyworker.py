@@ -1,15 +1,20 @@
-from unittest import TestCase
+import json
 import time
+from unittest import TestCase
 
-from tokenserver.crypto.pyworker import (CryptoWorker, TTLedDict, ExpiredValue,
-                                         CertificatesManagerWithCache)
 from tokenserver.tests.mockworker import MockCryptoWorker
+from browserid.tests.support import patched_key_fetching, fetch_public_key
+from tokenserver.crypto.pyworker import (
+    CryptoWorker,
+    TTLedDict,
+    ExpiredValue,
+    CertificatesManagerWithCache
+)
 from tokenserver.tests.support import (
     sign_data,
     PurePythonRunner,
-    patched_environ
+    patched_environ,
 )
-from browserid.tests.support import patched_key_fetching
 
 
 class TestPythonCryptoWorker(TestCase):
@@ -43,18 +48,16 @@ class TestPythonCryptoWorker(TestCase):
         self.assertTrue(result)
 
     def test_check_signature_with_key(self):
-        #hostname = 'browserid.org'
-        #data = 'NOBODY EXPECTS THE SPANISH INQUISITION!'
-        return
-        # Not implemented yet.
+        hostname = 'browserid.org'
+        data = 'NOBODY EXPECTS THE SPANISH INQUISITION!'
 
-        #sig = sign_data(hostname, data)
-        #cert = get_public_cert(hostname)
+        sig = sign_data(hostname, data)
+        cert = json.dumps(fetch_public_key(hostname))
 
-        #result = self.runner.check_signature_with_cert(cert=cert,
-        #        signed_data=data, signature=sig, algorithm='RS256')
+        result = self.runner.check_signature_with_cert(cert=cert,
+                signed_data=data, signature=sig, algorithm='DS128')
 
-        #self.assertTrue(result)
+        self.assertTrue(result)
 
     def test_loadtest_mode(self):
         # when in loadtest mode, the crypto worker should be able to verify
@@ -74,8 +77,38 @@ class TestPythonCryptoWorker(TestCase):
         self.assertTrue(result)
 
     def test_key_derivation(self):
+        # derivating the key twice with the same parameters should return the
+        # same key.
+        with patched_environ():
+            self.worker = CryptoWorker()
+            self.runner = PurePythonRunner(self.worker)
+
+        # taken from the tokenlib
+        hashmod = "sha256"
+        IKM = "0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b"
+        salt = "000102030405060708090a0b0c"
+        info = "f0f1f2f3f4f5f6f7f8f9"
+        L = 42
+        OKM = "3cb25f25faacd57a90434f64d0362f2a"\
+              "2d2d0a90cf1a5a4c5db02d56ecc4c5bf"\
+              "34007208d5b887185865"
+        result = self.runner.derivate_key(ikm=IKM, salt=salt, info=info,
+                                          l=L, hashmod=hashmod)
+        self.assertEquals(result, OKM)
         return
-        # result = self.call_worker('derivate_key')
+
+        hashmod = 'sha1'
+        IKM = "0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c".decode("hex")
+        salt = None
+        info = ""
+        L = 42
+        OKM = "2c91117204d745f3500d636a62f64f0a".decode("hex") +\
+              "b3bae548aa53d423b0d1f27ebba6f5e5".decode("hex") +\
+              "673a081d70cce7acfc48".decode("hex")
+
+        result = self.runner.derivate_key(ikm=IKM, salt=salt, info=info,
+                                          l=L, hashmod=hashmod)
+        self.assertEquals(result, OKM)
 
 
 class TestTTledDict(TestCase):

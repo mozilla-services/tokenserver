@@ -8,15 +8,16 @@ from powerhose.client import Pool
 from google.protobuf.message import DecodeError
 
 from tokenserver.crypto.messages import (
-    CheckSignature,
-    CheckSignatureWithCert,
-    Response
+    CheckSignature, CheckSignatureWithCert, DerivateKey,
+    Response, StringResponse
 )
 
 # association between the function names and the appropriate protobuf classes
+# we store here the asstociation of function_name -> request, response classes
 PROTOBUF_CLASSES = {
-    'check_signature': CheckSignature,
-    'check_signature_with_cert': CheckSignatureWithCert
+    'check_signature': (CheckSignature, Response),
+    'check_signature_with_cert': (CheckSignatureWithCert, Response),
+    'derivate_key': (DerivateKey, StringResponse),
 }
 
 
@@ -96,14 +97,15 @@ class PowerHoseRunner(object):
         :param function_id: the name of the function to be invoked.
         :param data: the parameters to send to the function.
         """
-        obj = PROTOBUF_CLASSES[function_id]()
+        req_cls, resp_cls = PROTOBUF_CLASSES[function_id]
+        obj = req_cls()
         for key, value in data.items():
             setattr(obj, key, value)
 
         # XXX use headers here
         data = "::".join((function_id, obj.SerializeToString()))
         serialized_resp = self.execute(data)
-        resp = Response()
+        resp = resp_cls()
         try:
             resp.ParseFromString(serialized_resp)
         except DecodeError:

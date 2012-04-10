@@ -12,6 +12,19 @@ message CheckSignatureWithCert {
     optional string algorithm = 4;
 }
 
+message DerivateKey {
+    required string ikm = 1;
+    required string salt = 2;
+    required string info = 3;
+    required int32 l = 4;
+    required string hashmod = 5;
+}
+
+message StringResponse {
+    optional string error = 1;
+    optional string value = 2;
+}
+
 message Response {
     optional string error = 1;
     optional bool value = 2;

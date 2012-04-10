@@ -127,5 +127,9 @@ mock: build build_rpms
 	mock --install rpms/*
 	mock --chroot "python2.6 -m tokenserver.run"
 
+protobuf:
+	cd tokenserver/crypto && protoc messages.pb --python_out=. && mv messages/pb_pb2.py messages.py && rm -rf messages
+
+
 clean:
 	rm -rf bin lib include local docs/build
