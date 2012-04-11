@@ -36,4 +36,3 @@ gevent
 pylibmc==1.2.2
 requests==0.11.1
 chardet==1.0.1
-unittest2
