@@ -7,9 +7,10 @@ from ConfigParser import NoSectionError
 from collections import defaultdict
 
 from tokenserver.assignment import INodeAssignment
+from tokenserver.util import hook_metlog_handler
 
 from mozsvc.config import get_configurator
-from mozsvc.plugin import load_and_register
+from mozsvc.plugin import load_and_register, load_from_settings
 from mozsvc.secrets import Secrets
 
 
@@ -21,6 +22,18 @@ def includeme(config):
     config.include("mozsvc")
     config.scan("tokenserver.views")
     settings = config.registry.settings
+
+    # default metlog setup
+    if 'metlog.backend' not in settings:
+        settings['metlog.backend'] = 'mozsvc.metrics.MetlogPlugin'
+        settings['metlog.enabled'] = True
+        settings['metlog.sender_class'] = 'metlog.senders.DebugCaptureSender'
+
+    metlog_wrapper = load_from_settings('metlog', settings)
+    for logger in ('tokenserver', 'mozsvc', 'powerhose'):
+        hook_metlog_handler(metlog_wrapper.client, logger)
+
+    config.registry['metlog'] = metlog_wrapper.client
 
     # initializes the assignment backend
     load_and_register("tokenserver", config)

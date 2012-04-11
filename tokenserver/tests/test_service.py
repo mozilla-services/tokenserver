@@ -8,7 +8,9 @@ from pyramid import testing
 
 from cornice.tests import CatchErrors
 from mozsvc.config import load_into_settings
-from mozsvc.plugin import load_and_register
+from mozsvc.plugin import load_and_register, load_from_settings
+
+from tokenserver.util import hook_metlog_handler
 from tokenserver.assignment import INodeAssignment
 from browserid.tests.support import (
     make_assertion,
@@ -31,6 +33,12 @@ class TestService(unittest.TestCase):
         settings = {}
         load_into_settings(self.get_ini(), settings)
         self.config.add_settings(settings)
+        metlog_wrapper = load_from_settings('metlog',
+                self.config.registry.settings)
+        for logger in ('tokenserver', 'mozsvc', 'powerhose'):
+            hook_metlog_handler(metlog_wrapper.client, logger)
+
+        self.config.registry['metlog'] = metlog_wrapper.client
         self.config.include("tokenserver")
         load_and_register("tokenserver", self.config)
         self.backend = self.config.registry.getUtility(INodeAssignment)

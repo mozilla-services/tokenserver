@@ -4,7 +4,7 @@ import json
 from zope.interface import implements
 
 from tokenserver.assignment import INodeAssignment
-from tokenserver import logger
+from tokenserver.util import get_logger
 
 from mozsvc.exceptions import BackendError
 from mozsvc.http_helpers import get_url
@@ -39,6 +39,7 @@ class SecuredShardedSQLNodeAssignment(ShardedSQLMetadata):
         base = super(SecuredShardedSQLNodeAssignment, self)
         base.__init__(databases, create_tables, **kw)
         self.proxy_uri = proxy_uri
+        self.logger = get_logger()
 
     def _proxy(self, method, url, data=None, headers=None):
         if data is not None:
@@ -48,7 +49,7 @@ class SecuredShardedSQLNodeAssignment(ShardedSQLMetadata):
             try:
                 body = json.loads(body)
             except ValueError:
-                logger.error("bad json body from sreg (%s): %s" %
+                self.logger.error("bad json body from sreg (%s): %s" %
                                                         (url, body))
                 raise BackendError('Bad answer from proxy')
         return status, body
