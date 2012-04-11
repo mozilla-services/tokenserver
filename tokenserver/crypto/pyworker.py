@@ -61,6 +61,14 @@ class TTLedDict(dict):
             raise ExpiredValue(key)
         return value
 
+    def __contains__(self, key):
+        try:
+            self[key]
+        except KeyError:
+            return False
+        else:
+            return True
+
     def set_ttl(self, key, ttl):
         _, value = super(TTLedDict, self).__getitem__(key)
         super(TTLedDict, self).__setitem__(key, (ttl, value))
