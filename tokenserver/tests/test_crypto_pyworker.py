@@ -129,7 +129,9 @@ class TestTTledDict(unittest.TestCase):
 
         # but if we wait a bit more it should'n be present.
         time.sleep(1)
-        with self.assertRaises(ExpiredValue):
+        self.assertFalse('foo' in cache)
+
+        with self.assertRaises(KeyError):
             cache['foo']
 
         # we have a way to put never-expiring values in the cache
