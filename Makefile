@@ -116,7 +116,7 @@ build_rpms2:
 	rm -rf ${BUILD_TMP}/M2Crypto*
 	wget -O $(BUILD_TMP)/certifi-0.0.8.tar.gz http://pypi.python.org/packages/source/c/certifi/certifi-0.0.8.tar.gz
 	cd $(BUILD_TMP) && tar xzf certifi-0.0.8.tar.gz
-	echo 'include README.rst' >> $(BUILD_TMP)/certifi-0.0.8/MANIFEST.in
+	echo 'include README.rst certifi/cacert.pem' >> $(BUILD_TMP)/certifi-0.0.8/MANIFEST.in
 	$(PYPI2RPM) --dist-dir=$(RPMDIR) $(BUILD_TMP)/certifi-0.0.8
 
 mock: build build_rpms
