@@ -53,7 +53,7 @@ class NodeAssignmentTest(FunkLoadTestCase):
 
             # wrong email host
             email = "{uid}@{host}".format(uid=idx, host=self.invalid_domain)
-            wrong_email_host = get_assertion(email, host=self.valid_domain,
+            wrong_email_host = get_assertion(email, issuer=self.valid_domain,
                                              exp=in_one_day)
             self._do_token_exchange(wrong_email_host, 401)
 
