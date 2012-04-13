@@ -87,6 +87,7 @@ class TestPowerService(unittest.TestCase):
         cls.cluster = get_cluster('tokenserver.tests.mockworker.crypto_worker',
                                   numprocesses=1, background=True, debug=True)
         cls.cluster.start()
+        time.sleep(1.)
 
     @classmethod
     def tearDownClass(cls):
