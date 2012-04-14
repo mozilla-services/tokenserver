@@ -39,7 +39,12 @@ class SecuredShardedSQLNodeAssignment(ShardedSQLMetadata):
         base = super(SecuredShardedSQLNodeAssignment, self)
         base.__init__(databases, create_tables, **kw)
         self.proxy_uri = proxy_uri
-        self.logger = get_logger()
+        self.logger = None
+
+    def get_logger(self):
+        if self.logger is None:
+            self.logger = get_logger()
+        return self.logger
 
     def _proxy(self, method, url, data=None, headers=None):
         if data is not None:
