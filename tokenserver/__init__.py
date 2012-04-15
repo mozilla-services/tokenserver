@@ -2,12 +2,12 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 try:
-   from gevent import monkey
-   from gevent_zeromq import monkey_patch
-   monkey.patch_all()
-   monkey_patch()
+    from gevent import monkey
+    from gevent_zeromq import monkey_patch
+    monkey.patch_all()
+    monkey_patch()
 except ImportError:
-   pass
+    pass
 
 import logging
 import os
