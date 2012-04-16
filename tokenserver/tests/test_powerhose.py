@@ -18,11 +18,10 @@ from powerhose import get_cluster
 from tokenserver.assignment import INodeAssignment
 from tokenserver.verifiers import PowerHoseVerifier
 from tokenserver.tests.mockworker import MockCryptoWorker
-from tokenserver.crypto.pyworker import CryptoWorker
+from tokenserver.crypto.pyworker import CryptoWorker, get_crypto_worker
 from tokenserver.tests.support import (
     PurePythonRunner,
     get_assertion,
-    patched_environ,
     unittest,
 )
 from tokenserver.util import hook_metlog_handler
@@ -38,26 +37,25 @@ class TestPowerHoseVerifier(unittest.TestCase):
 
     def test_assertion_verification(self):
         # giving a valid assertion should return True
-        with patched_environ():
-            worker = MockCryptoWorker()
-            verifier = PowerHoseVerifier(runner=PurePythonRunner(worker),
-                                         audiences=('*',))
-            self.assertTrue(verifier.verify(get_assertion(DEFAULT_EMAIL)))
+        worker = get_crypto_worker(MockCryptoWorker, memory_ttl=100)
+        verifier = PowerHoseVerifier(runner=PurePythonRunner(worker),
+                                     audiences=('*',))
+        self.assertTrue(verifier.verify(get_assertion(DEFAULT_EMAIL)))
 
-            # An assertion not signed with the root issuer certificate should
-            # fail.
+        # An assertion not signed with the root issuer certificate should
+        # fail.
 
-            self.assertRaises(InvalidSignatureError, verifier.verify,
-                    get_assertion(DEFAULT_EMAIL, bad_issuer_cert=True))
+        self.assertRaises(InvalidSignatureError, verifier.verify,
+                get_assertion(DEFAULT_EMAIL, bad_issuer_cert=True))
 
     def test_loadtest_mode(self):
-        with patched_environ():
-            worker = CryptoWorker(loadtest_mode=True)
-            verifier = PowerHoseVerifier(runner=PurePythonRunner(worker),
-                                         audiences=('*',))
-            result = verifier.verify(get_assertion('alexis@loadtest.local',
-                                                   issuer='loadtest.local'))
-            self.assertTrue(result)
+        worker = get_crypto_worker(CryptoWorker, loadtest_mode=True,
+                                   memory_ttl=100)
+        verifier = PowerHoseVerifier(runner=PurePythonRunner(worker),
+                                     audiences=('*',))
+        result = verifier.verify(get_assertion('alexis@loadtest.local',
+                                               issuer='loadtest.local'))
+        self.assertTrue(result)
 
 
 class TestPowerService(unittest.TestCase):
@@ -85,7 +83,8 @@ class TestPowerService(unittest.TestCase):
         load_and_register("tokenserver", cls.config)
         cls.backend = cls.config.registry.getUtility(INodeAssignment)
         cls.cluster = get_cluster('tokenserver.tests.mockworker.crypto_worker',
-                                  numprocesses=1, background=True, debug=True)
+                                  numprocesses=1, background=True, debug=True,
+                                  worker_params={'config': cls.get_ini()})
         cls.cluster.start()
         time.sleep(1.)
 

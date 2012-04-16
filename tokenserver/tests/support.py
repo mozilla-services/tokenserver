@@ -3,7 +3,6 @@ import json
 import random
 import time
 import os
-from contextlib import contextmanager
 
 from browserid.verifiers.local import LocalVerifier
 from browserid.tests.support import (make_assertion, get_keypair,
@@ -126,13 +125,6 @@ class PurePythonRunner(PowerHoseRunner):
             return self.runner(Job(job))
 
         setattr(self, 'execute', patched_runner)
-
-
-@contextmanager
-def patched_environ():
-    os.environ['MEMORY_TTL'] = '3600'
-    yield
-    del os.environ['MEMORY_TTL']
 
 
 class MockCryptoWorker(CryptoWorker):

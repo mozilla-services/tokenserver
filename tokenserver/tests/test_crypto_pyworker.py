@@ -6,13 +6,12 @@ from browserid.tests.support import patched_key_fetching, fetch_public_key
 from tokenserver.crypto.pyworker import (
     CryptoWorker,
     TTLedDict,
-    ExpiredValue,
     CertificatesManagerWithCache
 )
+
 from tokenserver.tests.support import (
     sign_data,
     PurePythonRunner,
-    patched_environ,
 )
 from tokenserver.tests.support import unittest
 
@@ -20,24 +19,21 @@ from tokenserver.tests.support import unittest
 class TestPythonCryptoWorker(unittest.TestCase):
 
     def setUp(self):
-        with patched_environ():
-            self.worker = CryptoWorker()
-            self.runner = PurePythonRunner(self.worker)
+        self.worker = MockCryptoWorker()
+        self.runner = PurePythonRunner(self.worker)
 
     def test_check_signature(self):
         hostname = 'browserid.org'
         data = 'NOBODY EXPECTS THE SPANISH INQUISITION!'
 
-        with patched_key_fetching():
-            sig = sign_data(hostname, data)
-            result = self.runner.check_signature(hostname=hostname,
-                    signed_data=data, signature=sig, algorithm="DS128")
+        sig = sign_data(hostname, data)
+        result = self.runner.check_signature(hostname=hostname,
+                signed_data=data, signature=sig, algorithm="DS128")
         self.assertTrue(result)
 
     def test_the_crypto_tester(self):
-        with patched_environ():
-            self.worker = MockCryptoWorker()
-            self.runner = PurePythonRunner(self.worker)
+        self.worker = MockCryptoWorker()
+        self.runner = PurePythonRunner(self.worker)
 
         hostname = 'browserid.org'
         data = 'NOBODY EXPECTS THE SPANISH INQUISITION!'
@@ -62,9 +58,8 @@ class TestPythonCryptoWorker(unittest.TestCase):
     def test_loadtest_mode(self):
         # when in loadtest mode, the crypto worker should be able to verify
         # signatures issued by loadtest.local
-        with patched_environ():
-            self.worker = CryptoWorker(loadtest_mode=True)
-            self.runner = PurePythonRunner(self.worker)
+        self.worker = CryptoWorker(loadtest_mode=True)
+        self.runner = PurePythonRunner(self.worker)
         hostname = 'loadtest.local'
         data = "All your base are belong to us."
 
@@ -79,9 +74,8 @@ class TestPythonCryptoWorker(unittest.TestCase):
     def test_key_derivation(self):
         # derivating the key twice with the same parameters should return the
         # same key.
-        with patched_environ():
-            self.worker = CryptoWorker()
-            self.runner = PurePythonRunner(self.worker)
+        self.worker = CryptoWorker()
+        self.runner = PurePythonRunner(self.worker)
 
         # taken from the tokenlib
         hashmod = "sha256"

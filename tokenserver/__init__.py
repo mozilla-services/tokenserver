@@ -46,10 +46,6 @@ def includeme(config):
     # initializes the assignment backend
     load_and_register("tokenserver", config)
 
-    for key, value in [(s.split('.')[2], settings[s]) for s in settings\
-                       if s.startswith('powerhose.worker')]:
-        os.environ[key.upper()] = str(value)
-
     # initialize the powerhose and browserid backends if they exist
     for section in ("powerhose", "browserid"):
         try:

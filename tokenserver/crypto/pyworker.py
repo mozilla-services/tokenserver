@@ -11,9 +11,12 @@ from browserid import jwt
 from browserid.certificates import CertificatesManager
 from browserid.tests.support import fetch_public_key
 
-from tokenlib.utils import HKDF
-import hashlib
+from powerhose import get_params
+from mozsvc.config import Config
 
+from tokenlib.utils import HKDF
+
+import hashlib
 from M2Crypto import BIO
 import pylibmc
 
@@ -152,32 +155,12 @@ def get_certificate(algo, filename=None, key=None):
     return cls(obj=obj)
 
 
-def get_certificate_manager(loadtest_mode=False):
-    """look at the environment variables and return an appropritatly configured
-    certificate manager.
-    """
-    mc_host = os.environ.get('MEMCACHE_HOST', None)
-    if mc_host is not None:
-        mc_ttl = int(os.environ['MEMCACHE_TTL'])
-        memcache = MemcacheClient((mc_host,), ttl=mc_ttl)
-    else:
-        memcache = False
-
-    mem_ttl = int(os.environ['MEMORY_TTL'])
-    memory = TTLedDict(ttl=mem_ttl)
-
-    return CertificatesManagerWithCache(
-        loadtest_mode=loadtest_mode,
-        memory=memory,
-        memcache=memcache)
-
-
 class CryptoWorker(object):
 
-    def __init__(self, loadtest_mode=False, certs=None):
+    def __init__(self, certs=None, **kwargs):
         logger.info('starting a crypto worker')
         if certs is None:
-            certs = get_certificate_manager(loadtest_mode=loadtest_mode)
+            certs = CertificatesManagerWithCache(**kwargs)
         self.certs = certs
 
     def __call__(self, job):
@@ -227,11 +210,59 @@ class CryptoWorker(object):
         return derivated.encode("hex")
 
 
+def get_crypto_worker(cls, config_file=None, **kwargs):
+    """Builds a crypto worker with the given arguments.
+
+    :param cls: the Worker class to use.
+    :param config_file: the configuration file to read the values from.
+
+    Additional keyword arguments are used to override the configuration read
+    from the file. If no file is given, the keyword arguments will be used
+    instead.
+    """
+    config = {}
+    if config_file is not None:
+        conf = Config(config_file)
+        section = 'crypto-worker'
+        # bools
+        if conf.has_option(section, 'loadtest_mode'):
+            config['loadtest_mode'] = conf.getboolean(section, 'loadtest_mode')
+
+        # ints
+        for option in ('memory_ttl', 'memcache_ttl'):
+            if conf.has_option(section, option):
+                config[option] = conf.getint(section, option)
+
+        # strings
+        if conf.has_option(section, 'memcache_host'):
+            config['memcache_host'] = conf.get(section, 'memcache_host')
+
+    config.update(kwargs)
+
+    mc_host = config.get('memcache_host', None)
+    if mc_host is not None:
+        mc_ttl = config['memcache_ttl']
+        memcache = MemcacheClient((mc_host,), ttl=mc_ttl)
+    else:
+        memcache = False
+
+    memory = TTLedDict(ttl=config['memory_ttl'])
+    loadtest_mode = config.get('loadtest_mode', False)
+
+    certs = CertificatesManagerWithCache(
+                loadtest_mode=loadtest_mode,
+                memory=memory,
+                memcache=memcache)
+    return cls(certs=certs)
+
+
 _class = None
 
 
-def crypto_worker(job):
+def crypto_worker(job, args=None):
+    if args == None:
+        args = get_params()
     global _class
     if _class is None:
-        _class = CryptoWorker()
+        _class = get_crypto_worker(CryptoWorker, args['config'])
     return _class(job)
