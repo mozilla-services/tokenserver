@@ -20,10 +20,10 @@ class NodeAssignmentTest(FunkLoadTestCase):
         self.invalid_domain = 'mozilla.com'
 
     def _do_token_exchange(self, assertion, status=200):
-            self.setHeader('Authorization', 'Browser-ID %s' % assertion)
-            res = self.get(self.root + self.token_exchange, ok_codes=[status])
-            self.assertEquals(res.code, status)
-            return res
+        self.setHeader('Authorization', 'Browser-ID %s' % assertion)
+        res = self.get(self.root + self.token_exchange, ok_codes=[status])
+        self.assertEquals(res.code, status)
+        return res
 
     def test_token_exchange(self):
         # a valid browserid assertion should be taken by the server and turned

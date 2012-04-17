@@ -22,6 +22,10 @@ class IBrowserIdVerifier(Interface):
 
 
 # The default verifier from browserid
+from browserid.tests.support import patched_key_fetching
+patched = patched_key_fetching()
+patched.__enter__()
+
 class LocalVerifier(LocalVerifier_):
     implements(IBrowserIdVerifier)
 
