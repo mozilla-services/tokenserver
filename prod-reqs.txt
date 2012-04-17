@@ -30,9 +30,9 @@ greenlet==0.3.4
 Pygments==1.4
 cef==0.3
 PyMySQL==0.5
-pymysql_sa
-protobuf
-gevent
+pymysql_sa==1.0
+protobuf==2.4.1
+gevent==0.13.7
 pylibmc==1.2.2
 requests==0.11.1
 chardet==1.0.1
