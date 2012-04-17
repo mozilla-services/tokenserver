@@ -97,6 +97,7 @@ class CertificatesManagerWithCache(CertificatesManager):
 
         self.memory = memory
         self.memcache = memcache
+        self.loadtest_mode = loadtest_mode
 
         if loadtest_mode is True:
             self.memory['loadtest.local'] = fetch_public_key('loadtest.local')
@@ -225,7 +226,7 @@ def get_crypto_worker(cls, config_file=None, **kwargs):
         section = 'crypto-worker'
         # bools
         if conf.has_option(section, 'loadtest_mode'):
-            config['loadtest_mode'] = conf.getboolean(section, 'loadtest_mode')
+            config['loadtest_mode'] = bool(conf.get(section, 'loadtest_mode'))
 
         # ints
         for option in ('memory_ttl', 'memcache_ttl'):

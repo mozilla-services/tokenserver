@@ -1,12 +1,14 @@
 import json
 import time
+import os
 
 from tokenserver.tests.mockworker import MockCryptoWorker
 from browserid.tests.support import patched_key_fetching, fetch_public_key
 from tokenserver.crypto.pyworker import (
     CryptoWorker,
     TTLedDict,
-    CertificatesManagerWithCache
+    CertificatesManagerWithCache,
+    get_crypto_worker
 )
 
 from tokenserver.tests.support import (
@@ -154,3 +156,14 @@ class TestCertificatesManager(unittest.TestCase):
             # getting something should populate the memory
             cm['browserid.org']
             self.assertEquals(len(cm.memory), 1)
+
+
+class TestConfigurationLoading(unittest.TestCase):
+
+    def test_get_crypto_worker(self):
+        config_file = os.path.join(os.path.dirname(__file__),
+                                   'cryptoworker.ini')
+        worker = get_crypto_worker(CryptoWorker, config_file)
+        self.assertTrue(worker.certs.loadtest_mode)
+        self.assertEquals(worker.certs.memory.ttl, 160)
+
