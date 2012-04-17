@@ -10,7 +10,7 @@ from browserid.tests.support import (make_assertion, get_keypair,
 
 from powerhose.job import Job
 from tokenserver.crypto.master import PowerHoseRunner
-from tokenserver.crypto.pyworker import CryptoWorker
+from tokenserver.crypto.pyworker import CryptoWorker, get_crypto_worker
 
 # if unittest2 isn't available, assume that we are python 2.7
 try:
@@ -118,7 +118,9 @@ def sign_data(hostname, data, key=None):
 
 
 class PurePythonRunner(PowerHoseRunner):
-    def __init__(self, runner):
+    def __init__(self, runner=None, **kwargs):
+        if runner is None:
+            runner = get_crypto_worker(CryptoWorker, **kwargs)
         self.runner = runner
 
         def patched_runner(job):

@@ -166,4 +166,3 @@ class TestConfigurationLoading(unittest.TestCase):
         worker = get_crypto_worker(CryptoWorker, config_file)
         self.assertTrue(worker.certs.loadtest_mode)
         self.assertEquals(worker.certs.memory.ttl, 160)
-
