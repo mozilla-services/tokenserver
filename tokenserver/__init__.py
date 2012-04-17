@@ -35,11 +35,14 @@ def includeme(config):
     if 'metlog.backend' not in settings:
         settings['metlog.backend'] = 'mozsvc.metrics.MetlogPlugin'
         settings['metlog.enabled'] = True
-        settings['metlog.sender_class'] = 'metlog.senders.DebugCaptureSender'
+        settings['metlog.sender_class'] = \
+                'metlog.senders.StdOutSender'
 
     metlog_wrapper = load_from_settings('metlog', settings)
-    for logger in ('tokenserver', 'mozsvc', 'powerhose'):
-        hook_metlog_handler(metlog_wrapper.client, logger)
+
+    if settings['metlog.enabled']:
+        for logger in ('tokenserver', 'mozsvc', 'powerhose'):
+            hook_metlog_handler(metlog_wrapper.client, logger)
 
     config.registry['metlog'] = metlog_wrapper.client
 
