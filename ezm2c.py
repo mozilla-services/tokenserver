@@ -18,8 +18,8 @@ releases = {
   (True, 5, 'darwin'): root + 'M2Crypto-0.21.1-py2.5-macosx-10.6-i386.egg',
   (True, 7, 'linux2'): 'http://ziade.org/M2Crypto-0.21.1-py2.7-linux-x86_64.egg',
   (True, 6, 'linux2'): 'http://ziade.org/M2Crypto-0.21.1-py2.6-linux-x86_64.egg',
-  (False, 7, 'linux2'): 'http://ziade.org/M2Crypto-0.21.1-py2.7-linux-i386.egg',
-  (False, 6, 'linux2'): 'http://ziade.org/M2Crypto-0.21.1-py2.6-linux-i386.egg',
+  (False, 7, 'linux2'): 'http://alexis.notmyidea.org/M2Crypto-0.21.1-py2.7-linux-i686.egg',
+  (False, 6, 'linux2'): 'http://alexis.notmyidea.org/M2Crypto-0.21.1-py2.6-linux-i686.egg',
 }
 
 print releases[is_64bits, minor, plat]
