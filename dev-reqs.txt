@@ -39,3 +39,4 @@ chardet==1.0.1
 metlog-py==0.8.3
 wimms==0.1
 powerhose==0.2
+tokenlib==0.1

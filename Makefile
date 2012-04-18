@@ -1,5 +1,5 @@
 APPNAME = tokenserver
-DEPS = https://github.com/mozilla-services/mozservices,https://github.com/mozilla-services/tokenlib
+DEPS = https://github.com/mozilla-services/mozservices
 VIRTUALENV = virtualenv
 PYTHON = $(CURDIR)/bin/python
 NOSE = bin/nosetests -s --with-xunit
