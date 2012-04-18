@@ -22,4 +22,7 @@ releases = {
   (False, 6, 'linux2'): 'http://alexis.notmyidea.org/M2Crypto-0.21.1-py2.6-linux-i686.egg',
 }
 
-print releases[is_64bits, minor, plat]
+try:
+    print releases[is_64bits, minor, plat]
+except KeyError:
+    print 'http://pypi.python.org/packages/source/M/M2Crypto/M2Crypto-0.21.1.tar.gz'
