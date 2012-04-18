@@ -21,11 +21,13 @@ message DerivateKey {
 }
 
 message StringResponse {
-    optional string error = 1;
-    optional string value = 2;
+    optional string error_type = 1;
+    optional string error = 2;
+    optional string value = 3;
 }
 
 message Response {
-    optional string error = 1;
-    optional bool value = 2;
+    optional string error_type = 1;
+    optional string error = 2;
+    optional bool value = 3;
 }

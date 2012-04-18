@@ -21,6 +21,12 @@ PROTOBUF_CLASSES = {
 }
 
 
+class ClientCatchedError(Exception):
+    def __init__(self, error_type, msg):
+        self.error_type = error_type
+        super(Exception, self).__init__(msg)
+
+
 # interface to be able to register the powerhose worker and retrieve it in the
 # registry
 class IPowerhoseRunner(Interface):
@@ -111,7 +117,7 @@ class PowerHoseRunner(object):
         except DecodeError:
             raise Exception(serialized_resp)
 
-        if resp.error:
-            raise Exception(resp.error)
+        if resp.error_type:
+            raise ClientCatchedError(resp.error_type, resp.error)
         else:
             return resp.value
