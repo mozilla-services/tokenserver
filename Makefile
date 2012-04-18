@@ -66,7 +66,6 @@ build:
 	$(INSTALL) pyzmq
 	bin/pip install cython
 	bin/pip install https://bitbucket.org/tarek/gevent/get/48b7c5262cca.tar.gz
-	bin/pip install https://github.com/mozilla/PyBrowserID/zipball/master
 	cd ${BUILD_TMP} && wget https://github.com/tarekziade/gevent-zeromq/zipball/master
 	rm -rf ${BUILD_TMP}/tarekziade-gevent-*
 	cd ${BUILD_TMP} && unzip master; cd tarekziade-gevent-*; $(PYTHON) setup.py install
@@ -80,7 +79,6 @@ build_no_crypto:
 	$(INSTALL) WebTest
 	$(INSTALL) wsgi_intercept
 	$(INSTALL) pyzmq
-	$(INSTALL) https://github.com/mozilla/PyBrowserID/zipball/master
 	mkdir -p ${BUILD_TMP}
 	cd ${BUILD_TMP} && wget https://github.com/tarekziade/gevent-zeromq/zipball/master --no-check-certificate
 	rm -rf ${BUILD_TMP}/tarekziade-gevent-*
@@ -102,8 +100,6 @@ build_rpms2:
 	bin/pip install cython
 	rm -f ${BUILD_TMP}/master.zip
 	wget -O ${BUILD_TMP}/master.zip https://github.com/zeromq/pyzmq/zipball/master --no-check-certificate
-	bin/pypi2rpm.py ${BUILD_TMP}/master.zip --dist-dir=$(RPMDIR)
-	wget -O ${BUILD_TMP}/master.zip https://github.com/mozilla/PyBrowserID/zipball/master --no-check-certificate
 	bin/pypi2rpm.py ${BUILD_TMP}/master.zip --dist-dir=$(RPMDIR)
 	wget -O ${BUILD_TMP}/master.zip https://github.com/tarekziade/gevent-zeromq/zipball/master --no-check-certificate
 	bin/pypi2rpm.py ${BUILD_TMP}/master.zip --dist-dir=$(RPMDIR)
