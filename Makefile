@@ -11,8 +11,8 @@ COVERAGE = bin/coverage
 PYLINT = bin/pylint
 SERVER = dev-auth.services.mozilla.com
 SCHEME = https
-PYPI = http://c.pypi.python.org/simple
-PYPI2 = http://c.pypi.python.org/packages
+PYPI = http://pypi.python.org/simple
+PYPI2 = http://pypi.python.org/packages
 PYPI2RPM = bin/pypi2rpm.py --index=$(PYPI)
 PYPIOPTIONS = -i $(PYPI)
 CHANNEL = dev
