@@ -54,9 +54,11 @@ all:	build
 
 build:
 	$(VIRTUALENV) --no-site-packages --distribute .
+	$(INSTALL) --upgrade Distribute
 	mkdir -p ${BUILD_TMP}
+	$(INSTALL) PasteDeploy
+	$(INSTALL) PasteScript
 	$(INSTALL) MoPyTools
-	$(INSTALL) Distribute
 	$(INSTALL) nose
 	$(INSTALL) WebTest
 	$(INSTALL) wsgi_intercept
@@ -65,7 +67,7 @@ build:
 	bin/pip install cython
 	bin/pip install https://bitbucket.org/tarek/gevent/get/48b7c5262cca.tar.gz
 	bin/pip install https://github.com/mozilla/PyBrowserID/zipball/master
-	cd ${BUILD_TMP} && wget https://github.com/tarekziade/gevent-zeromq/zipball/master
+	cd ${BUILD_TMP} && wget https://github.com/tarekziade/gevent-zeromq/zipball/master --no-check-certificate
 	rm -rf ${BUILD_TMP}/tarekziade-gevent-*
 	cd ${BUILD_TMP} && unzip master; cd tarekziade-gevent-*; $(PYTHON) setup.py install
 	bin/pip install circus
