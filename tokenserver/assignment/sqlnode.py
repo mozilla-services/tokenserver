@@ -1,10 +1,30 @@
 """ SQL Mappers
 """
 import json
+import sys
 from zope.interface import implements
 
 from tokenserver.assignment import INodeAssignment
 from tokenserver.util import get_logger
+
+# try to have this changed upstream:
+# XXX being able to set autocommit=1;
+# forcing it for now
+from pymysql.connections import Connection, COM_QUERY
+
+
+def autocommit(self, value):
+    value = True
+    try:
+        self._execute_command(COM_QUERY, "SET AUTOCOMMIT = %s" % \
+                                    self.escape(value))
+        self.read_packet()
+    except:
+        exc,value,tb = sys.exc_info()
+        self.errorhandler(None, exc, value)
+
+Connection.autocommit = autocommit
+
 
 from mozsvc.exceptions import BackendError
 from mozsvc.http_helpers import get_url
