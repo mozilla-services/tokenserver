@@ -63,9 +63,8 @@ build:
 	$(INSTALL) WebTest
 	$(INSTALL) wsgi_intercept
 	bin/easy_install `bin/python ezm2c.py`
+	bin/easy_install `bin/python ezgevent.py`
 	$(INSTALL) pyzmq
-	bin/pip install cython
-	bin/pip install https://bitbucket.org/tarek/gevent/get/48b7c5262cca.tar.gz
 	cd ${BUILD_TMP} && wget https://github.com/tarekziade/gevent-zeromq/zipball/master --no-check-certificate
 	rm -rf ${BUILD_TMP}/tarekziade-gevent-*
 	cd ${BUILD_TMP} && unzip master; cd tarekziade-gevent-*; $(PYTHON) setup.py install
