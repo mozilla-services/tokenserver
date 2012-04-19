@@ -65,6 +65,7 @@ build:
 	bin/easy_install `bin/python ezm2c.py`
 	bin/easy_install `bin/python ezgevent.py`
 	bin/easy_install `bin/python ezgeventzmq.py`
+	../ezpylibmc.sh
 	$(INSTALL) pyzmq
 	$(BUILDAPP) -t $(TIMEOUT) -c $(CHANNEL) $(PYPIOPTIONS) $(DEPS)
 
