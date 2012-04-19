@@ -12,6 +12,8 @@ releases = {
   (False, 7, 'darwin'):
   'http://ziade.org/gevent_zeromq-0.2.0-py2.7-macosx-10.7-intel.egg',
   (True, 7, 'darwin'): 'http://ziade.org/gevent_zeromq-0.2.0-py2.7-macosx-10.7-intel.egg',
+  (False, 6, 'linux2'): 'http://alexis.notmyidea.org/gevent_zeromq-0.2.0-py2.6.egg',
+  (False, 7, 'linux2'): 'http://alexis.notmyidea.org/gevent_zeromq-0.2.0-py2.7.egg',
 }
 
 try:
