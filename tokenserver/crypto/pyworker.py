@@ -7,6 +7,7 @@ from tokenserver.crypto.master import PROTOBUF_CLASSES
 from browserid._m2_monkeypatch import DSA as _DSA
 from browserid._m2_monkeypatch import RSA as _RSA
 from browserid import jwt
+from browserid.errors import ConnectionError
 from browserid.certificates import CertificatesManager
 from browserid.tests.support import fetch_public_key
 
@@ -184,7 +185,7 @@ class CryptoWorker(object):
         try:
             res = getattr(self, function_id)(**data)
             return resp_cls(value=res).SerializeToString()
-        except BrowserIDError as e:
+        except ConnectionError as e:
             return resp_cls(error_type="connection_error", error=e.message)
 
     def error(self, message):
@@ -194,13 +195,21 @@ class CryptoWorker(object):
     def check_signature(self, hostname, signed_data, signature, algorithm):
         data = self.certs[hostname]
 
-        cert = jwt.load_key(algorithm, data)
+        try:
+            cert = jwt.load_key(algorithm, data)
+        except ValueError:
+            return False
+
         return cert.verify(signed_data, signature)
 
     def check_signature_with_cert(self, cert, signed_data, signature,
                                   algorithm):
         data = json.loads(cert)
-        cert = jwt.load_key(algorithm, data)
+        try:
+            cert = jwt.load_key(algorithm, data)
+        except ValueError:
+            return False
+
         return cert.verify(signed_data, signature)
 
     def derivate_key(self, ikm, salt, info, l, hashmod):
