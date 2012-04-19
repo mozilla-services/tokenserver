@@ -9,6 +9,7 @@ Paste==1.7.5.1
 PasteDeploy==1.5
 PasteScript==1.7.5
 WebOb==1.2b3
+pyramid==1.3
 pyramid_jinja2==1.2
 pyramid_debugtoolbar==0.9.4
 repoze.lru==0.4
