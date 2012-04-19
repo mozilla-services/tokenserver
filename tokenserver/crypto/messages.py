@@ -12,7 +12,7 @@ from google.protobuf import descriptor_pb2
 DESCRIPTOR = descriptor.FileDescriptor(
   name='messages.pb',
   package='',
-  serialized_pb='\n\x0bmessages.pb\"]\n\x0e\x43heckSignature\x12\x10\n\x08hostname\x18\x01 \x02(\t\x12\x13\n\x0bsigned_data\x18\x02 \x02(\t\x12\x11\n\tsignature\x18\x03 \x02(\x0c\x12\x11\n\talgorithm\x18\x04 \x01(\t\"a\n\x16\x43heckSignatureWithCert\x12\x0c\n\x04\x63\x65rt\x18\x01 \x02(\t\x12\x13\n\x0bsigned_data\x18\x02 \x02(\t\x12\x11\n\tsignature\x18\x03 \x02(\x0c\x12\x11\n\talgorithm\x18\x04 \x01(\t\"R\n\x0b\x44\x65rivateKey\x12\x0b\n\x03ikm\x18\x01 \x02(\t\x12\x0c\n\x04salt\x18\x02 \x02(\t\x12\x0c\n\x04info\x18\x03 \x02(\t\x12\t\n\x01l\x18\x04 \x02(\x05\x12\x0f\n\x07hashmod\x18\x05 \x02(\t\".\n\x0eStringResponse\x12\r\n\x05\x65rror\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t\"(\n\x08Response\x12\r\n\x05\x65rror\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\x08')
+  serialized_pb='\n\x0bmessages.pb\"]\n\x0e\x43heckSignature\x12\x10\n\x08hostname\x18\x01 \x02(\t\x12\x13\n\x0bsigned_data\x18\x02 \x02(\t\x12\x11\n\tsignature\x18\x03 \x02(\x0c\x12\x11\n\talgorithm\x18\x04 \x01(\t\"a\n\x16\x43heckSignatureWithCert\x12\x0c\n\x04\x63\x65rt\x18\x01 \x02(\t\x12\x13\n\x0bsigned_data\x18\x02 \x02(\t\x12\x11\n\tsignature\x18\x03 \x02(\x0c\x12\x11\n\talgorithm\x18\x04 \x01(\t\"R\n\x0b\x44\x65rivateKey\x12\x0b\n\x03ikm\x18\x01 \x02(\t\x12\x0c\n\x04salt\x18\x02 \x02(\t\x12\x0c\n\x04info\x18\x03 \x02(\t\x12\t\n\x01l\x18\x04 \x02(\x05\x12\x0f\n\x07hashmod\x18\x05 \x02(\t\"B\n\x0eStringResponse\x12\x12\n\nerror_type\x18\x01 \x01(\t\x12\r\n\x05\x65rror\x18\x02 \x01(\t\x12\r\n\x05value\x18\x03 \x01(\t\"<\n\x08Response\x12\x12\n\nerror_type\x18\x01 \x01(\t\x12\r\n\x05\x65rror\x18\x02 \x01(\t\x12\r\n\x05value\x18\x03 \x01(\x08')
 
 
 
@@ -179,15 +179,22 @@ _STRINGRESPONSE = descriptor.Descriptor(
   containing_type=None,
   fields=[
     descriptor.FieldDescriptor(
-      name='error', full_name='StringResponse.error', index=0,
+      name='error_type', full_name='StringResponse.error_type', index=0,
       number=1, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=unicode("", "utf-8"),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     descriptor.FieldDescriptor(
-      name='value', full_name='StringResponse.value', index=1,
+      name='error', full_name='StringResponse.error', index=1,
       number=2, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=unicode("", "utf-8"),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    descriptor.FieldDescriptor(
+      name='value', full_name='StringResponse.value', index=2,
+      number=3, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=unicode("", "utf-8"),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
@@ -202,7 +209,7 @@ _STRINGRESPONSE = descriptor.Descriptor(
   is_extendable=False,
   extension_ranges=[],
   serialized_start=293,
-  serialized_end=339,
+  serialized_end=359,
 )
 
 
@@ -214,15 +221,22 @@ _RESPONSE = descriptor.Descriptor(
   containing_type=None,
   fields=[
     descriptor.FieldDescriptor(
-      name='error', full_name='Response.error', index=0,
+      name='error_type', full_name='Response.error_type', index=0,
       number=1, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=unicode("", "utf-8"),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     descriptor.FieldDescriptor(
-      name='value', full_name='Response.value', index=1,
-      number=2, type=8, cpp_type=7, label=1,
+      name='error', full_name='Response.error', index=1,
+      number=2, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=unicode("", "utf-8"),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    descriptor.FieldDescriptor(
+      name='value', full_name='Response.value', index=2,
+      number=3, type=8, cpp_type=7, label=1,
       has_default_value=False, default_value=False,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
@@ -236,8 +250,8 @@ _RESPONSE = descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=341,
-  serialized_end=381,
+  serialized_start=361,
+  serialized_end=421,
 )
 
 DESCRIPTOR.message_types_by_name['CheckSignature'] = _CHECKSIGNATURE

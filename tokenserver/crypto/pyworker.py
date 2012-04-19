@@ -171,7 +171,7 @@ class CryptoWorker(object):
         obj = req_cls()
 
         if not hasattr(self, function_id):
-            raise ValueError('the function does not exists')
+            raise ValueError('the function %s does not exists' % function_id)
 
         try:
             obj.ParseFromString(serialized_data)
@@ -181,18 +181,18 @@ class CryptoWorker(object):
         except ValueError:
             raise ValueError('could not parse data')
 
-        res = getattr(self, function_id)(**data)
-        return resp_cls(value=res).SerializeToString()
+        try:
+            res = getattr(self, function_id)(**data)
+            return resp_cls(value=res).SerializeToString()
+        except BrowserIDError as e:
+            return resp_cls(error_type="connection_error", error=e.message)
 
     def error(self, message):
         """returns an error message"""
         raise Exception(message)
 
     def check_signature(self, hostname, signed_data, signature, algorithm):
-        try:
-            data = self.certs[hostname]
-        except KeyError:
-            self.error('unknown hostname "%s"' % hostname)
+        data = self.certs[hostname]
 
         cert = jwt.load_key(algorithm, data)
         return cert.verify(signed_data, signature)

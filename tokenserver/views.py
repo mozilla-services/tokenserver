@@ -4,16 +4,18 @@
 
 import os
 import json
+import re
 
 from cornice import Service
-from browserid.errors import Error as BrowserIDError
 
 from tokenlib import make_token, get_token_secret
 
 from tokenserver.util import JsonError
 from tokenserver.verifiers import get_verifier
 from tokenserver.assignment import INodeAssignment
-from powerhose.exc import ExecutionError
+
+from browserid.errors import Error as BrowserIDError
+from tokenserver.crypto.master import ClientCatchedError
 
 # A GET on / returns the discovery API
 
@@ -45,16 +47,16 @@ def valid_assertion(request):
     """
     metlog = request.registry['metlog']
 
-    def _raise_unauthorized():
-        raise JsonError(401, description='Unauthorized')
+    def _unauthorized():
+        return JsonError(401, description='Unauthorized')
 
     token = request.headers.get('Authorization')
     if token is None:
-        _raise_unauthorized()
+        raise _unauthorized()
 
     token = token.split()
     if len(token) != 2:
-        _raise_unauthorized()
+        raise _unauthorized()
 
     name, assertion = token
     if name.lower() != 'browser-id':
@@ -62,12 +64,24 @@ def valid_assertion(request):
         resp.www_authenticate = ('Browser-ID', {})
         raise resp
 
+    def _handle_exception(error_type):
+        # convert CamelCase to camel_case
+        error_type = re.sub('(?<=.)([A-Z])', r'_\1', error_type).lower()
+
+        metlog.incr('token.assertion.verify_failure')
+        metlog.incr('token.assertion.%s' % error_type)
+        if error_type == "connection_error":
+            raise JsonError(503, description="Resource is not available")
+        else:
+            raise _unauthorized()
+
     try:
         verifier = get_verifier()
         assertion = verifier.verify(assertion)
-    except (BrowserIDError, ExecutionError):
-        metlog.incr('token.assertion.verify_failure')
-        _raise_unauthorized()
+    except ClientCatchedError as e:
+        _handle_exception(e.error_type)
+    except BrowserIDError as e:
+        _handle_exception(e.__class__.__name__)
 
     # everything sounds good, add the assertion to the list of validated fields
     # and continue
