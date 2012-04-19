@@ -64,11 +64,8 @@ build:
 	$(INSTALL) wsgi_intercept
 	bin/easy_install `bin/python ezm2c.py`
 	bin/easy_install `bin/python ezgevent.py`
+	bin/easy_install `bin/python ezgeventzmq.py`
 	$(INSTALL) pyzmq
-	cd ${BUILD_TMP} && wget https://github.com/tarekziade/gevent-zeromq/zipball/master --no-check-certificate
-	rm -rf ${BUILD_TMP}/tarekziade-gevent-*
-	cd ${BUILD_TMP} && unzip master; cd tarekziade-gevent-*; $(PYTHON) setup.py install
-	bin/pip install circus
 	$(BUILDAPP) -t $(TIMEOUT) -c $(CHANNEL) $(PYPIOPTIONS) $(DEPS)
 
 update:
