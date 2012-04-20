@@ -74,7 +74,7 @@ class SecuredShardedSQLNodeAssignment(ShardedSQLMetadata):
             try:
                 body = json.loads(body)
             except ValueError:
-                self.logger.error("bad json body from sreg (%s): %s" %
+                self.get_logger().error("bad json body from sreg (%s): %s" %
                                                         (url, body))
                 raise BackendError('Bad answer from proxy')
         return status, body
