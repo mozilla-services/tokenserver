@@ -142,7 +142,7 @@ class MockCryptoWorker(CryptoWorker):
                     .check_signature(*args, **kwargs)
 
 
-def get_assertion(email, audience='*', issuer='browserid.org',
+def get_assertion(email, audience="*", issuer='browserid.org',
         bad_issuer_cert=False, bad_email_cert=False, exp=None):
     """Creates a browserid assertion for the given email, audience and
     hostname.
