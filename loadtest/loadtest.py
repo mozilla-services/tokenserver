@@ -18,6 +18,7 @@ class NodeAssignmentTest(FunkLoadTestCase):
         self.vusers = int(self.conf_get('main', 'vusers'))
         self.valid_domain = 'loadtest.local'
         self.invalid_domain = 'mozilla.com'
+        self.audience = self.conf_get('main', 'audience')
 
     def _do_token_exchange(self, assertion, status=200):
         self.setHeader('Authorization', 'Browser-ID %s' % assertion)
@@ -33,7 +34,8 @@ class NodeAssignmentTest(FunkLoadTestCase):
         for idx in range(self.vusers):
             email = "{uid}@{host}".format(uid=idx, host=self.valid_domain)
             self._do_token_exchange(get_assertion(email,
-                                                  issuer=self.valid_domain))
+                                                  issuer=self.valid_domain,
+                                                  audience=self.audience))
 
     def test_bad_assertions(self):
         # similarly, try to send out bad assertions for the defined virtual
@@ -44,17 +46,20 @@ class NodeAssignmentTest(FunkLoadTestCase):
 
             # expired assertion
             expired = get_assertion(email, issuer=self.valid_domain,
-                                    exp=int(time.time() - 60) * 1000)
+                                    exp=int(time.time() - 60) * 1000,
+                                    audience=self.audience)
             self._do_token_exchange(expired, 401)
 
             # wrong issuer
-            wrong_issuer = get_assertion(email, exp=in_one_day)
+            wrong_issuer = get_assertion(email, exp=in_one_day,
+                                         audience=self.audience)
             self._do_token_exchange(wrong_issuer, 401)
 
             # wrong email host
             email = "{uid}@{host}".format(uid=idx, host=self.invalid_domain)
             wrong_email_host = get_assertion(email, issuer=self.valid_domain,
-                                             exp=in_one_day)
+                                             exp=in_one_day,
+                                             audience=self.audience)
             self._do_token_exchange(wrong_email_host, 401)
 
 
