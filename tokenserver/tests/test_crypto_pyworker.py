@@ -170,7 +170,7 @@ class TestConfigurationLoading(unittest.TestCase):
             self.assertEquals(worker.certs.memory.ttl, 160)
             self.assertEquals(os.environ['HTTPS_PROXY'], 'localhost:1337')
         finally:
-            if default_https_proxy == None:
+            if default_https_proxy is None:
                 del os.environ['HTTPS_PROXY']
             else:
                 os.environ['HTTPS_PROXY'] = default_https_proxy
