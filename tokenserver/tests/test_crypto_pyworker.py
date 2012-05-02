@@ -161,8 +161,16 @@ class TestCertificatesManager(unittest.TestCase):
 class TestConfigurationLoading(unittest.TestCase):
 
     def test_get_crypto_worker(self):
-        config_file = os.path.join(os.path.dirname(__file__),
-                                   'cryptoworker.ini')
-        worker = get_crypto_worker(CryptoWorker, config_file)
-        self.assertTrue(worker.certs.loadtest_mode)
-        self.assertEquals(worker.certs.memory.ttl, 160)
+        default_https_proxy = os.environ.get('HTTPS_PROXY', None)
+        try:
+            config_file = os.path.join(os.path.dirname(__file__),
+                                       'cryptoworker.ini')
+            worker = get_crypto_worker(CryptoWorker, config_file)
+            self.assertTrue(worker.certs.loadtest_mode)
+            self.assertEquals(worker.certs.memory.ttl, 160)
+            self.assertEquals(os.environ['HTTPS_PROXY'], 'localhost:1337')
+        finally:
+            if default_https_proxy == None:
+                del os.environ['HTTPS_PROXY']
+            else:
+                os.environ['HTTPS_PROXY'] = default_https_proxy

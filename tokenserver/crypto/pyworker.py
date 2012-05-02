@@ -1,5 +1,6 @@
 import json
 import time
+import os
 
 from tokenserver import logger
 from tokenserver.crypto.master import PROTOBUF_CLASSES
@@ -229,6 +230,7 @@ def get_crypto_worker(cls, config_file=None, **kwargs):
     from the file. If no file is given, the keyword arguments will be used
     instead.
     """
+    env_vars = ('http_proxy', 'https_proxy')
     config = {}
     if config_file is not None:
         conf = Config(config_file)
@@ -246,7 +248,17 @@ def get_crypto_worker(cls, config_file=None, **kwargs):
         if conf.has_option(section, 'memcache_host'):
             config['memcache_host'] = conf.get(section, 'memcache_host')
 
+        # read the proxy configuration from the settings
+        for env_var in env_vars:
+            if conf.has_option(section, env_var):
+                config[env_var] = conf.get(section, env_var)
+
     config.update(kwargs)
+
+    # set the environment variables if they have been defined
+    for var in env_vars:
+        if var in config:
+            os.environ[var.upper()] = config[var]
 
     mc_host = config.get('memcache_host', None)
     if mc_host is not None:

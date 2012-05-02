@@ -29,7 +29,13 @@ Example::
 
     [powerhose]
     backend = tokenserver.tests.support.PowerHoseVerifier
-    worker.memory_ttl = 1800
+
+    [crypto-worker]
+    memory_ttl = 1800
+    memcache_host = http://localhost
+    memcache_ttl = 3600
+    http_proxy = http://proxy_host:port
+    https_proxy = http://proxy_host:port
 
 tokenserver
 ~~~~~~~~~~~
