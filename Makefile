@@ -2,7 +2,7 @@ APPNAME = tokenserver
 DEPS = 
 VIRTUALENV = virtualenv
 PYTHON = $(CURDIR)/bin/python
-NOSE = bin/nosetests -s --with-xunit
+NOSE = bin/nosetests --with-xunit
 FLAKE8 = bin/flake8
 COVEROPTS = --cover-html --cover-html-dir=html --with-coverage --cover-package=appsync
 TESTS = tokenserver
