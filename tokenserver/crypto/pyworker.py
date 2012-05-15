@@ -114,22 +114,29 @@ class CertificatesManagerWithCache(CertificatesManager):
         """
         hostname = str(hostname)
         if self.memory and hostname in self.memory:
-            return self.memory[hostname]
+            # we are not doing a check using "in" here to avoid having a valid
+            # key when doing the check and not being able to retrieve the value
+            # just after because it's expired.
+            try:
+                return self.memory[hostname]
+            except KeyError:
+                # pass here so we can try to get the value by different means.
+                pass
+
+        # try to get the key from memcache if it doesn't exist in memory
+        if self.memcache and hostname in self.memcache:
+            key = self.memcache.get(hostname)
+            self.memory[hostname] = key
+            return key
         else:
-            # try to get the key from memcache if it doesn't exist in memory
-            if self.memcache and hostname in self.memcache:
-                key = self.memcache.get(hostname)
+            # it doesn't exist in memcache either, so let's get it from
+            # the issuer host.
+            key = self.fetch_public_key(hostname)
+            if self.memcache is not False:
+                self.memcache[hostname] = key
+            if self.memory is not False:
                 self.memory[hostname] = key
-                return key
-            else:
-                # it doesn't exist in memcache either, so let's get it from
-                # the issuer host.
-                key = self.fetch_public_key(hostname)
-                if self.memcache is not False:
-                    self.memcache[hostname] = key
-                if self.memory is not False:
-                    self.memory[hostname] = key
-                return key
+            return key
 
 
 def get_crypto_obj(algo, filename=None, key=None):

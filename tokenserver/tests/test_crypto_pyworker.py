@@ -130,6 +130,11 @@ class TestTTledDict(unittest.TestCase):
         with self.assertRaises(KeyError):
             cache['foo']
 
+        # another call to it still says it doesn't contains the key
+        with self.assertRaises(KeyError):
+            cache['foo']
+        self.assertFalse('foo' in cache)
+
         # we have a way to put never-expiring values in the cache
         cache['bar'] = 'baz'
         cache.set_ttl('bar', 0)
@@ -149,13 +154,20 @@ class TestCertificatesManager(unittest.TestCase):
 
     def test_memory(self):
         with patched_key_fetching():
-            cm = CertificatesManagerWithCache(memcache=False)
+            memory = TTLedDict(1)
+            cm = CertificatesManagerWithCache(memory=memory)
             self.assertFalse(cm.memcache)
             self.assertEquals(len(cm.memory), 0)
 
             # getting something should populate the memory
             cm['browserid.org']
             self.assertEquals(len(cm.memory), 1)
+
+            # if we sleep for a while, the value should be invalid
+            time.sleep(1)
+            self.assertFalse('browserid.org' in memory)
+            with self.assertRaises(KeyError):
+                memory['browserid.org']
 
 
 class TestConfigurationLoading(unittest.TestCase):
