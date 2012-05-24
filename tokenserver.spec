@@ -1,7 +1,7 @@
 %define pyver 26
 %define name python%{pyver}-tokenserver
 %define pythonname tokenserver
-%define version 0.1
+%define version 0.2
 %define release 1
 
 Summary: Token Server.
