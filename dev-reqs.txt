@@ -39,7 +39,7 @@ requests==0.11.1
 chardet==1.0.1
 metlog-py==0.8.4
 wimms==0.2
-powerhose==0.3
+powerhose==0.4
 tokenlib==0.1
 mozsvc==0.3
 PyBrowserID==0.5
