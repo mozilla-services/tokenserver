@@ -80,7 +80,8 @@ class TTLedDict(dict):
 
 class CertificatesManagerWithCache(CertificatesManager):
 
-    def __init__(self, memory=None, memcache=None, loadtest_mode=False):
+    def __init__(self, memory=None, memcache=None, loadtest_mode=False,
+                 verify=True):
         """If the loadtest mode is set, when looking for loadtest.local, the
         certificate bundled in browserid.tests.support will be returned instead
         of failing.
@@ -90,6 +91,9 @@ class CertificatesManagerWithCache(CertificatesManager):
 
         :param memory: the dict to use for in-memory cache
         :param memcache: the memcache instance, already configured.
+        :param loadtest_mode: is the instance in loadtest mode?
+        :param verify: do we want to check the ssl certificates when
+                       requesting the certificates (defaults to True)
         """
         if memory is None:
             memory = TTLedDict(60 * 10)  # TTL of 10 minutes for the certs
@@ -100,6 +104,7 @@ class CertificatesManagerWithCache(CertificatesManager):
         self.memory = memory
         self.memcache = memcache
         self.loadtest_mode = loadtest_mode
+        self.verify = verify
 
         if loadtest_mode is True:
             self.memory['loadtest.local'] = fetch_public_key('loadtest.local')
@@ -243,8 +248,9 @@ def get_crypto_worker(cls, config_file=None, **kwargs):
         conf = Config(config_file)
         section = 'crypto-worker'
         # bools
-        if conf.has_option(section, 'loadtest_mode'):
-            config['loadtest_mode'] = bool(conf.get(section, 'loadtest_mode'))
+        for option in ('loadtest_mode', 'verify_ssl'):
+            if conf.has_option(section, option):
+                config[option] = bool(conf.get(section, option))
 
         # ints
         for option in ('memory_ttl', 'memcache_ttl'):
@@ -276,11 +282,13 @@ def get_crypto_worker(cls, config_file=None, **kwargs):
 
     memory = TTLedDict(ttl=config['memory_ttl'])
     loadtest_mode = config.get('loadtest_mode', False)
+    verify = config.get('verify_ssl', True)
 
     certs = CertificatesManagerWithCache(
                 loadtest_mode=loadtest_mode,
                 memory=memory,
-                memcache=memcache)
+                memcache=memcache,
+                verify=verify)
     return cls(certs=certs)
 
 
