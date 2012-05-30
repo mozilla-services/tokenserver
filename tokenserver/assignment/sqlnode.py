@@ -20,7 +20,7 @@ def autocommit(self, value):
                                     self.escape(value))
         self.read_packet()
     except:
-        exc,value,tb = sys.exc_info()
+        exc, value, __ = sys.exc_info()
         self.errorhandler(None, exc, value)
 
 Connection.autocommit = autocommit

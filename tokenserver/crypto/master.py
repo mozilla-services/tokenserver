@@ -1,5 +1,6 @@
 import functools
 import os
+import time
 
 from zope.interface import implements, Interface
 from pyramid.threadlocal import get_current_registry
@@ -40,6 +41,21 @@ def get_runner():
     return get_current_registry().getUtility(IPowerhoseRunner)
 
 
+def get_metlog():
+    return get_current_registry()['metlog']
+
+
+class _FakeTimer(object):
+    timestamp = None
+    logger = None
+    severity = None
+    name = 'token.powerhose'
+    rate = 1.0
+    fields = None
+
+_fake_timer = _FakeTimer
+
+
 class PowerHoseRunner(object):
     """Implements a simple powerhose runner.
 
@@ -75,9 +91,21 @@ class PowerHoseRunner(object):
         pid = str(os.getpid())
         self.endpoint = endpoint.replace('$PID', pid)
         self.pool = Pool(int(kw.get('pool_size', 5)), self.endpoint)
+        self._metlog = None
+
+    @property
+    def metlog(self):
+        if self._metlog is None:
+            self._metlog = get_metlog()
+        return self._metlog
 
     def execute(self, data):
-        return self.pool.execute(data)
+        start = time.time()
+        try:
+            return self.pool.execute(data)
+        finally:
+            duration = time.time() - start
+            self.metlog.timing(_fake_timer, duration)
 
     def __getattr__(self, attr):
         """magic method getter to be able to do direct function calls on this
