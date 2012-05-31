@@ -1,7 +1,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
-
+import time
 import os
 import json
 import re
@@ -133,6 +133,17 @@ def pattern_exists(request):
     request.validated['pattern'] = pattern
 
 
+class _FakeTimer(object):
+    timestamp = None
+    logger = None
+    severity = None
+    name = 'token.sql.allocate_node'
+    rate = 1.0
+    fields = None
+
+_fake_timer = _FakeTimer
+
+
 @token.get(validators=(valid_app, valid_assertion, pattern_exists))
 def return_token(request):
     """This service does the following process:
@@ -160,7 +171,13 @@ def return_token(request):
     # get the node or allocate one if none is already set
     uid, node = backend.get_node(email, service)
     if node is None or uid is None:
-        uid, node = backend.allocate_node(email, service)
+        metlog = request.registry['metlog']
+        start = time.time()
+        try:
+            uid, node = backend.allocate_node(email, service)
+        finally:
+            duration = time.time() - start
+            metlog.timing(_fake_timer, duration)
 
     secrets = request.registry.settings['tokenserver.secrets_file']
     node_secrets = secrets.get(node)
