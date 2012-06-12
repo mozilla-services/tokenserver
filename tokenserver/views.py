@@ -22,6 +22,8 @@ from tokenserver.crypto.master import ClientCatchedError
 discovery = Service(name='discovery', path='/')
 token = Service(name='token', path='/1.0/{application}/{version}')
 
+DEFAULT_TOKEN_DURATION = 5 * 60
+
 
 def get_service_name(application, version):
     return "%s-%s" % (application, version)
@@ -185,7 +187,11 @@ def return_token(request):
         raise Exception("The specified node does not have any shared secret")
     secret = node_secrets[-1]  # the last one is the most recent one
 
-    token = make_token({'uid': uid, 'service_entry': node}, secret=secret)
+    token_duration = request.registry.settings.get(
+            'tokenserver.token_duration', DEFAULT_TOKEN_DURATION)
+
+    token = make_token({'uid': uid, 'service_entry': node},
+            timeout=token_duration, secret=secret)
     # XXX needs to be renamed as 'get_derived_secret' because
     # it's not clear here it's a derived
     secret = get_token_secret(token, secret=secret)
@@ -194,4 +200,4 @@ def return_token(request):
 
     # FIXME add the algo used to generate the token
     return {'id': token, 'key': secret, 'uid': uid,
-            'api_endpoint': api_endpoint}
+            'api_endpoint': api_endpoint, 'duration': token_duration}
