@@ -62,7 +62,6 @@ class TestShardedNode(unittest.TestCase):
                 engine.execute('delete from service_pattern')
 
     def test_get_node(self):
-
         unassigned = None, None
         self.assertEquals(unassigned,
                           self.backend.get_node("tarek@mozilla.com", _SERVICE,
