@@ -24,7 +24,8 @@ from tokenserver.tests.support import (
     get_assertion,
     unittest,
 )
-from tokenserver.util import hook_metlog_handler
+
+from metlog.loggimg import hook_logger
 
 from browserid.errors import InvalidSignatureError
 
@@ -77,7 +78,7 @@ class TestPowerService(unittest.TestCase):
         metlog_wrapper = load_from_settings('metlog',
                 cls.config.registry.settings)
         for logger in ('tokenserver', 'mozsvc', 'powerhose'):
-            hook_metlog_handler(metlog_wrapper.client, logger)
+            hook_logger(logger, metlog_wrapper.client)
         cls.config.registry['metlog'] = metlog_wrapper.client
         cls.config.include("tokenserver")
         load_and_register("tokenserver", cls.config)

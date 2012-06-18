@@ -135,17 +135,6 @@ def pattern_exists(request):
     request.validated['pattern'] = pattern
 
 
-class _FakeTimer(object):
-    timestamp = None
-    logger = None
-    severity = None
-    name = 'token.sql.allocate_node'
-    rate = 1.0
-    fields = None
-
-_fake_timer = _FakeTimer
-
-
 @token.get(validators=(valid_app, valid_assertion, pattern_exists))
 def return_token(request):
     """This service does the following process:
@@ -179,7 +168,7 @@ def return_token(request):
             uid, node = backend.allocate_node(email, service)
         finally:
             duration = time.time() - start
-            metlog.timing(_fake_timer, duration)
+            metlog.timer_send("token.sql.allocate_node", duration)
 
     secrets = request.registry.settings['tokenserver.secrets_file']
     node_secrets = secrets.get(node)
