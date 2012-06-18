@@ -6,7 +6,8 @@ from ConfigParser import NoSectionError
 from collections import defaultdict
 
 from tokenserver.assignment import INodeAssignment
-from tokenserver.util import hook_metlog_handler
+
+from metlog.logging import hook_logger
 
 from mozsvc.config import get_configurator
 from mozsvc.plugin import load_and_register, load_from_settings
@@ -41,7 +42,7 @@ def includeme(config):
 
     if settings['metlog.enabled']:
         for logger in ('tokenserver', 'mozsvc', 'powerhose'):
-            hook_metlog_handler(metlog_wrapper.client, logger)
+            hook_logger(logger, metlog_wrapper.client)
 
     config.registry['metlog'] = metlog_wrapper.client
 
