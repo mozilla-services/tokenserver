@@ -45,17 +45,6 @@ def get_metlog():
     return get_current_registry()['metlog']
 
 
-class _FakeTimer(object):
-    timestamp = None
-    logger = None
-    severity = None
-    name = 'token.powerhose'
-    rate = 1.0
-    fields = None
-
-_fake_timer = _FakeTimer
-
-
 class PowerHoseRunner(object):
     """Implements a simple powerhose runner.
 
@@ -105,7 +94,7 @@ class PowerHoseRunner(object):
             return self.pool.execute(data)
         finally:
             duration = time.time() - start
-            self.metlog.timing(_fake_timer, duration)
+            self.metlog.timer_send("token.powerhose", duration)
 
     def __getattr__(self, attr):
         """magic method getter to be able to do direct function calls on this
