@@ -33,7 +33,6 @@ python%{pyver} setup.py build
 
 # the config file
 mkdir -p %{buildroot}%{_sysconfdir}/mozilla-services/token
-install -m 0644 etc/production.ini %{buildroot}%{_sysconfdir}/mozilla-services/token/production.ini
 
 # the app
 python%{pyver} setup.py install --single-version-externally-managed --root=$RPM_BUILD_ROOT --record=INSTALLED_FILES
