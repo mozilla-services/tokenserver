@@ -25,7 +25,7 @@ from tokenserver.tests.support import (
     unittest,
 )
 
-from metlog.loggimg import hook_logger
+from metlog.logging import hook_logger
 
 from browserid.errors import InvalidSignatureError
 
