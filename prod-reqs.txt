@@ -37,9 +37,9 @@ gevent==0.13.7
 pylibmc==1.2.2
 requests==0.11.1
 chardet==1.0.1
-metlog-py==0.9
+metlog-py==0.9.1
 wimms==0.2
-powerhose==0.5
+powerhose==0.6
 tokenlib==0.1
 mozsvc==0.3
 PyBrowserID==0.6
