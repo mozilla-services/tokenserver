@@ -41,6 +41,6 @@ metlog-py==0.9.1
 wimms==0.2
 powerhose==0.6
 tokenlib==0.1
-mozsvc==0.3
+mozsvc==0.4
 PyBrowserID==0.6
 argparse==1.2.1
