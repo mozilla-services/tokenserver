@@ -85,7 +85,7 @@ build_rpms2:
 	rm -f ${BUILD_TMP}/master.tar.gz
 	wget -O ${BUILD_TMP}/master.tar.gz https://github.com/zeromq/pyzmq/tarball/v2.1.11 --no-check-certificate
 	bin/pypi2rpm.py ${BUILD_TMP}/master.tar.gz --dist-dir=$(RPMDIR)
-	wget -O ${BUILD_TMP}/master.zip https://github.com/tarekziade/gevent-zeromq/zipball/master --no-check-certificate
+	wget -O ${BUILD_TMP}/master.zip https://github.com/mozilla-services/gevent-zeromq/zipball/master --no-check-certificate
 	bin/pypi2rpm.py ${BUILD_TMP}/master.zip --dist-dir=$(RPMDIR)
 	wget -O ${BUILD_TMP}/nose-0.11.4.tar.gz http://pypi.python.org/packages/source/n/nose/nose-0.11.4.tar.gz 
 	bin/pypi2rpm.py ${BUILD_TMP}/nose-0.11.4.tar.gz --dist-dir=$(RPMDIR)
