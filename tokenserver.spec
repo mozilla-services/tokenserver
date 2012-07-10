@@ -44,8 +44,4 @@ rm -rf $RPM_BUILD_ROOT
 
 %files -f INSTALLED_FILES
 
-%dir %{_sysconfdir}/mozilla-services/token
-
-%config(noreplace) %{_sysconfdir}/mozilla-services/token/*
-
 %defattr(-,root,root)
