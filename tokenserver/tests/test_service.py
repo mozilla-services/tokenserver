@@ -82,3 +82,13 @@ class TestService(unittest.TestCase):
         res = self.app.get('/')
         self.assertEqual(res.json['auth'],
                          'https://token.services.mozilla.com')
+
+    def test_tos_signed(self):
+        # XXX will test here that we get a 403 if the ToS were toggled
+        #
+        headers = {'Authorization': 'Browser-ID %s' % self._getassertion(),
+                   'X-Tos-Signed': 'http://example.com'}
+        res = self.app.get('/1.0/aitc/1.0', headers=headers)
+        self.assertIn('https://example.com/1.0', res.json['api_endpoint'])
+        self.assertIn('duration', res.json)
+        self.assertEquals(res.json['duration'], 3600)
