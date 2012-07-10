@@ -14,8 +14,8 @@ pyramid_jinja2==1.2
 pyramid_debugtoolbar==0.9.4
 repoze.lru==0.4
 simplejson==2.2.1
-translationstring
-wsgi_intercept
+translationstring==1.1
+wsgi_intercept==0.5.1
 zope.component==3.11
 zope.deprecation==3.5
 zope.event==3.5.1
