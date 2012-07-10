@@ -3,6 +3,8 @@ import time
 import browserid
 import browserid.jwt
 from browserid.tests.support import make_assertion
+import random
+import uuid
 
 
 MOCKMYID_PRIVATE_KEY = browserid.jwt.RS256Key({
@@ -53,6 +55,18 @@ class NodeAssignmentTest(FunkLoadTestCase):
         res = self.get(self.root + self.token_exchange, ok_codes=[status])
         self.assertEquals(res.code, status)
         return res
+
+    def test_single_token_exchange(self):
+        uid = random.randint(1, 1000000)
+        email = "user{uid}@{host}".format(uid=uid, host=self.valid_domain)
+        self._do_token_exchange(get_assertion(email, issuer=self.valid_domain,
+                                              audience=self.audience))
+
+    def test_single_token_exchange_new_user(self):
+        uid = str(uuid.uuid1())
+        email = "loadtest-{uid}@{host}".format(uid=uid, host=self.valid_domain)
+        self._do_token_exchange(get_assertion(email, issuer=self.valid_domain,
+                                              audience=self.audience))
 
     def test_token_exchange(self):
         # a valid browserid assertion should be taken by the server and turned
