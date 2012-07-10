@@ -114,8 +114,11 @@ def valid_app(request):
     else:
         request.validated['version'] = version
         # extracting the X-ToS-Sigend header if present
-        request.validated['x-tos-signed'] = request.headers.get('X-Tos-Signed',
-                                                                None)
+        tos = request.headers.get('X-Tos-Signed', None)
+        if tos is not None:
+            tos = tos.lower().rstrip('/')
+
+        request.validated['x-tos-signed'] = tos
 
 
 def pattern_exists(request):
@@ -164,12 +167,14 @@ def return_token(request):
     tos_signed = request.validated['x-tos-signed']
 
     # get the node or allocate one if none is already set
-    uid, node, tos_url = backend.get_node(email, service, tos_signed)
-    if tos_url is not None:
+    uid, node, tos_to_sign = backend.get_node(email, service)
+    if tos_to_sign is not None:
         # the backend sent a tos url, meaning the user needs to
-        # sign it
-        raise JsonError(403, term_of_services=tos_url,
-                        description='Unsigned Term of Services')
+        # sign it, we want to compare both tos and raise a 403
+        # if they are not equal
+        if tos_signed != tos_to_sign:
+            raise JsonError(403, term_of_services=tos_url,
+                            description='Unsigned Term of Services')
 
     # at this point, either the tos were signed or the service does not
     # have any ToS
