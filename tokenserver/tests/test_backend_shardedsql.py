@@ -62,7 +62,7 @@ class TestShardedNode(unittest.TestCase):
                 engine.execute('delete from service_pattern')
 
     def test_get_node(self):
-        unassigned = None, None
+        unassigned = None, None, None
         self.assertEquals(unassigned,
                           self.backend.get_node("tarek@mozilla.com", _SERVICE,
                                                 ))
@@ -75,5 +75,5 @@ class TestShardedNode(unittest.TestCase):
             wanted = (0, u'https://phx12')
 
         self.assertEqual(res, wanted)
-        self.assertEqual(wanted,
+        self.assertEqual(wanted + (None,),
                          self.backend.get_node("tarek@mozilla.com", _SERVICE))

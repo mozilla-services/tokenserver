@@ -9,5 +9,14 @@ class INodeAssignment(Interface):
         If no mapping is found, return None.
         """
 
-    def allocate_node(self, email, service):
+    def allocate_node(email, service):
         """Sets the node for the given email, service and node"""
+
+    def set_metadata(service, name, value, needs_acceptance=False):
+        """ """
+
+    def get_metadata(service, name=None, needs_acceptance=None):
+        """ """
+
+    def set_accepted_conditions_flag(service, value, email=None):
+        """ """

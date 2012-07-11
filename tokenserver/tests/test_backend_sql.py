@@ -55,7 +55,7 @@ class TestSQLBackend(unittest.TestCase):
             self.backend._safe_execute('delete from service_pattern')
 
     def test_get_node(self):
-        unassigned = None, None
+        unassigned = None, None, None
         self.assertEquals(unassigned,
                           self.backend.get_node("tarek@mozilla.com",
                               "sync-1.0"))
@@ -68,7 +68,7 @@ class TestSQLBackend(unittest.TestCase):
             wanted = (0, u'https://phx12')
 
         self.assertEqual(res, wanted)
-        self.assertEqual(wanted,
+        self.assertEqual(wanted + (None,),
                          self.backend.get_node("tarek@mozilla.com", "sync-1.0",
                              ))
 
