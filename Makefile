@@ -62,11 +62,11 @@ build:
 	$(INSTALL) nose
 	$(INSTALL) WebTest
 	$(INSTALL) wsgi_intercept
+	$(INSTALL) pyzmq==2.1.11
 	bin/easy_install `bin/python ezm2c.py`
 	bin/easy_install `bin/python ezgevent.py`
 	bin/easy_install `bin/python ezgeventzmq.py`
 	$(CURDIR)/ezpylibmc.sh
-	$(INSTALL) pyzmq==2.1.11
 	$(BUILDAPP) -t $(TIMEOUT) -c $(CHANNEL) $(PYPIOPTIONS) $(DEPS)
 
 update:
