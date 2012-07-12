@@ -5,14 +5,12 @@ import json
 from base64 import b32encode
 from hashlib import sha1
 import os
-import logging
 
 from pyramid.httpexceptions import HTTPError
 from pyramid.threadlocal import get_current_registry
 from webob import Response
 
 from mozsvc.secrets import Secrets
-from metlog.client import SEVERITY
 
 
 def hash_email(email):
@@ -21,11 +19,13 @@ def hash_email(email):
 
 
 class JsonError(HTTPError):
-    def __init__(self, status=400, location='body', name='', description=''):
+    def __init__(self, status=400, location='body', name='', description='',
+                 **kw):
         body = {'status': status, 'errors':
                 [{'location': location, 'name': name,
                   'description': description}]
                 }
+        body.update(kw)
         Response.__init__(self, json.dumps(body))
         self.status = status
         self.content_type = 'application/json'
