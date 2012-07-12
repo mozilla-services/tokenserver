@@ -66,7 +66,7 @@ build:
 	bin/easy_install `bin/python ezgevent.py`
 	bin/easy_install `bin/python ezgeventzmq.py`
 	$(CURDIR)/ezpylibmc.sh
-	$(INSTALL) pyzmq
+	$(INSTALL) pyzmq==2.1.11
 	$(BUILDAPP) -t $(TIMEOUT) -c $(CHANNEL) $(PYPIOPTIONS) $(DEPS)
 
 update:
