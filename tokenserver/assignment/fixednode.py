@@ -22,8 +22,6 @@ class DefaultNodeAssignmentBackend(object):
 
     def __init__(self, service_entry=None, **kw):
         self._service_entry = service_entry
-        self._metadata = defaultdict(dict)
-        self._flag = defaultdict(bool)
 
     @property
     def service_entry(self):
@@ -36,16 +34,10 @@ class DefaultNodeAssignmentBackend(object):
 
     def get_node(self, email, service):
         uid = _USERS_UIDS.get(service, {}).get(email, None)
-        if not self._flag[service]:
-            urls = self.get_metadata(service, needs_acceptance=True)
-        else:
-            urls = None
-
-        return uid, self.service_entry, urls
+        return uid, self.service_entry, None
 
     def allocate_node(self, email, service):
-        status = self.get_node(email, service)
-        if status[0] is not None:
+        if self.get_node(email, service) != (None, self.service_entry, None):
             raise BackendError("Node already assigned")
 
         global _UID
@@ -54,30 +46,3 @@ class DefaultNodeAssignmentBackend(object):
         _USERS_UIDS[service][email] = uid
 
         return uid, self.service_entry
-
-    def set_metadata(self, service, name, value, needs_acceptance=False):
-        self._metadata[service][name] = value, needs_acceptance
-
-    def get_metadata(self, service, name=None, needs_acceptance=None):
-        metadata = []
-
-        if name is None:
-            items = self._metadata[service].items()
-            for name, (value, _needs_acceptance) in items:
-                if needs_acceptance is not None:
-                    if needs_acceptance == _needs_acceptance:
-                        metadata.append((name, value, _needs_acceptance))
-                else:
-                    metadata.append((name, value, _needs_acceptance))
-        else:
-            value, _needs_acceptance = self._metadata[service][name]
-            if needs_acceptance is not None:
-                if needs_acceptance == _needs_acceptance:
-                    metadata.append((name, value, _needs_acceptance))
-            else:
-                metadata.append((name, value, _needs_acceptance))
-
-        return metadata
-
-    def set_accepted_conditions_flag(self, service, value, email=None):
-        self._flag[service] = value

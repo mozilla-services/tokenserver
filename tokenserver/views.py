@@ -113,9 +113,12 @@ def valid_app(request):
                         description='Unsupported application version')
     else:
         request.validated['version'] = version
-        accepted = (request.headers.get('X-Conditions-Accepted', None)
-                    is not None)
-        request.validated['x-conditions-accepted'] = accepted
+        # extracting the X-ToS-Sigend header if present
+        tos = request.headers.get('X-Tos-Signed', None)
+        if tos is not None:
+            tos = tos.lower().rstrip('/')
+
+        request.validated['x-tos-signed'] = tos
 
 
 def pattern_exists(request):
@@ -144,7 +147,7 @@ def return_token(request):
 
     - validates the Browser-ID assertion provided on the Authorization header
     - allocates when necessary a node to the user for the required service
-    - deals with the X-Conditions-Accepted header
+    - deals with the X-ToS-Signed header
     - returns a JSON mapping containing the following values:
 
         - **id** -- a signed authorization token, containing the
@@ -161,18 +164,18 @@ def return_token(request):
     version = request.validated['version']
     pattern = request.validated['pattern']
     service = get_service_name(application, version)
-    accepted = request.validated['x-conditions-accepted']
+    tos_signed = request.validated['x-tos-signed']
 
     # get the node or allocate one if none is already set
-    uid, node, to_accept = backend.get_node(email, service)
-    if to_accept is not None:
+    uid, node, tos_to_sign = backend.get_node(email, service)
+    if tos_to_sign is not None:
         # the backend sent a tos url, meaning the user needs to
         # sign it, we want to compare both tos and raise a 403
         # if they are not equal
-        if not accepted:
-            to_accept = dict([(name, value) for name, value, __ in to_accept])
-            raise JsonError(403, urls=to_accept,
-                            description='Need to accept conditions')
+        if tos_signed != tos_to_sign:
+            raise JsonError(403, term_of_services=tos_url,
+                            description='Unsigned Term of Services')
+
     # at this point, either the tos were signed or the service does not
     # have any ToS
     if node is None or uid is None:

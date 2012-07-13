@@ -50,9 +50,6 @@ class TestService(unittest.TestCase):
         self.patched = patched_key_fetching()
         self.patched.__enter__()
 
-        # by default the conditions are accepted
-        self.backend.set_accepted_conditions_flag('aitc-1.0', True)
-
     def tearDown(self):
         self.patched.__exit__(None, None, None)
 
@@ -87,26 +84,10 @@ class TestService(unittest.TestCase):
                          'https://token.services.mozilla.com')
 
     def test_tos_signed(self):
-        # preparing the data
-        self.backend.set_accepted_conditions_flag('aitc-1.0', False)
-        self.backend.set_metadata('aitc-1.0', 'tos', 'http://tos',
-                                   needs_acceptance=True)
-        self.backend.set_metadata('aitc-1.0', 'pp', 'http://pp',
-                                   needs_acceptance=True)
-        self.backend.set_metadata('aitc-1.0', 'boo', 'http://boo')
-
-        # let's call as usual
-        headers = {'Authorization': 'Browser-ID %s' % self._getassertion()}
-        res = self.app.get('/1.0/aitc/1.0', headers=headers, status=403)
-
-        urls = res.json['urls']
-        self.assertEqual(len(urls), 2)
-        self.assertEqual(urls['tos'], 'http://tos')
-        self.assertEqual(urls['pp'], 'http://pp')
-
-        # let's sign the urls !
+        # XXX will test here that we get a 403 if the ToS were toggled
+        #
         headers = {'Authorization': 'Browser-ID %s' % self._getassertion(),
-                   'X-Conditions-Accepted': '1'}
+                   'X-Tos-Signed': 'http://example.com'}
         res = self.app.get('/1.0/aitc/1.0', headers=headers)
         self.assertIn('https://example.com/1.0', res.json['api_endpoint'])
         self.assertIn('duration', res.json)
