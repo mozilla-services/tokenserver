@@ -113,9 +113,6 @@ def valid_app(request):
                         description='Unsupported application version')
     else:
         request.validated['version'] = version
-        # extracting the X-ToS-Sigend header if present
-        request.validated['x-tos-signed'] = request.headers.get('X-Tos-Signed',
-                                                                None)
 
 
 def pattern_exists(request):
@@ -144,7 +141,6 @@ def return_token(request):
 
     - validates the Browser-ID assertion provided on the Authorization header
     - allocates when necessary a node to the user for the required service
-    - deals with the X-ToS-Signed header
     - returns a JSON mapping containing the following values:
 
         - **id** -- a signed authorization token, containing the
@@ -155,24 +151,16 @@ def return_token(request):
     """
     # at this stage, we are sure that the assertion, application and version
     # number were valid, so let's build the authentication token and return it.
+
     backend = request.registry.getUtility(INodeAssignment)
     email = request.validated['assertion']['email']
     application = request.validated['application']
     version = request.validated['version']
     pattern = request.validated['pattern']
     service = get_service_name(application, version)
-    tos_signed = request.validated['x-tos-signed']
 
     # get the node or allocate one if none is already set
-    uid, node, tos_url = backend.get_node(email, service, tos_signed)
-    if tos_url is not None:
-        # the backend sent a tos url, meaning the user needs to
-        # sign it
-        raise JsonError(403, term_of_services=tos_url,
-                        description='Unsigned Term of Services')
-
-    # at this point, either the tos were signed or the service does not
-    # have any ToS
+    uid, node = backend.get_node(email, service)
     if node is None or uid is None:
         metlog = request.registry['metlog']
         start = time.time()

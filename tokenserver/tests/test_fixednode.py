@@ -48,7 +48,7 @@ class TestFixedBackend(unittest.TestCase):
             self.assertEquals(
                     self.backend.get_node(DEFAULT_EMAIL, DEFAULT_SERVICE,
                         ),
-                    (None, DEFAULT_NODE, None))
+                    (None, DEFAULT_NODE))
 
             # Now allocate an user to a node
             self.assertEquals(
@@ -64,6 +64,6 @@ class TestFixedBackend(unittest.TestCase):
             self.assertEquals(
                     self.backend.get_node(DEFAULT_EMAIL, DEFAULT_SERVICE,
                         ),
-                    (0, DEFAULT_NODE, None))
+                    (0, DEFAULT_NODE))
         finally:
             restore_defaults()
