@@ -38,9 +38,9 @@ pylibmc==1.2.2
 requests==0.11.1
 chardet==1.0.1
 metlog-py==0.9.1
-wimms==0.2
+wimms
 powerhose==0.7
 tokenlib==0.1
 mozsvc==0.4
-PyBrowserID==0.6.1
+PyBrowserID==0.6.2
 argparse==1.2.1
