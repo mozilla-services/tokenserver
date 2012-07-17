@@ -3,11 +3,12 @@ import time
 import os
 
 from tokenserver.tests.mockworker import MockCryptoWorker
-from browserid.tests.support import patched_key_fetching, fetch_public_key
+from browserid.tests.support import (patched_supportdoc_fetching,
+                                    fetch_support_document)
 from tokenserver.crypto.pyworker import (
     CryptoWorker,
     TTLedDict,
-    CertificatesManagerWithCache,
+    SupportDocumentManagerWithCache,
     get_crypto_worker
 )
 
@@ -50,7 +51,7 @@ class TestPythonCryptoWorker(unittest.TestCase):
         data = 'NOBODY EXPECTS THE SPANISH INQUISITION!'
 
         sig = sign_data(hostname, data)
-        cert = json.dumps(fetch_public_key(hostname))
+        cert = json.dumps(fetch_support_document(hostname)["public-key"])
 
         result = self.runner.check_signature_with_cert(cert=cert,
                 signed_data=data, signature=sig, algorithm='DS128')
@@ -142,25 +143,25 @@ class TestTTledDict(unittest.TestCase):
         self.assertEquals(cache['bar'], 'baz')
 
 
-class TestCertificatesManager(unittest.TestCase):
+class TestSupportDocumentManager(unittest.TestCase):
 
     def test_without_memory_nor_memcache(self):
         # this should make a request each time
-        with patched_key_fetching():
-            cm = CertificatesManagerWithCache(memory=False, memcache=False)
+        with patched_supportdoc_fetching():
+            cm = SupportDocumentManagerWithCache(memory=False, memcache=False)
             self.assertFalse(cm.memory)
             self.assertFalse(cm.memcache)
-            cm['browserid.org']
+            cm.get_support_document('browserid.org')
 
     def test_memory(self):
-        with patched_key_fetching():
+        with patched_supportdoc_fetching():
             memory = TTLedDict(1)
-            cm = CertificatesManagerWithCache(memory=memory)
+            cm = SupportDocumentManagerWithCache(memory=memory)
             self.assertFalse(cm.memcache)
             self.assertEquals(len(cm.memory), 0)
 
             # getting something should populate the memory
-            cm['browserid.org']
+            cm.get_support_document('browserid.org')
             self.assertEquals(len(cm.memory), 1)
 
             # if we sleep for a while, the value should be invalid
@@ -178,8 +179,8 @@ class TestConfigurationLoading(unittest.TestCase):
             config_file = os.path.join(os.path.dirname(__file__),
                                        'cryptoworker.ini')
             worker = get_crypto_worker(CryptoWorker, config_file)
-            self.assertTrue(worker.certs.loadtest_mode)
-            self.assertEquals(worker.certs.memory.ttl, 160)
+            self.assertTrue(worker.supportdocs.loadtest_mode)
+            self.assertEquals(worker.supportdocs.memory.ttl, 160)
             self.assertEquals(os.environ['HTTPS_PROXY'], 'localhost:1337')
         finally:
             if default_https_proxy is None:

@@ -5,12 +5,10 @@ import os
 from tokenserver import logger
 from tokenserver.crypto.master import PROTOBUF_CLASSES
 
-from browserid._m2_monkeypatch import DSA as _DSA
-from browserid._m2_monkeypatch import RSA as _RSA
 from browserid import jwt
 from browserid.errors import ConnectionError
-from browserid.certificates import CertificatesManager
-from browserid.tests.support import fetch_public_key
+from browserid.supportdoc import SupportDocumentManager
+from browserid.tests.support import fetch_support_document
 
 from powerhose import get_params
 from mozsvc.config import Config
@@ -18,7 +16,6 @@ from mozsvc.config import Config
 from tokenlib.utils import HKDF
 
 import hashlib
-from M2Crypto import BIO
 import pylibmc
 
 
@@ -78,7 +75,7 @@ class TTLedDict(dict):
         super(TTLedDict, self).__setitem__(key, (ttl, value))
 
 
-class CertificatesManagerWithCache(CertificatesManager):
+class SupportDocumentManagerWithCache(SupportDocumentManager):
 
     def __init__(self, memory=None, memcache=None, loadtest_mode=False,
                  verify=True):
@@ -87,13 +84,13 @@ class CertificatesManagerWithCache(CertificatesManager):
         of failing.
 
         setting :param memory: or :param memcache: to False will cause the
-        certificates manager to not use them
+        support document manager to not use them
 
         :param memory: the dict to use for in-memory cache
         :param memcache: the memcache instance, already configured.
         :param loadtest_mode: is the instance in loadtest mode?
         :param verify: do we want to check the ssl certificates when
-                       requesting the certificates (defaults to True)
+                       requesting the support documents (defaults to True)
         """
         if memory is None:
             memory = TTLedDict(60 * 10)  # TTL of 10 minutes for the certs
@@ -107,15 +104,16 @@ class CertificatesManagerWithCache(CertificatesManager):
         self.verify = verify
 
         if loadtest_mode is True:
-            self.memory['loadtest.local'] = fetch_public_key('loadtest.local')
+            supportdoc = fetch_support_document('loadtest.local')
+            self.memory['loadtest.local'] = supportdoc
             self.memory.set_ttl('loadtest.local', 0)  # never expire
 
-    def __getitem__(self, hostname):
-        """Get the certificate for the given hostname.
+    def get_support_document(self, hostname):
+        """Get the BrowserID support document for the given hostname.
 
-        If the certificate is not already in memory, try to get it in the
-        shared memcache. If it's not in the the memcache, download it and store
-        it both in memory and in the memcache.
+        If the document is not already in memory, try to get it in the
+        shared memcache. If it's not in the the memcache, download it and
+        store it both in memory and in the memcache.
         """
         hostname = str(hostname)
         if self.memory and hostname in self.memory:
@@ -136,46 +134,26 @@ class CertificatesManagerWithCache(CertificatesManager):
         else:
             # it doesn't exist in memcache either, so let's get it from
             # the issuer host.
-            key = self.fetch_public_key(hostname)
+            supportdoc = self.fetch_support_document(hostname)
             if self.memcache is not False:
-                self.memcache[hostname] = key
+                self.memcache[hostname] = supportdoc
             if self.memory is not False:
-                self.memory[hostname] = key
-            return key
-
-
-def get_crypto_obj(algo, filename=None, key=None):
-    if filename is None and key is None:
-        raise ValueError('you need to specify either filename or key')
-
-    if key is not None:
-        bio = BIO.MemoryBuffer(str(key))
-    else:
-        bio = BIO.openfile(filename)
-
-    # we can know what's the algorithm used thanks to the filename
-    if algo.startswith('RS'):
-        obj = _RSA.load_pub_key_bio(bio)
-    elif algo.startswith('DS'):
-        obj = _DSA.load_pub_key_bio(bio)
-    else:
-        raise ValueError('unknown algorithm')
-    return obj
+                self.memory[hostname] = supportdoc
+            return supportdoc
 
 
 def get_certificate(algo, filename=None, key=None):
-    obj = get_crypto_obj(algo, filename, key)
     cls = getattr(jwt, '%sKey' % algo)
-    return cls(obj=obj)
+    return cls.from_pem_data(data=key, filename=filename)
 
 
 class CryptoWorker(object):
 
-    def __init__(self, certs=None, **kwargs):
+    def __init__(self, supportdocs=None, **kwargs):
         logger.info('starting a crypto worker')
-        if certs is None:
-            certs = CertificatesManagerWithCache(**kwargs)
-        self.certs = certs
+        if supportdocs is None:
+            supportdocs = SupportDocumentManagerWithCache(**kwargs)
+        self.supportdocs = supportdocs
 
     def __call__(self, job):
         """proxy to the functions exposed by the worker"""
@@ -206,7 +184,7 @@ class CryptoWorker(object):
         raise Exception(message)
 
     def check_signature(self, hostname, signed_data, signature, algorithm):
-        data = self.certs[hostname]
+        data = self.supportdocs.get_key(hostname)
 
         try:
             cert = jwt.load_key(algorithm, data)
@@ -284,12 +262,12 @@ def get_crypto_worker(cls, config_file=None, **kwargs):
     loadtest_mode = config.get('loadtest_mode', False)
     verify = config.get('verify_ssl', True)
 
-    certs = CertificatesManagerWithCache(
+    supportdocs = SupportDocumentManagerWithCache(
                 loadtest_mode=loadtest_mode,
                 memory=memory,
                 memcache=memcache,
                 verify=verify)
-    return cls(certs=certs)
+    return cls(supportdocs=supportdocs)
 
 
 _class = None

@@ -6,7 +6,7 @@ import os
 
 from browserid.verifiers.local import LocalVerifier
 from browserid.tests.support import (make_assertion, get_keypair,
-                                     patched_key_fetching)
+                                     patched_supportdoc_fetching)
 
 from powerhose.job import Job
 from tokenserver.crypto.master import PowerHoseRunner
@@ -137,7 +137,7 @@ class MockCryptoWorker(CryptoWorker):
         super(MockCryptoWorker, self).__init__(*args, **kwargs)
 
     def check_signature(self, *args, **kwargs):
-        with patched_key_fetching():
+        with patched_supportdoc_fetching():
             return super(MockCryptoWorker, self)\
                     .check_signature(*args, **kwargs)
 
