@@ -15,7 +15,7 @@ from metlog.logging import hook_logger
 from tokenserver.assignment import INodeAssignment
 from browserid.tests.support import (
     make_assertion,
-    patched_key_fetching,
+    patched_supportdoc_fetching,
     unittest
 )
 
@@ -47,7 +47,7 @@ class TestService(unittest.TestCase):
         wsgiapp = CatchErrors(wsgiapp)
         self.app = TestApp(wsgiapp)
 
-        self.patched = patched_key_fetching()
+        self.patched = patched_supportdoc_fetching()
         self.patched.__enter__()
 
         # by default the conditions are accepted
