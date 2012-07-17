@@ -52,6 +52,7 @@ class NodeAssignmentTest(FunkLoadTestCase):
 
     def _do_token_exchange(self, assertion, status=200):
         self.setHeader('Authorization', 'Browser-ID %s' % assertion)
+        self.setHeader('X-Conditions-Accepted', 'true')
         res = self.get(self.root + self.token_exchange, ok_codes=[status])
         self.assertEquals(res.code, status)
         return res
