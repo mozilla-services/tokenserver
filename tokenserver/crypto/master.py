@@ -9,7 +9,7 @@ from powerhose.client import Pool
 from google.protobuf.message import DecodeError
 
 from tokenserver.crypto.messages import (
-    CheckSignature, CheckSignatureWithCert, DerivateKey,
+    CheckSignature, CheckSignatureWithCert, DerivateKey, IsTrustedIssuer,
     Response, StringResponse
 )
 
@@ -19,6 +19,7 @@ PROTOBUF_CLASSES = {
     'check_signature': (CheckSignature, Response),
     'check_signature_with_cert': (CheckSignatureWithCert, Response),
     'derivate_key': (DerivateKey, StringResponse),
+    'is_trusted_issuer': (IsTrustedIssuer, Response),
 }
 
 
@@ -74,7 +75,8 @@ class PowerHoseRunner(object):
     # instanciated once, and this instance will be returned each time.
     implements(IPowerhoseRunner)
 
-    methods = ['derivate_key', 'check_signature', 'check_signature_with_cert']
+    methods = ['derivate_key', 'check_signature', 'check_signature_with_cert',
+               'is_trusted_issuer']
 
     def __init__(self, endpoint, **kw):
         pid = str(os.getpid())

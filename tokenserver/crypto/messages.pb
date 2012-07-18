@@ -20,6 +20,12 @@ message DerivateKey {
     required string hashmod = 5;
 }
 
+message IsTrustedIssuer {
+    required string hostname = 1;
+    required string issuer = 2;
+    optional string trusted_secondaries = 3;
+}
+
 message StringResponse {
     optional string error_type = 1;
     optional string error = 2;
