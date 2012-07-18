@@ -209,6 +209,12 @@ class CryptoWorker(object):
                          info.decode("hex"), l, hashmod)
         return derivated.encode("hex")
 
+    def is_trusted_issuer(self, hostname, issuer, trusted_secondaries=None):
+        if trusted_secondaries:
+            trusted_secondaries = json.loads(trusted_secondaries)
+        return self.supportdocs.is_trusted_issuer(hostname, issuer,
+                                                  trusted_secondaries)
+
 
 def get_crypto_worker(cls, config_file=None, **kwargs):
     """Builds a crypto worker with the given arguments.

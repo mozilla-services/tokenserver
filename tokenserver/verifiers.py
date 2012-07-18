@@ -105,3 +105,17 @@ class PowerHoseVerifier(LocalVerifier):
                                            signed_data=data.signed_data,
                                            signature=data.signature,
                                            algorithm=data.algorithm)
+
+    def is_trusted_issuer(self, hostname, issuer):
+        """Check whether the issuer is trusted for a given hostname.
+
+        This check is sent to the PowerHose worker because it may need to
+        access cached support-document data.
+
+        :param hostname: the hostname for which a key has been issued
+        :param issuer: the hostname that issued the key in question
+        """
+        secondaries = json.dumps(self.trusted_secondaries)
+        return self.runner.is_trusted_issuer(hostname=hostname,
+                                             issuer=issuer,
+                                             trusted_secondaries=secondaries)
