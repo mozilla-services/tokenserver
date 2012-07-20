@@ -33,6 +33,12 @@ MOCKMYID_PRIVATE_KEY = browserid.jwt.RS256Key({
 })
 
 
+# options to tweak test_realistic
+USER_EXIST = 1
+USER_NEW = 2
+USER_BAD = 3
+
+
 class NodeAssignmentTest(FunkLoadTestCase):
     """This tests the assertion verification + node retrieval.
 
@@ -46,6 +52,13 @@ class NodeAssignmentTest(FunkLoadTestCase):
         self.root = self.conf_get('main', 'url')
         self.token_exchange = '/1.0/aitc/1.0'
         self.vusers = int(self.conf_get('main', 'vusers'))
+        self.existing = int(self.conf_get('main', 'existing'))
+        self.new = int(self.conf_get('main', 'new'))
+        self.bad = int(self.conf_get('main', 'bad'))
+        self.user_choice = ([USER_EXIST] * self.existing +
+          [USER_NEW] * self.new +
+          [USER_BAD] * self.bad)
+        random.shuffle(self.user_choice)
         self.invalid_domain = 'mozilla.com'
         self.valid_domain = 'mockmyid.com'
         self.audience = self.conf_get('main', 'audience')
@@ -74,6 +87,22 @@ class NodeAssignmentTest(FunkLoadTestCase):
             audience=self.audience,
             issuer_keypair=(None, MOCKMYID_PRIVATE_KEY)))
 
+    def test_realistic(self):
+        # this test runs as following:
+        #   - 95% ask for assertions on existing users (on a DB filled by
+        #                                           test_single_token_exchange)
+        #   - 4% ask for assertion on a new use
+        #   - 1% ask for a bad assertion
+        #
+        #   Tweak it with the existing, new, bad variables in the conf file
+        choice = random.choice(user_choice)
+        if choice == USER_EXIST :
+            return self.test_single_token_exchange()
+        elif choice == USER_NEW:
+            return self.test_single_token_exchange_new_user()
+
+        return self._test_bad_assertion()
+
     def test_token_exchange(self):
         # a valid browserid assertion should be taken by the server and turned
         # back into an authentication token which is valid for 30 minutes.
@@ -87,35 +116,42 @@ class NodeAssignmentTest(FunkLoadTestCase):
                 audience=self.audience,
                 issuer_keypair=(None, MOCKMYID_PRIVATE_KEY)))
 
+    def _test_bad_assertion(self, idx=None, in_one_day=None):
+        if idx is None:
+            idx = random.choice(range(self.vusers))
+
+        if in_one_day is None:
+            in_one_day = int(time.time() + 60 * 60 * 24) * 1000
+        email = "{uid}@{host}".format(uid=idx, host="mockmyid.com")
+        # expired assertion
+        expired = make_assertion(
+                email=email,
+                issuer=self.valid_domain,
+                exp=int(time.time() - 60) * 1000,
+                audience=self.audience,
+                issuer_keypair=(None, MOCKMYID_PRIVATE_KEY))
+        self._do_token_exchange(expired, 401)
+
+        # wrong issuer
+        wrong_issuer = make_assertion(email, exp=in_one_day,
+                                        audience=self.audience)
+        self._do_token_exchange(wrong_issuer, 401)
+
+        # wrong email host
+        email = "{uid}@{host}".format(uid=idx, host=self.invalid_domain)
+        wrong_email_host = make_assertion(
+                email, issuer=self.valid_domain,
+                exp=in_one_day,
+                audience=self.audience,
+                issuer_keypair=(None, MOCKMYID_PRIVATE_KEY))
+        self._do_token_exchange(wrong_email_host, 401)
+
     def test_bad_assertions(self):
         # similarly, try to send out bad assertions for the defined virtual
         # users.
         in_one_day = int(time.time() + 60 * 60 * 24) * 1000
         for idx in range(self.vusers):
-            email = "{uid}@{host}".format(uid=idx, host="mockmyid.com")
-
-            # expired assertion
-            expired = make_assertion(
-                    email=email,
-                    issuer=self.valid_domain,
-                    exp=int(time.time() - 60) * 1000,
-                    audience=self.audience,
-                    issuer_keypair=(None, MOCKMYID_PRIVATE_KEY))
-            self._do_token_exchange(expired, 401)
-
-            # wrong issuer
-            wrong_issuer = make_assertion(email, exp=in_one_day,
-                                         audience=self.audience)
-            self._do_token_exchange(wrong_issuer, 401)
-
-            # wrong email host
-            email = "{uid}@{host}".format(uid=idx, host=self.invalid_domain)
-            wrong_email_host = make_assertion(
-                    email, issuer=self.valid_domain,
-                    exp=in_one_day,
-                    audience=self.audience,
-                    issuer_keypair=(None, MOCKMYID_PRIVATE_KEY))
-            self._do_token_exchange(wrong_email_host, 401)
+            self._test_bad_assertion(idx, in_one_day)
 
 
 if __name__ == '__main__':

@@ -9,6 +9,10 @@ if [ "$1" = "-n" ]; then
     TEST="test_single_token_exchange_new_user"
     shift
 fi
+if [ "$1" = "-r" ]; then
+    TEST="test_existing"
+    shift
+fi
 
 workers=${1:-5}
 tmpdir=$(mktemp -d)
