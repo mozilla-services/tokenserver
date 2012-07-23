@@ -10,7 +10,7 @@ if [ "$1" = "-n" ]; then
     shift
 fi
 if [ "$1" = "-r" ]; then
-    TEST="test_existing"
+    TEST="test_realistic"
     shift
 fi
 
