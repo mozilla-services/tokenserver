@@ -60,6 +60,7 @@ build:
 	$(INSTALL) PasteScript
 	$(INSTALL) MoPyTools
 	$(INSTALL) nose
+	$(INSTALL) circus
 	$(INSTALL) WebTest
 	$(INSTALL) wsgi_intercept
 	$(INSTALL) pyzmq==2.1.11
