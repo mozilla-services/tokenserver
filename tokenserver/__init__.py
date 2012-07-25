@@ -4,7 +4,7 @@
 import os
 
 runner = os.environ.get('_')
-if runner.endswith('nosetests'):
+if runner is not None and runner.endswith('nosetests'):
     try:
         from gevent import monkey
         from gevent_zeromq import monkey_patch
