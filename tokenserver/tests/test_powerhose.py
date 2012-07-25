@@ -84,7 +84,8 @@ class TestPowerService(unittest.TestCase):
         load_and_register("tokenserver", cls.config)
         cls.backend = cls.config.registry.getUtility(INodeAssignment)
         cls.cluster = get_cluster('tokenserver.tests.mockworker.crypto_worker',
-                                  numprocesses=1, background=True, debug=True,
+                                  numprocesses=1, background=True,
+                                  #debug=True,
                                   worker_params={'config': cls.get_ini()})
         cls.cluster.start()
         time.sleep(1.)
