@@ -1,10 +1,10 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
-import os
+import sys
 
-runner = os.environ.get('_')
-if runner is not None and runner.endswith('nosetests'):
+runner = sys.argv[0]
+if runner.endswith('nosetests'):
     try:
         from gevent import monkey
         from gevent_zeromq import monkey_patch
