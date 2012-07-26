@@ -96,8 +96,8 @@ class NodeAssignmentTest(FunkLoadTestCase):
         #   - 1% ask for a bad assertion
         #
         #   Tweak it with the existing, new, bad variables in the conf file
-        choice = random.choice(user_choice)
-        if choice == USER_EXIST :
+        choice = random.choice(self.user_choice)
+        if choice == USER_EXIST:
             return self.test_single_token_exchange()
         elif choice == USER_NEW:
             return self.test_single_token_exchange_new_user()
