@@ -85,6 +85,9 @@ class SecuredShardedSQLNodeAssignment(ShardedSQLMetadata):
         data = {'email': email}
         status, body = self._proxy('POST', url, data)
         if status != 200:
-            raise BackendError('Could not get an allocation')
+            msg = 'Could not get an allocation\n'
+            msg += 'status: %s\n' % status
+            msg += 'body: %s\n' % str(body)
+            raise BackendError(msg, backend=url)
 
         return body['uid'], body['node']
