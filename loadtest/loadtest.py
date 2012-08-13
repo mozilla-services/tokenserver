@@ -88,6 +88,9 @@ class NodeAssignmentTest(FunkLoadTestCase):
             audience=self.audience,
             issuer_keypair=(None, MOCKMYID_PRIVATE_KEY)))
 
+    def test_empty(self):
+        self.get('http://google.com')
+
     def test_realistic(self):
         # this test runs as following:
         #   - 95% ask for assertions on existing users (on a DB filled by
