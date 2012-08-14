@@ -3,6 +3,11 @@
 import json
 import sys
 from zope.interface import implements
+import time
+import urllib
+import urlparse
+
+from mozsvc.util import dnslookup
 
 from tokenserver.assignment import INodeAssignment
 from tokenserver.util import get_logger
@@ -60,6 +65,7 @@ class SecuredShardedSQLNodeAssignment(ShardedSQLMetadata):
         base.__init__(databases, create_tables, **kw)
         self.proxy_uri = proxy_uri
         self.logger = None
+        self._resolved = None, time.time()
 
     def get_logger(self):
         if self.logger is None:
@@ -79,9 +85,20 @@ class SecuredShardedSQLNodeAssignment(ShardedSQLMetadata):
                 raise BackendError('Bad answer from proxy')
         return status, body
 
+    def _dnslookup(self, proxy):
+        # does a DNS lookup with gethostbyname and cache it in
+        # memory for one hour.
+        current, age = self._resolved
+        if current is None or age + 3600 < time.time():
+            current = dnslookup(proxy)
+            self._resolved = current, time.time()
+
+        return current
+
     def allocate_node(self, email, service):
         """Calls the proxy to get an allocation"""
-        url = '%s/1.0/%s' % (self.proxy_uri, service)
+        proxy_uri = self._dnslookup(self.proxy_uri)
+        url = '%s/1.0/%s' % (proxy_uri, service)
         data = {'email': email}
         status, body = self._proxy('POST', url, data)
         if status != 200:
