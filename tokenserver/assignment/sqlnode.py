@@ -4,8 +4,6 @@ import json
 import sys
 from zope.interface import implements
 import time
-import urllib
-import urlparse
 
 from mozsvc.util import dnslookup
 
