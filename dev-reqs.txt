@@ -42,5 +42,5 @@ wimms==0.3
 powerhose==0.7
 tokenlib==0.1
 mozsvc==0.6
-PyBrowserID==0.7
+PyBrowserID==0.8
 argparse==1.2.1
