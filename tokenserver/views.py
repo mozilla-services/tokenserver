@@ -10,7 +10,7 @@ from cornice import Service
 
 from tokenlib import make_token, get_token_secret
 
-from tokenserver.util import JsonError
+from tokenserver.util import json_error
 from tokenserver.verifiers import get_verifier
 from tokenserver.assignment import INodeAssignment
 
@@ -50,7 +50,7 @@ def valid_assertion(request):
     metlog = request.registry['metlog']
 
     def _unauthorized():
-        return JsonError(401, description='Unauthorized')
+        return json_error(401, description='Unauthorized')
 
     token = request.headers.get('Authorization')
     if token is None:
@@ -62,7 +62,7 @@ def valid_assertion(request):
 
     name, assertion = token
     if name.lower() != 'browser-id':
-        resp = JsonError(401, description='Unsupported')
+        resp = json_error(401, description='Unsupported')
         resp.www_authenticate = ('Browser-ID', {})
         raise resp
 
@@ -73,7 +73,7 @@ def valid_assertion(request):
         metlog.incr('token.assertion.verify_failure')
         metlog.incr('token.assertion.%s' % error_type)
         if error_type == "connection_error":
-            raise JsonError(503, description="Resource is not available")
+            raise json_error(503, description="Resource is not available")
         else:
             raise _unauthorized()
 
@@ -101,7 +101,7 @@ def valid_app(request):
     version = request.matchdict.get('version')
 
     if application not in supported:
-        raise JsonError(404, location='url', name='application',
+        raise json_error(404, location='url', name='application',
                         description='Unsupported application')
     else:
         request.validated['application'] = application
@@ -109,7 +109,7 @@ def valid_app(request):
     supported_versions = supported[application]
 
     if version not in supported_versions:
-        raise JsonError(404, location='url', name=version,
+        raise json_error(404, location='url', name=version,
                         description='Unsupported application version')
     else:
         request.validated['version'] = version
@@ -131,7 +131,7 @@ def pattern_exists(request):
     try:
         pattern = defined_patterns[service]
     except KeyError:
-        raise JsonError(503,
+        raise json_error(503,
                 description="The api_endpoint pattern for %r is not known"
                 % service)
 
@@ -171,8 +171,10 @@ def return_token(request):
         # if they are not equal
         if not accepted:
             to_accept = dict([(name, value) for name, value, __ in to_accept])
-            raise JsonError(403, urls=to_accept,
-                            description='Need to accept conditions')
+            raise json_error(403, location='header',
+                            description='Need to accept conditions',
+                            name='X-Conditions-Accepted',
+                            condition_urls=to_accept)
     # at this point, either the tos were signed or the service does not
     # have any ToS
     if node is None or uid is None:

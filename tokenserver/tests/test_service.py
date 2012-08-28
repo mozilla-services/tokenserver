@@ -95,11 +95,18 @@ class TestService(unittest.TestCase):
                                    needs_acceptance=True)
         self.backend.set_metadata('aitc-1.0', 'boo', 'http://boo')
 
-        # let's call as usual
+        # let's call as usual, we should get a 403
         headers = {'Authorization': 'Browser-ID %s' % self._getassertion()}
         res = self.app.get('/1.0/aitc/1.0', headers=headers, status=403)
 
-        urls = res.json['urls']
+        errors = res.json['errors']
+        self.assertEqual(len(errors), 1)
+        error = errors[0]
+
+        self.assertEqual(error['location'], 'header')
+        self.assertEqual(error['name'], 'X-Conditions-Accepted')
+
+        urls = error['condition_urls']
         self.assertEqual(len(urls), 2)
         self.assertEqual(urls['tos'], 'http://tos')
         self.assertEqual(urls['pp'], 'http://pp')
