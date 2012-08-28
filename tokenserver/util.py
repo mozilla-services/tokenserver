@@ -1,14 +1,15 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
-import json
 from base64 import b32encode
 from hashlib import sha1
 import os
 
-from pyramid.httpexceptions import HTTPError
 from pyramid.threadlocal import get_current_registry
-from webob import Response
+
+
+from cornice.errors import Errors
+from cornice.util import json_error as cornice_error
 
 from mozsvc.secrets import Secrets
 
@@ -18,17 +19,10 @@ def hash_email(email):
     return b32encode(digest).lower()
 
 
-class JsonError(HTTPError):
-    def __init__(self, status=400, location='body', name='', description='',
-                 **kw):
-        body = {'status': status, 'errors':
-                [{'location': location, 'name': name,
-                  'description': description}]
-                }
-        body.update(kw)
-        Response.__init__(self, json.dumps(body))
-        self.status = status
-        self.content_type = 'application/json'
+def json_error(status=400, location='body', name='', description='', **kw):
+        errors = Errors(status=status)
+        errors.add(location=location, name=name, description=description, **kw)
+        return cornice_error(errors)
 
 
 # XXXX needs to move into mozsvc.secrets.Secrets
