@@ -2,6 +2,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 import os
+import json
 
 from webtest import TestApp
 from pyramid import testing
@@ -118,3 +119,29 @@ class TestService(unittest.TestCase):
         self.assertIn('https://example.com/1.0', res.json['api_endpoint'])
         self.assertIn('duration', res.json)
         self.assertEquals(res.json['duration'], 3600)
+
+    def test_stats_capture(self):
+        # make a simple request
+        res = self.app.get('/')
+        self.assertEqual(res.json['auth'],
+                         'https://token.services.mozilla.com')
+        msgs = self.config.registry['metlog'].sender.msgs
+
+        def is_in_msgs(subset):
+            subset_items = subset.items()
+            for msg in msgs:
+                msg_items = json.loads(msg).items()
+                match = all(item in msg_items for item in subset_items)
+                if match:
+                    return True
+            return False
+
+        fields = {'rate': 1.0, 'name': 'tokenserver.views._discovery'}
+        timer_subset = {'type': 'timer',
+                        'fields': fields,
+                        }
+        self.assertTrue(is_in_msgs(timer_subset))
+        counter_subset = {'type': 'counter',
+                          'fields': fields,
+                        }
+        self.assertTrue(is_in_msgs(counter_subset))

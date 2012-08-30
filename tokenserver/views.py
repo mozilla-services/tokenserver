@@ -6,7 +6,7 @@ import os
 import json
 import re
 
-from cornice import Service
+from mozsvc.metrics import MetricsService
 
 from tokenlib import make_token, get_token_secret
 
@@ -19,8 +19,8 @@ from tokenserver.crypto.master import ClientCatchedError
 
 # A GET on / returns the discovery API
 
-discovery = Service(name='discovery', path='/')
-token = Service(name='token', path='/1.0/{application}/{version}')
+discovery = MetricsService(name='discovery', path='/')
+token = MetricsService(name='token', path='/1.0/{application}/{version}')
 
 DEFAULT_TOKEN_DURATION = 5 * 60
 
