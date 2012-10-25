@@ -5,6 +5,8 @@ import sys
 from zope.interface import implements
 import time
 
+import requests
+
 from mozsvc.util import dnslookup
 
 from tokenserver.assignment import INodeAssignment
@@ -30,7 +32,6 @@ Connection.autocommit = autocommit
 
 
 from mozsvc.exceptions import BackendError
-from mozsvc.http_helpers import get_url
 from wimms.sql import SQLMetadata
 from wimms.shardedsql import ShardedSQLMetadata
 
@@ -73,7 +74,14 @@ class SecuredShardedSQLNodeAssignment(ShardedSQLMetadata):
     def _proxy(self, method, url, data=None, headers=None):
         if data is not None:
             data = json.dumps(data)
-        status, headers, body = get_url(url, method, data, headers)
+
+        try:
+            resp = requests.request(method, url, data=data, headers=headers)
+        except requests.exceptions.RequestException:
+            self.get_logger().exception("error talking to sreg (%s)" % (url,))
+            raise BackendError('Error talking to proxy')
+
+        body = resp.content
         if body:
             try:
                 body = json.loads(body)
@@ -81,7 +89,7 @@ class SecuredShardedSQLNodeAssignment(ShardedSQLMetadata):
                 self.get_logger().error("bad json body from sreg (%s): %s" %
                                                         (url, body))
                 raise BackendError('Bad answer from proxy')
-        return status, body
+        return resp.status_code, body
 
     def _dnslookup(self, proxy):
         # does a DNS lookup with gethostbyname and cache it in
