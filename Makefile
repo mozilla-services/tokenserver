@@ -11,8 +11,7 @@ COVERAGE = bin/coverage
 PYLINT = bin/pylint
 SERVER = dev-auth.services.mozilla.com
 SCHEME = https
-PYPI = http://c.pypi.python.org/simple
-PYPI2 = http://c.pypi.python.org/packages
+PYPI = https://pypi.python.org/simple
 PYPI2RPM = bin/pypi2rpm.py --index=$(PYPI)
 PYPIOPTIONS = -i $(PYPI)
 CHANNEL = dev
@@ -65,8 +64,6 @@ build:
 	$(INSTALL) wsgi_intercept
 	$(INSTALL) pyzmq==2.1.11
 	bin/easy_install `bin/python ezm2c.py`
-	bin/easy_install `bin/python ezgevent.py`
-	bin/easy_install `bin/python ezgeventzmq.py`
 	$(CURDIR)/ezpylibmc.sh
 	$(BUILDAPP) -t $(TIMEOUT) -c $(CHANNEL) $(PYPIOPTIONS) $(DEPS)
 
@@ -96,7 +93,7 @@ build_rpms2:
 	PYTHONPATH=$(CURDIR)/lib/*/site-packages bin/pypi2rpm.py ${BUILD_TMP}/master.zip --dist-dir=$(RPMDIR)
 	wget -O ${BUILD_TMP}/nose-0.11.4.tar.gz http://pypi.python.org/packages/source/n/nose/nose-0.11.4.tar.gz 
 	bin/pypi2rpm.py ${BUILD_TMP}/nose-0.11.4.tar.gz --dist-dir=$(RPMDIR)
-	cd ${BUILD_TMP} && wget $(PYPI2)/source/M/M2Crypto/M2Crypto-0.21.1.tar.gz#md5=f93d8462ff7646397a9f77a2fe602d17
+	cd ${BUILD_TMP} && wget $(PYPI)/source/M/M2Crypto/M2Crypto-0.21.1.tar.gz#md5=f93d8462ff7646397a9f77a2fe602d17
 	cd ${BUILD_TMP} && tar -xzvf M2Crypto-0.21.1.tar.gz && cd M2Crypto-0.21.1 && sed -i -e 's/opensslconf\./opensslconf-x86_64\./' SWIG/_ec.i && sed -i -e 's/opensslconf\./opensslconf-x86_64\./' SWIG/_evp.i && SWIG_FEATURES=-cpperraswarn $(PYTHON) setup.py --command-packages=pypi2rpm.command bdist_rpm2 --binary-only --dist-dir=$(RPMDIR) --name=python26-m2crypto
 	rm -rf ${BUILD_TMP}/M2Crypto*
 	wget -O $(BUILD_TMP)/certifi-0.0.8.tar.gz http://pypi.python.org/packages/source/c/certifi/certifi-0.0.8.tar.gz

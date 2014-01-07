@@ -9,7 +9,7 @@ from webtest import TestApp
 from logging.config import fileConfig
 from ConfigParser import NoSectionError
 
-from cornice.tests import CatchErrors
+from cornice.tests.support import CatchErrors
 from mozsvc.config import load_into_settings
 from mozsvc.plugin import load_and_register, load_from_settings
 
