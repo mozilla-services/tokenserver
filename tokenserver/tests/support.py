@@ -160,4 +160,5 @@ def get_assertion(email, audience="*", issuer='browserid.org',
         kwargs['email_keypair'] =\
                 get_keypair(hostname="not-the-right-host.com")
 
-    return make_assertion(email, audience, issuer=issuer, **kwargs)
+    assertion = make_assertion(email, audience, issuer=issuer, **kwargs)
+    return assertion.encode('ascii')

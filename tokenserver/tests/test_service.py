@@ -7,7 +7,7 @@ import json
 from webtest import TestApp
 from pyramid import testing
 
-from cornice.tests import CatchErrors
+from cornice.tests.support import CatchErrors
 from mozsvc.config import load_into_settings
 from mozsvc.plugin import load_and_register, load_from_settings
 
@@ -60,7 +60,7 @@ class TestService(unittest.TestCase):
     def _getassertion(self):
         email = 'tarek@mozilla.com'
         url = 'http://tokenserver.services.mozilla.com'
-        return make_assertion(email, url)
+        return make_assertion(email, url).encode('ascii')
 
     def test_unknown_app(self):
         headers = {'Authorization': 'Browser-ID %s' % self._getassertion()}

@@ -1,17 +1,14 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
+
 import sys
+from tokenserver.util import monkey_patch_gevent
+
 
 runner = sys.argv[0]
 if runner.endswith('nosetests'):
-    try:
-        from gevent import monkey
-        from gevent_zeromq import monkey_patch
-        monkey.patch_all()
-        monkey_patch()
-    except ImportError:
-        pass
+    monkey_patch_gevent()
 
 
 import logging
@@ -31,13 +28,7 @@ logger = logging.getLogger('tokenserver')
 
 
 def includeme(config):
-    try:
-        from gevent import monkey
-        from gevent_zeromq import monkey_patch
-        monkey.patch_all()
-        monkey_patch()
-    except ImportError:
-        pass
+    monkey_patch_gevent()
 
     config.include("cornice")
     config.include("mozsvc")

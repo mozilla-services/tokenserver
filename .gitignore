@@ -1,4 +1,5 @@
 lib
+lib64
 bin
 include
 man
@@ -8,3 +9,5 @@ tokenserver.egg-info
 loadtest/*.xml*
 loadtest/assertions.py
 loadtest/html
+nosetests.xml
+.channel
