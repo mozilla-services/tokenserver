@@ -8,7 +8,7 @@ import re
 
 from mozsvc.metrics import MetricsService
 
-from tokenlib import make_token, get_token_secret
+import tokenlib
 
 from tokenserver.util import json_error
 from tokenserver.verifiers import get_verifier
@@ -195,14 +195,12 @@ def return_token(request):
     token_duration = request.registry.settings.get(
             'tokenserver.token_duration', DEFAULT_TOKEN_DURATION)
 
-    token = make_token({'uid': uid, 'service_entry': node},
-            timeout=token_duration, secret=secret)
-    # XXX needs to be renamed as 'get_derived_secret' because
-    # it's not clear here it's a derived
-    secret = get_token_secret(token, secret=secret)
+    token = tokenlib.make_token({'uid': uid, 'service_entry': node},
+                                timeout=token_duration, secret=secret)
+    secret = tokenlib.get_derived_secret(token, secret=secret)
 
     api_endpoint = pattern.format(uid=uid, service=service, node=node)
 
-    # FIXME add the algo used to generate the token
     return {'id': token, 'key': secret, 'uid': uid,
-            'api_endpoint': api_endpoint, 'duration': token_duration}
+            'api_endpoint': api_endpoint, 'duration': token_duration,
+            'hashalg': tokenlib.DEFAULT_HASHMOD}
