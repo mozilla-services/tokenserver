@@ -38,7 +38,7 @@ pylibmc==1.2.3
 requests==2.1
 chardet==2.2.1
 metlog-py==0.10
-/home/rfk/repos/mozilla/services/wimms
+https://github.com/mozilla-services/wimms/archive/rfk/update-deps.zip
 powerhose==0.7
 tokenlib==0.3.1
 mozsvc==0.7
