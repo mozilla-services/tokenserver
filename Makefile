@@ -62,7 +62,8 @@ build:
 	$(INSTALL) circus
 	$(INSTALL) WebTest
 	$(INSTALL) wsgi_intercept
-	$(INSTALL) pyzmq==2.1.11
+	$(INSTALL) Cython
+	$(INSTALL) https://github.com/rfk/pyzmq/archive/green-ioloop-instance.zip
 	bin/easy_install `bin/python ezm2c.py`
 	$(CURDIR)/ezpylibmc.sh
 	$(BUILDAPP) -t $(TIMEOUT) -c $(CHANNEL) $(PYPIOPTIONS) $(DEPS)

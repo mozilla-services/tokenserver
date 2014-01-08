@@ -44,5 +44,4 @@ tokenlib==0.2
 mozsvc==0.7
 PyBrowserID==0.9.1
 argparse==1.2.1
-pyzmq==14.0.1
 circus==0.10
