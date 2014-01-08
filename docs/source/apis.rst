@@ -1,6 +1,6 @@
 APIS
 ====
 
-.. services::
-   :package: tokenserver
-   :ignore: tokenserver.run
+.. cornice-autodoc::
+   :modules: tokenserver.views
+   :service: token
