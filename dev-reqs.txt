@@ -40,7 +40,7 @@ chardet==2.2.1
 metlog-py==0.10
 /home/rfk/repos/mozilla/services/wimms
 powerhose==0.7
-tokenlib==0.2
+tokenlib==0.3.1
 mozsvc==0.7
 PyBrowserID==0.9.1
 argparse==1.2.1
