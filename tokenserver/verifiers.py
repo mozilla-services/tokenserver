@@ -5,6 +5,7 @@ from pyramid.threadlocal import get_current_registry
 from zope.interface import implements, Interface
 
 from browserid.verifiers.local import LocalVerifier as LocalVerifier_
+from browserid.verifiers.remote import RemoteVerifier as RemoteVerifier_
 from browserid.errors import InvalidSignatureError, ExpiredSignatureError
 
 from tokenserver.crypto.master import get_runner
@@ -23,6 +24,9 @@ class IBrowserIdVerifier(Interface):
 
 # The default verifier from browserid
 class LocalVerifier(LocalVerifier_):
+    implements(IBrowserIdVerifier)
+
+class RemoteVerifier(RemoteVerifier_):
     implements(IBrowserIdVerifier)
 
 
