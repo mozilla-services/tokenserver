@@ -3,41 +3,7 @@
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 
 import sys
-
-
-def monkey_patch_gevent():
-    """Monkey-patch gevent into core and zmq."""
-    try:
-        from gevent import monkey
-    except ImportError:
-        return
-    monkey.patch_all()
-    try:
-        import zmq
-        import zmq.eventloop
-        import zmq.eventloop.ioloop
-        import zmq.eventloop.zmqstream
-        import zmq.green
-        import zmq.green.eventloop
-        import zmq.green.eventloop.ioloop
-        import zmq.green.eventloop.zmqstream
-    except ImportError:
-        return
-    TO_PATCH = ((zmq, zmq.green),
-                (zmq.eventloop, zmq.green.eventloop),
-                (zmq.eventloop.ioloop, zmq.green.eventloop.ioloop),
-                (zmq.eventloop.zmqstream, zmq.green.eventloop.zmqstream))
-    for (red, green) in TO_PATCH:
-        for name in dir(red):
-            redval = getattr(red, name)
-            if name.startswith('__') or type(redval) is type(zmq):
-                continue
-            try:
-                greenval = getattr(green, name)
-            except AttributeError:
-                continue
-            if redval is not greenval:
-                setattr(red, name, greenval)
+from tokenserver.util import monkey_patch_gevent
 
 
 runner = sys.argv[0]
