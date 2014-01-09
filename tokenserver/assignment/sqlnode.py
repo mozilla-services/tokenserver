@@ -15,18 +15,13 @@ from tokenserver.util import get_logger
 # try to have this changed upstream:
 # XXX being able to set autocommit=1;
 # forcing it for now
-from pymysql.connections import Connection, COM_QUERY
+from pymysql.connections import Connection
 
+
+orig_autocommit = Connection.autocommit
 
 def autocommit(self, value):
-    value = True
-    try:
-        self._execute_command(COM_QUERY, "SET AUTOCOMMIT = %s" % \
-                                    self.escape(value))
-        self.read_packet()
-    except:
-        exc, value, __ = sys.exc_info()
-        self.errorhandler(None, exc, value)
+    return orig_autocommit(self, True)
 
 Connection.autocommit = autocommit
 
