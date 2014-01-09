@@ -63,7 +63,6 @@ build:
 	$(INSTALL) WebTest
 	$(INSTALL) wsgi_intercept
 	$(INSTALL) Cython
-	$(INSTALL) --allow-all-external argparse==1.2.1
 	$(INSTALL) https://github.com/rfk/pyzmq/archive/green-ioloop-instance.zip
 	bin/easy_install `bin/python ezm2c.py`
 	$(CURDIR)/ezpylibmc.sh
