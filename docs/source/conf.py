@@ -29,10 +29,8 @@ import os
 
 os.environ['MEMORY_TTL'] = '3600'
 
-import cornice
-
-sys.path.insert(0, os.path.abspath(cornice.__file__))
-extensions = ['cornice.sphinxext', 'sphinx.ext.autodoc']
+sys.path.insert(0, os.path.abspath(os.path.join(__file__, '../../..')))
+extensions = ['cornice.ext.sphinxext', 'sphinx.ext.autodoc']
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
