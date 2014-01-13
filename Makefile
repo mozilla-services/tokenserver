@@ -63,7 +63,7 @@ build:
 	$(INSTALL) WebTest
 	$(INSTALL) wsgi_intercept
 	$(INSTALL) Cython
-	$(INSTALL) https://github.com/rfk/pyzmq/archive/green-ioloop-instance.zip
+	$(INSTALL) https://github.com/zeromq/pyzmq/archive/master.zip
 	bin/easy_install `bin/python ezm2c.py`
 	$(CURDIR)/ezpylibmc.sh
 	$(BUILDAPP) -t $(TIMEOUT) -c $(CHANNEL) $(PYPIOPTIONS) $(DEPS)
@@ -83,17 +83,10 @@ build_rpms2:
 	# Install cython so that we can build zmq-related stuff.
 	bin/pip install cython
 	# PyZMQ sdist bundles don't play nice with pypi2rpm.
-	# Build it from a checkout fo the tag instead.
+	# Build it from a checkout of the tag instead.
 	rm -f ${BUILD_TMP}/master.tar.gz
-	wget -O ${BUILD_TMP}/master.tar.gz https://github.com/zeromq/pyzmq/tarball/v2.1.11 --no-check-certificate
+	wget -O ${BUILD_TMP}/master.tar.gz https://github.com/zeromq/pyzmq/tarball/master --no-check-certificate
 	bin/pypi2rpm.py ${BUILD_TMP}/master.tar.gz --dist-dir=$(RPMDIR)
-	# We need some extra patches to gevent_zeromq, use our forked version.
-	# Explicitly set PYTHONPATH for the build so that it picks up the local
-	# version of PyZMQ that we built above.
-	wget -O ${BUILD_TMP}/master.zip https://github.com/mozilla-services/gevent-zeromq/zipball/master --no-check-certificate
-	PYTHONPATH=$(CURDIR)/lib/*/site-packages bin/pypi2rpm.py ${BUILD_TMP}/master.zip --dist-dir=$(RPMDIR)
-	wget -O ${BUILD_TMP}/nose-0.11.4.tar.gz http://pypi.python.org/packages/source/n/nose/nose-0.11.4.tar.gz 
-	bin/pypi2rpm.py ${BUILD_TMP}/nose-0.11.4.tar.gz --dist-dir=$(RPMDIR)
 	cd ${BUILD_TMP} && wget $(PYPI)/source/M/M2Crypto/M2Crypto-0.21.1.tar.gz#md5=f93d8462ff7646397a9f77a2fe602d17
 	cd ${BUILD_TMP} && tar -xzvf M2Crypto-0.21.1.tar.gz && cd M2Crypto-0.21.1 && sed -i -e 's/opensslconf\./opensslconf-x86_64\./' SWIG/_ec.i && sed -i -e 's/opensslconf\./opensslconf-x86_64\./' SWIG/_evp.i && SWIG_FEATURES=-cpperraswarn $(PYTHON) setup.py --command-packages=pypi2rpm.command bdist_rpm2 --binary-only --dist-dir=$(RPMDIR) --name=python26-m2crypto
 	rm -rf ${BUILD_TMP}/M2Crypto*
