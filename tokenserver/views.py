@@ -49,8 +49,9 @@ def valid_assertion(request):
     """
     metlog = request.registry['metlog']
 
-    def _unauthorized():
-        return json_error(401, description='Unauthorized')
+    def _unauthorized(status_message='error', **kw):
+        kw.setdefault('description', 'Unauthorized')
+        return json_error(401, status_message, **kw)
 
     token = request.headers.get('Authorization')
     if token is None:
@@ -62,7 +63,7 @@ def valid_assertion(request):
 
     name, assertion = token
     if name.lower() != 'browser-id':
-        resp = json_error(401, description='Unsupported')
+        resp = _unauthorized(description='Unsupported')
         resp.www_authenticate = ('Browser-ID', {})
         raise resp
 
@@ -74,8 +75,10 @@ def valid_assertion(request):
         metlog.incr('token.assertion.%s' % error_type)
         if error_type == "connection_error":
             raise json_error(503, description="Resource is not available")
+        if error_type == "expired_signature_error":
+            raise _unauthorized("invalid-timestamp")
         else:
-            raise _unauthorized()
+            raise _unauthorized("invalid-credentials")
 
     try:
         verifier = get_verifier()

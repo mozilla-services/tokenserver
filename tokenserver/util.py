@@ -5,12 +5,13 @@ from base64 import b32encode
 from hashlib import sha1
 import os
 import sys
+import json
 
 from pyramid.threadlocal import get_current_registry
-
+from pyramid.response import Response
+from pyramid import httpexceptions as exc
 
 from cornice.errors import Errors
-from cornice.util import json_error as cornice_error
 
 from mozsvc.secrets import Secrets
 
@@ -55,10 +56,21 @@ def hash_email(email):
     return b32encode(digest).lower()
 
 
-def json_error(status=400, location='body', name='', description='', **kw):
-        errors = Errors(status=status)
-        errors.add(location=location, name=name, description=description, **kw)
-        return cornice_error(errors)
+class _JSONError(exc.HTTPError):
+    def __init__(self, errors, status_code=400, status_message='error'):
+        body = {'status': status_message, 'errors': errors}
+        Response.__init__(self, json.dumps(body))
+        self.status = status_code
+        self.content_type = 'application/json'
+
+
+def json_error(status_code=400, status_message='error', **kw):
+    errors = Errors(status=status_code)
+    kw.setdefault('location', 'body')
+    kw.setdefault('name', '')
+    kw.setdefault('description', '')
+    errors.add(**kw)
+    return _JSONError(errors, status_code, status_message)
 
 
 # XXXX needs to move into mozsvc.secrets.Secrets

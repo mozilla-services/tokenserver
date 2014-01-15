@@ -3,6 +3,7 @@
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 import os
 import json
+import time
 
 from webtest import TestApp
 from pyramid import testing
@@ -57,10 +58,10 @@ class TestService(unittest.TestCase):
     def tearDown(self):
         self.patched.__exit__(None, None, None)
 
-    def _getassertion(self):
-        email = 'tarek@mozilla.com'
-        url = 'http://tokenserver.services.mozilla.com'
-        return make_assertion(email, url).encode('ascii')
+    def _getassertion(self, **kw):
+        kw.setdefault('email', 'tarek@mozilla.com')
+        kw.setdefault('audience', 'http://tokenserver.services.mozilla.com')
+        return make_assertion(**kw).encode('ascii')
 
     def test_unknown_app(self):
         headers = {'Authorization': 'Browser-ID %s' % self._getassertion()}
@@ -145,3 +146,31 @@ class TestService(unittest.TestCase):
                           'fields': fields,
                         }
         self.assertTrue(is_in_msgs(counter_subset))
+
+    def test_unauthorized_error_status(self):
+        # Totally busted auth -> generic error.
+        headers = {'Authorization': 'Unsupported-Auth-Scheme IHACKYOU'}
+        res = self.app.get('/1.0/aitc/1.0', headers=headers, status=401)
+        self.assertEqual(res.json['status'], 'error')
+        # Bad signature -> "invalid-credentials" 
+        assertion = self._getassertion(assertion_sig='IHACKYOU')
+        headers = {'Authorization': 'Browser-ID %s' % assertion}
+        res = self.app.get('/1.0/aitc/1.0', headers=headers, status=401)
+        self.assertEqual(res.json['status'], 'invalid-credentials')
+        # Bad audience -> "invalid-credentials" 
+        assertion = self._getassertion(audience='http://i.hackyou.com')
+        headers = {'Authorization': 'Browser-ID %s' % assertion}
+        res = self.app.get('/1.0/aitc/1.0', headers=headers, status=401)
+        self.assertEqual(res.json['status'], 'invalid-credentials')
+        # Expired timestamp -> "invalid-timestamp" 
+        assertion = self._getassertion(exp=42)
+        headers = {'Authorization': 'Browser-ID %s' % assertion}
+        res = self.app.get('/1.0/aitc/1.0', headers=headers, status=401)
+        self.assertEqual(res.json['status'], 'invalid-timestamp')
+        self.assertTrue('X-Timestamp' in res.headers)
+        # Far-future timestamp -> "invalid-timestamp" 
+        assertion = self._getassertion(exp=int(time.time() + 3600))
+        headers = {'Authorization': 'Browser-ID %s' % assertion}
+        res = self.app.get('/1.0/aitc/1.0', headers=headers, status=401)
+        self.assertEqual(res.json['status'], 'invalid-timestamp')
+        self.assertTrue('X-Timestamp' in res.headers)
