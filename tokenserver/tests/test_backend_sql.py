@@ -28,18 +28,11 @@ class TestSQLBackend(unittest.TestCase):
         load_and_register("tokenserver", self.config)
         self.backend = self.config.registry.getUtility(INodeAssignment)
 
-        # adding a node with 100 slots
-        self.backend._safe_execute(
-              """insert into nodes (`node`, `service`, `available`,
-                    `capacity`, `current_load`, `downed`, `backoff`)
-                  values ("https://phx12", "sync-1.0", 100, 100, 0, 0, 0)""")
-        self.backend._safe_execute(
-                """insert into service_pattern
-                (`service`, `pattern`)
-                values
-                ("sync-1.0", "{node}/{version}/{uid}")""")
-        self._sqlite = self.backend._engine.driver == 'pysqlite'
+        # adding a service and a node with 100 slots
+        self.backend.add_service("sync-1.0", "{node}/{version}/{uid}")
+        self.backend.add_node("sync-1.0", "https://phx12", 100)
 
+        self._sqlite = self.backend._engine.driver == 'pysqlite'
         endpoints = {}
         load_endpoints(endpoints, self.config)
         get_current_registry()['endpoints_patterns'] = endpoints
@@ -50,31 +43,24 @@ class TestSQLBackend(unittest.TestCase):
             if os.path.exists(filename):
                 os.remove(filename)
         else:
+            self.backend._safe_execute('delete from services')
             self.backend._safe_execute('delete from nodes')
-            self.backend._safe_execute('delete from user_nodes')
-            self.backend._safe_execute('delete from service_pattern')
+            self.backend._safe_execute('delete from users')
 
     def test_get_node(self):
-        unassigned = None, None, None
-        self.assertEquals(unassigned,
-                          self.backend.get_node("tarek@mozilla.com",
-                              "sync-1.0"))
+        user = self.backend.get_user("sync-1.0", "tarek@mozilla.com")
+        self.assertEquals(user, None)
 
-        res = self.backend.allocate_node("tarek@mozilla.com", "sync-1.0")
+        user = self.backend.create_user("sync-1.0", "tarek@mozilla.com")
+        self.assertEqual(user['email'], "tarek@mozilla.com")
+        self.assertEqual(user['node'], "https://phx12")
 
-        if self._sqlite:
-            wanted = (1, u'https://phx12')
-        else:
-            wanted = (0, u'https://phx12')
-
-        self.assertEqual(res, wanted)
-        self.assertEqual(wanted + (None,),
-                         self.backend.get_node("tarek@mozilla.com", "sync-1.0",
-                             ))
+        user = self.backend.get_user("sync-1.0", "tarek@mozilla.com")
+        self.assertEqual(user['email'], "tarek@mozilla.com")
+        self.assertEqual(user['node'], "https://phx12")
 
     def test_get_patterns(self):
         # patterns should have been populated
         patterns = get_current_registry()['endpoints_patterns']
-
-        self.assertDictEqual(patterns,
-                {'sync-1.0': '{node}/{version}/{uid}'})
+        self.assertDictEqual(patterns, {'sync-1.0': '{node}/{version}/{uid}'})
+                

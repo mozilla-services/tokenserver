@@ -3,7 +3,6 @@
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 
 import time
-import random
 
 from pyramid.httpexceptions import HTTPException, HTTPServiceUnavailable
 

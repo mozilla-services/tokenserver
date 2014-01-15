@@ -11,3 +11,4 @@ loadtest/assertions.py
 loadtest/html
 nosetests.xml
 .channel
+*.swp

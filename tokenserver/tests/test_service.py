@@ -29,7 +29,7 @@ class TestService(unittest.TestCase):
 
     def get_ini(self):
         return os.path.join(os.path.dirname(__file__),
-                            'test_fixednode.ini')
+                            'test_memorynode.ini')
 
     def setUp(self):
         self.config = testing.setUp()
@@ -51,9 +51,6 @@ class TestService(unittest.TestCase):
 
         self.patched = patched_supportdoc_fetching()
         self.patched.__enter__()
-
-        # by default the conditions are accepted
-        self.backend.set_accepted_conditions_flag('aitc-1.0', True)
 
     def tearDown(self):
         self.patched.__exit__(None, None, None)
@@ -87,39 +84,6 @@ class TestService(unittest.TestCase):
         res = self.app.get('/')
         self.assertEqual(res.json['auth'],
                          'https://token.services.mozilla.com')
-
-    def test_tos_signed(self):
-        # preparing the data
-        self.backend.set_accepted_conditions_flag('aitc-1.0', False)
-        self.backend.set_metadata('aitc-1.0', 'tos', 'http://tos',
-                                   needs_acceptance=True)
-        self.backend.set_metadata('aitc-1.0', 'pp', 'http://pp',
-                                   needs_acceptance=True)
-        self.backend.set_metadata('aitc-1.0', 'boo', 'http://boo')
-
-        # let's call as usual, we should get a 403
-        headers = {'Authorization': 'Browser-ID %s' % self._getassertion()}
-        res = self.app.get('/1.0/aitc/1.0', headers=headers, status=403)
-
-        errors = res.json['errors']
-        self.assertEqual(len(errors), 1)
-        error = errors[0]
-
-        self.assertEqual(error['location'], 'header')
-        self.assertEqual(error['name'], 'X-Conditions-Accepted')
-
-        urls = error['condition_urls']
-        self.assertEqual(len(urls), 2)
-        self.assertEqual(urls['tos'], 'http://tos')
-        self.assertEqual(urls['pp'], 'http://pp')
-
-        # let's sign the urls !
-        headers = {'Authorization': 'Browser-ID %s' % self._getassertion(),
-                   'X-Conditions-Accepted': '1'}
-        res = self.app.get('/1.0/aitc/1.0', headers=headers)
-        self.assertIn('https://example.com/1.0', res.json['api_endpoint'])
-        self.assertIn('duration', res.json)
-        self.assertEquals(res.json['duration'], 3600)
 
     def test_stats_capture(self):
         # make a simple request
@@ -174,3 +138,41 @@ class TestService(unittest.TestCase):
         res = self.app.get('/1.0/aitc/1.0', headers=headers, status=401)
         self.assertEqual(res.json['status'], 'invalid-timestamp')
         self.assertTrue('X-Timestamp' in res.headers)
+
+    def test_generation_number_change(self):
+        # We can't test for this until PyBrowserID grows support for it,
+        # which is waiting on final spec approval.
+        raise unittest.SkipTest
+
+    def test_client_state_change(self):
+        # Start with no client-state header.
+        headers = {'Authorization': 'Browser-ID %s' % self._getassertion()}
+        res = self.app.get('/1.0/aitc/1.0', headers=headers)
+        uid0 = res.json['uid']
+        # No change == same uid.
+        res = self.app.get('/1.0/aitc/1.0', headers=headers)
+        self.assertEqual(res.json['uid'], uid0)
+        # Send a client-state header, get a new uid.
+        headers['X-Client-State'] = 'aaaa'
+        res = self.app.get('/1.0/aitc/1.0', headers=headers)
+        uid1 = res.json['uid']
+        self.assertNotEqual(uid1, uid0)
+        # No change == same uid.
+        res = self.app.get('/1.0/aitc/1.0', headers=headers)
+        self.assertEqual(res.json['uid'], uid1)
+        # Change the client-state header, get a new uid.
+        headers['X-Client-State'] = 'bbbb'
+        res = self.app.get('/1.0/aitc/1.0', headers=headers)
+        uid2 = res.json['uid']
+        self.assertNotEqual(uid2, uid0)
+        self.assertNotEqual(uid2, uid1)
+        # No change == same uid.
+        res = self.app.get('/1.0/aitc/1.0', headers=headers)
+        self.assertEqual(res.json['uid'], uid2)
+        # Use a previous client-state, get an auth error.
+        headers['X-Client-State'] = 'aaaa'
+        res = self.app.get('/1.0/aitc/1.0', headers=headers, status=401)
+        self.assertEqual(res.json['status'], 'invalid-client-state')
+        del headers['X-Client-State']
+        res = self.app.get('/1.0/aitc/1.0', headers=headers, status=401)
+        self.assertEqual(res.json['status'], 'invalid-client-state')
