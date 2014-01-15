@@ -61,7 +61,7 @@ class TestService(unittest.TestCase):
         return make_assertion(**kw).encode('ascii')
 
     def test_unknown_app(self):
-        headers = {'Authorization': 'Browser-ID %s' % self._getassertion()}
+        headers = {'Authorization': 'BrowserID %s' % self._getassertion()}
         resp = self.app.get('/1.0/xXx/token', headers=headers, status=404)
         self.assertTrue('errors' in resp.json)
 
@@ -69,7 +69,7 @@ class TestService(unittest.TestCase):
         self.app.get('/1.0/sync/2.1', status=401)
 
     def test_valid_app(self):
-        headers = {'Authorization': 'Browser-ID %s' % self._getassertion()}
+        headers = {'Authorization': 'BrowserID %s' % self._getassertion()}
         res = self.app.get('/1.0/aitc/1.0', headers=headers)
         self.assertIn('https://example.com/1.0', res.json['api_endpoint'])
         self.assertIn('duration', res.json)
@@ -77,7 +77,7 @@ class TestService(unittest.TestCase):
 
     def test_unknown_pattern(self):
         # sync 2.1 is defined in the .ini file, but  no pattern exists for it.
-        headers = {'Authorization': 'Browser-ID %s' % self._getassertion()}
+        headers = {'Authorization': 'BrowserID %s' % self._getassertion()}
         self.app.get('/1.0/sync/2.1', headers=headers, status=503)
 
     def test_discovery(self):
@@ -118,23 +118,23 @@ class TestService(unittest.TestCase):
         self.assertEqual(res.json['status'], 'error')
         # Bad signature -> "invalid-credentials" 
         assertion = self._getassertion(assertion_sig='IHACKYOU')
-        headers = {'Authorization': 'Browser-ID %s' % assertion}
+        headers = {'Authorization': 'BrowserID %s' % assertion}
         res = self.app.get('/1.0/aitc/1.0', headers=headers, status=401)
         self.assertEqual(res.json['status'], 'invalid-credentials')
         # Bad audience -> "invalid-credentials" 
         assertion = self._getassertion(audience='http://i.hackyou.com')
-        headers = {'Authorization': 'Browser-ID %s' % assertion}
+        headers = {'Authorization': 'BrowserID %s' % assertion}
         res = self.app.get('/1.0/aitc/1.0', headers=headers, status=401)
         self.assertEqual(res.json['status'], 'invalid-credentials')
         # Expired timestamp -> "invalid-timestamp" 
         assertion = self._getassertion(exp=42)
-        headers = {'Authorization': 'Browser-ID %s' % assertion}
+        headers = {'Authorization': 'BrowserID %s' % assertion}
         res = self.app.get('/1.0/aitc/1.0', headers=headers, status=401)
         self.assertEqual(res.json['status'], 'invalid-timestamp')
         self.assertTrue('X-Timestamp' in res.headers)
         # Far-future timestamp -> "invalid-timestamp" 
         assertion = self._getassertion(exp=int(time.time() + 3600))
-        headers = {'Authorization': 'Browser-ID %s' % assertion}
+        headers = {'Authorization': 'BrowserID %s' % assertion}
         res = self.app.get('/1.0/aitc/1.0', headers=headers, status=401)
         self.assertEqual(res.json['status'], 'invalid-timestamp')
         self.assertTrue('X-Timestamp' in res.headers)
@@ -146,7 +146,7 @@ class TestService(unittest.TestCase):
 
     def test_client_state_change(self):
         # Start with no client-state header.
-        headers = {'Authorization': 'Browser-ID %s' % self._getassertion()}
+        headers = {'Authorization': 'BrowserID %s' % self._getassertion()}
         res = self.app.get('/1.0/aitc/1.0', headers=headers)
         uid0 = res.json['uid']
         # No change == same uid.

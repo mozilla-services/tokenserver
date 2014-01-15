@@ -101,7 +101,7 @@ class TestPowerService(unittest.TestCase):
 
     def _test_valid_app(self):
         assertion = get_assertion(DEFAULT_EMAIL)
-        headers = {'Authorization': 'Browser-ID %s' % assertion}
+        headers = {'Authorization': 'BrowserID %s' % assertion}
         res = self.app.get(TOKEN_URI, headers=headers)
         self.assertEqual(res.json['api_endpoint'], DEFAULT_NODE + '/1.0/0')
 
@@ -122,19 +122,19 @@ class TestPowerService(unittest.TestCase):
         headers = {'Authorization': 'Basic-Auth alexis:alexis'}
         res = self.app.get(TOKEN_URI, headers=headers, status=401)
         self.assertTrue('WWW-Authenticate' in res.headers)
-        self.assertEqual(res.headers['WWW-Authenticate'], 'Browser-ID ')
+        self.assertEqual(res.headers['WWW-Authenticate'], 'BrowserID ')
 
         # if the headers are good but the given assertion is not valid, a 401
         # should be raised as well.
         wrong_assertion = get_assertion(DEFAULT_EMAIL,
                                         bad_issuer_cert=True)
-        headers = {'Authorization': 'Browser-ID %s' % wrong_assertion}
+        headers = {'Authorization': 'BrowserID %s' % wrong_assertion}
         res = self.app.get(TOKEN_URI, headers=headers, status=401)
 
         # test the different cases of bad assertions.
         assertion = get_assertion('alexis@loadtest.local',
                                   bad_issuer_cert=True)
-        headers = {'Authorization': 'Browser-ID %s' % assertion}
+        headers = {'Authorization': 'BrowserID %s' % assertion}
         res = self.app.get(TOKEN_URI, headers=headers, status=401)
 
         assertion = get_assertion('alexis@mozilla.com',

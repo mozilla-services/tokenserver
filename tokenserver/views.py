@@ -64,9 +64,9 @@ def valid_assertion(request):
         raise _unauthorized()
 
     name, assertion = token
-    if name.lower() != 'browser-id':
+    if name.lower() != 'browserid':
         resp = _unauthorized(description='Unsupported')
-        resp.www_authenticate = ('Browser-ID', {})
+        resp.www_authenticate = ('BrowserID', {})
         raise resp
 
     def _handle_exception(error_type):
