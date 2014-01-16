@@ -12,24 +12,25 @@ from browserid.tests.support import fetch_support_document
 
 from powerhose import get_params
 from mozsvc.config import Config
+from mozsvc.storage.mcclient import MemcachedClient
 
 from tokenlib.utils import HKDF
 
 import hashlib
-import pylibmc
 
 
-class MemcacheClient(pylibmc.Client):
+class MemcachedClientWithTTL(MemcachedClient):
 
     def __init__(self, *args, **kwargs):
         self.ttl = kwargs.pop('ttl', 0)
-        super(MemcacheClient, self).__init__(*args, **kwargs)
+        super(MemcachaedClientWithTTL, self).__init__(*args, **kwargs)
 
     def set(self, key, value, time=None, *args, **kwargs):
         if time is None:
             time = self.ttl     # NOQA
-        return super(MemcacheClient, self).set(str(key), value, time, *args,
-                                               **kwargs)
+        key = str(key)
+        return super(MemcachedClientWithTTL, self).set(key, value, time,
+                                                       *args, **kwargs)
 
 
 class ExpiredValue(KeyError):
@@ -260,7 +261,7 @@ def get_crypto_worker(cls, config_file=None, **kwargs):
     mc_host = config.get('memcache_host', None)
     if mc_host is not None:
         mc_ttl = config['memcache_ttl']
-        memcache = MemcacheClient((mc_host,), ttl=mc_ttl)
+        memcache = MemcachedClientWithTTL((mc_host,), ttl=mc_ttl)
     else:
         memcache = False
 
