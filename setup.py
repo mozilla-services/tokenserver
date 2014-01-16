@@ -5,7 +5,7 @@ from setuptools import setup, find_packages
 
 
 requires = ['cornice', 'mozsvc', 'powerhose', 'circus', 'wimms', 'PyBrowserID',
-            'pylibmc', 'metlog-py']
+            'metlog-py']
 
 setup(name='tokenserver',
         version='1.2',

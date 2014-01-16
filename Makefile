@@ -65,7 +65,6 @@ build:
 	$(INSTALL) Cython
 	$(INSTALL) https://github.com/zeromq/pyzmq/archive/master.zip
 	bin/easy_install `bin/python ezm2c.py`
-	$(CURDIR)/ezpylibmc.sh
 	$(BUILDAPP) -t $(TIMEOUT) -c $(CHANNEL) $(PYPIOPTIONS) $(DEPS)
 
 update:
