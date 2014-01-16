@@ -5,6 +5,7 @@ import time
 import os
 import json
 import re
+import contextlib
 
 from mozsvc.metrics import MetricsService
 
@@ -40,6 +41,11 @@ def _discovery(request):
         return json.loads(f.read())
 
 
+def _unauthorized(status_message='error', **kw):
+    kw.setdefault('description', 'Unauthorized')
+    return json_error(401, status_message, **kw)
+
+
 # validators
 def valid_assertion(request):
     """Validate that the assertion given in the request is correct.
@@ -48,9 +54,6 @@ def valid_assertion(request):
     happened.
     """
     metlog = request.registry['metlog']
-
-    def _unauthorized():
-        return json_error(401, description='Unauthorized')
 
     token = request.headers.get('Authorization')
     if token is None:
@@ -61,9 +64,9 @@ def valid_assertion(request):
         raise _unauthorized()
 
     name, assertion = token
-    if name.lower() != 'browser-id':
-        resp = json_error(401, description='Unsupported')
-        resp.www_authenticate = ('Browser-ID', {})
+    if name.lower() != 'browserid':
+        resp = _unauthorized(description='Unsupported')
+        resp.www_authenticate = ('BrowserID', {})
         raise resp
 
     def _handle_exception(error_type):
@@ -74,8 +77,10 @@ def valid_assertion(request):
         metlog.incr('token.assertion.%s' % error_type)
         if error_type == "connection_error":
             raise json_error(503, description="Resource is not available")
+        if error_type == "expired_signature_error":
+            raise _unauthorized("invalid-timestamp")
         else:
-            raise _unauthorized()
+            raise _unauthorized("invalid-credentials")
 
     try:
         verifier = get_verifier()
@@ -113,9 +118,16 @@ def valid_app(request):
                         description='Unsupported application version')
     else:
         request.validated['version'] = version
-        accepted = (request.headers.get('X-Conditions-Accepted', None)
-                    is not None)
-        request.validated['x-conditions-accepted'] = accepted
+
+
+def valid_client_state(request):
+    """Checks for and validates the X-Client-State header."""
+    client_state = request.headers.get('X-Client-State', '')
+    if client_state:
+        if not re.match("[a-zA-Z0-9._-]{1,32}", client_state):
+            raise json_error(400, location='header', name='X-Client-State',
+                             description='Invalid client state value')
+    request.validated['client-state'] = client_state
 
 
 def pattern_exists(request):
@@ -138,13 +150,15 @@ def pattern_exists(request):
     request.validated['pattern'] = pattern
 
 
-@token.get(validators=(valid_app, valid_assertion, pattern_exists))
+VALIDATORS = (valid_app, valid_client_state, valid_assertion, pattern_exists)
+
+@token.get(validators=VALIDATORS)
 def return_token(request):
     """This service does the following process:
 
-    - validates the Browser-ID assertion provided on the Authorization header
+    - validates the BrowserID assertion provided on the Authorization header
     - allocates when necessary a node to the user for the required service
-    - deals with the X-Conditions-Accepted header
+    - checks generation numbers and x-client-state header
     - returns a JSON mapping containing the following values:
 
         - **id** -- a signed authorization token, containing the
@@ -157,37 +171,40 @@ def return_token(request):
     # number were valid, so let's build the authentication token and return it.
     backend = request.registry.getUtility(INodeAssignment)
     email = request.validated['assertion']['email']
+    generation = request.validated['assertion'].get('generation', 0)
     application = request.validated['application']
     version = request.validated['version']
     pattern = request.validated['pattern']
     service = get_service_name(application, version)
-    accepted = request.validated['x-conditions-accepted']
+    client_state = request.validated['client-state']
 
-    # get the node or allocate one if none is already set
-    uid, node, to_accept = backend.get_node(email, service)
-    if to_accept is not None:
-        # the backend sent a tos url, meaning the user needs to
-        # sign it, we want to compare both tos and raise a 403
-        # if they are not equal
-        if not accepted:
-            to_accept = dict([(name, value) for name, value, __ in to_accept])
-            raise json_error(403, location='header',
-                            description='Need to accept conditions',
-                            name='X-Conditions-Accepted',
-                            condition_urls=to_accept)
-    # at this point, either the tos were signed or the service does not
-    # have any ToS
-    if node is None or uid is None:
-        metlog = request.registry['metlog']
-        start = time.time()
-        try:
-            uid, node = backend.allocate_node(email, service)
-        finally:
-            duration = time.time() - start
-            metlog.timer_send("token.sql.allocate_node", duration)
+    with time_backend_operation(request, 'tokenserver.sql.get_user'):
+        user = backend.get_user(service, email)
+    if not user:
+        with time_backend_operation(request, 'tokenserver.sql.create_user'):
+            user = backend.create_user(service, email, generation, client_state)
+
+    # Update if this client is ahead of previously-seen clients.
+    updates = {}
+    if generation > user['generation']:
+        updates['generation'] = generation
+    if client_state != user['client_state']:
+        if client_state not in user['old_client_states']:
+            updates['client_state'] = client_state
+    if updates:
+        with time_backend_operation(request, 'tokenserver.sql.update_user'):
+            backend.update_user(service, user, **updates)
+
+    # Error out if this client is behind some previously-seen client.
+    # This is done after the updates because some other, even more up-to-date
+    # client may have raced with a concurrent update.
+    if user['generation'] > generation:
+        raise _unauthorized("invalid-generation")
+    if client_state in user['old_client_states']:
+        raise _unauthorized("invalid-client-state")
 
     secrets = request.registry.settings['tokenserver.secrets_file']
-    node_secrets = secrets.get(node)
+    node_secrets = secrets.get(user['node'])
     if not node_secrets:
         raise Exception("The specified node does not have any shared secret")
     secret = node_secrets[-1]  # the last one is the most recent one
@@ -195,12 +212,23 @@ def return_token(request):
     token_duration = request.registry.settings.get(
             'tokenserver.token_duration', DEFAULT_TOKEN_DURATION)
 
-    token = tokenlib.make_token({'uid': uid, 'service_entry': node},
+    token = tokenlib.make_token({'uid': user['uid'], 'node': user['node']},
                                 timeout=token_duration, secret=secret)
     secret = tokenlib.get_derived_secret(token, secret=secret)
 
-    api_endpoint = pattern.format(uid=uid, service=service, node=node)
+    endpoint = pattern.format(uid=user['uid'], service=service, node=user['node'])
 
-    return {'id': token, 'key': secret, 'uid': uid,
-            'api_endpoint': api_endpoint, 'duration': token_duration,
+    return {'id': token, 'key': secret, 'uid': user['uid'],
+            'api_endpoint': endpoint, 'duration': token_duration,
             'hashalg': tokenlib.DEFAULT_HASHMOD}
+
+
+@contextlib.contextmanager
+def time_backend_operation(request, name):
+    metlog = request.registry['metlog']
+    start = time.time()
+    try:
+        yield
+    finally:
+        duration = time.time() - start
+        metlog.timer_send(name, duration)

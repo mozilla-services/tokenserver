@@ -1,9 +1,16 @@
-""" SQL Mappers
 """
-import json
+Node-assignment backend using an SQL database.
+
+This INodeAssignment backend uses the "Where Is My Mozilla Service" project
+aka "WIMMS" to implement the storage backend.  WIMMS provides a bunch of
+management infrastructure atop an SQL database.
+"""
+
 import sys
-from zope.interface import implements
+import json
 import time
+
+from zope.interface import implements
 
 import requests
 
@@ -12,30 +19,17 @@ from mozsvc.util import dnslookup
 from tokenserver.assignment import INodeAssignment
 from tokenserver.util import get_logger
 
-# try to have this changed upstream:
-# XXX being able to set autocommit=1;
-# forcing it for now
-from pymysql.connections import Connection
-
-
-orig_autocommit = Connection.autocommit
-
-def autocommit(self, value):
-    return orig_autocommit(self, True)
-
-Connection.autocommit = autocommit
-
-
 from mozsvc.exceptions import BackendError
+
 from wimms.sql import SQLMetadata
 from wimms.shardedsql import ShardedSQLMetadata
 
 
-class SQLNodeAssignment(SQLMetadata):
-    """Just a placeholder to mark with a zope interface.
+PROXY_API_VERSION = "1.0"
 
-    Silly, isn't it ?
-    """
+
+class SQLNodeAssignment(SQLMetadata):
+    """Wrap the WIMMS sql implementation in an INodeAssignment."""
     implements(INodeAssignment)
 
     def get_patterns(self):
@@ -44,29 +38,40 @@ class SQLNodeAssignment(SQLMetadata):
 
 
 class ShardedSQLNodeAssignment(ShardedSQLMetadata):
-    """Like the SQL backend, but with one DB per service
+    """Wrap the WIMMS sharded sql implementation in an INodeAssignment.
+
+    This is just like the SQLNodeAssignment backend, but it transparently
+    uses a different user database of each service.
     """
     implements(INodeAssignment)
 
+    def get_patterns(self):
+        res = super(SQLNodeAssignment, self).get_patterns()
+        return dict([(pattern.service, pattern.pattern) for pattern in res])
 
-class SecuredShardedSQLNodeAssignment(ShardedSQLMetadata):
-    """Like the sharded backend, but proxies all writes to stoken
+
+class SecuredShardedSQLNodeAssignment(ShardedSQLNodeAssignment):
+    """Wraps the WIMMS shareded sql implement with a http write proxy.
+
+    This is just like the ShardedSQLNodeAssignment backend, but all writes are
+    proxied to a secure service via https.  Handy for keeping database write
+    credentials off of publicly-accessible machines.
     """
-    implements(INodeAssignment)
 
-    def __init__(self, proxy_uri, databases, create_tables, **kw):
-        base = super(SecuredShardedSQLNodeAssignment, self)
-        base.__init__(databases, create_tables, **kw)
+    def __init__(self, proxy_uri, *args, **kw):
+        super(SecuredShardedSQLNodeAssignment, self).__init__(*args, **kw)
         self.proxy_uri = proxy_uri
         self.logger = None
-        self._resolved = None, time.time()
+        self._resolved_uri = None, time.time()
 
     def get_logger(self):
         if self.logger is None:
             self.logger = get_logger()
         return self.logger
 
-    def _proxy(self, method, url, data=None, headers=None):
+    def _proxy_request(self, method, path, data=None, headers=None):
+        url = self._dnslookup(self.proxy_uri)
+        url = url + "/" + PROXY_API_VERSION + "/" + path
         if data is not None:
             data = json.dumps(data)
 
@@ -76,6 +81,12 @@ class SecuredShardedSQLNodeAssignment(ShardedSQLMetadata):
             self.get_logger().exception("error talking to sreg (%s)" % (url,))
             raise BackendError('Error talking to proxy')
 
+        if resp.status_code != 200:
+            msg = 'node allocation backend failure\n'
+            msg += 'status: %s\n' % resp.status_code
+            msg += 'body: %s\n' % resp.content
+            raise BackendError(msg, backend=url)
+
         body = resp.content
         if body:
             try:
@@ -84,28 +95,29 @@ class SecuredShardedSQLNodeAssignment(ShardedSQLMetadata):
                 self.get_logger().error("bad json body from sreg (%s): %s" %
                                                         (url, body))
                 raise BackendError('Bad answer from proxy')
-        return resp.status_code, body
+        return body
 
     def _dnslookup(self, proxy):
-        # does a DNS lookup with gethostbyname and cache it in
-        # memory for one hour.
-        current, age = self._resolved
-        if current is None or age + 3600 < time.time():
+        # does a DNS lookup with gethostbyname
+        # and caches it in memory for one hour.
+        now = time.time()
+        current, age = self._resolved_uri
+        if current is None or age + 3600 < now:
             current = dnslookup(proxy)
-            self._resolved = current, time.time()
-
+            self._resolved_uri = current, now
         return current
 
-    def allocate_node(self, email, service):
-        """Calls the proxy to get an allocation"""
-        proxy_uri = self._dnslookup(self.proxy_uri)
-        url = '%s/1.0/%s' % (proxy_uri, service)
-        data = {'email': email}
-        status, body = self._proxy('POST', url, data)
-        if status != 200:
-            msg = 'Could not get an allocation\n'
-            msg += 'status: %s\n' % status
-            msg += 'body: %s\n' % str(body)
-            raise BackendError(msg, backend=url)
+    def create_user(self, service, email, generation=0, client_state=''):
+        """Calls the proxy to create a new user record."""
+        body = self._proxy('POST', service, {
+            'email': email,
+            'generation': generation,
+            'client_state': client_state,
+        })
+        return body
 
-        return body['uid'], body['node']
+    def update_user(self, service, user, generation=None, client_state=None):
+        """Calls the proxy to update an existing user record."""
+        # Actually this is just the same API as create_user.
+        email = user['email']
+        return self.create_user(service, email, generation, client_state) 

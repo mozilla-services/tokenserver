@@ -32,6 +32,7 @@ def includeme(config):
 
     config.include("cornice")
     config.include("mozsvc")
+    config.include("tokenserver.tweens")
     config.scan("tokenserver.views")
     settings = config.registry.settings
 
