@@ -7,8 +7,8 @@ class INodeAssignment(Interface):
     def get_user(self, service, email):
         """Returns the user record for the given service and email.
 
-        The returned object will be None if no record exists for that email,
-        otherwise it will be an object with the following fields:
+        The returned object will be None if no service record exists for that
+        email, otherwise it will be an object with the following fields:
 
           * email:  the email address, as given to this method
           * uid:  integer userid assigned to that email

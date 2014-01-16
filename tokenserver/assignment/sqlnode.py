@@ -25,6 +25,9 @@ from wimms.sql import SQLMetadata
 from wimms.shardedsql import ShardedSQLMetadata
 
 
+PROXY_API_VERSION = "1.0"
+
+
 class SQLNodeAssignment(SQLMetadata):
     """Wrap the WIMMS sql implementation in an INodeAssignment."""
     implements(INodeAssignment)
@@ -67,7 +70,8 @@ class SecuredShardedSQLNodeAssignment(ShardedSQLNodeAssignment):
         return self.logger
 
     def _proxy_request(self, method, path, data=None, headers=None):
-        url = self._dnslookup(self.proxy_uri) + "/1.0/" + path
+        url = self._dnslookup(self.proxy_uri)
+        url = url + "/" + PROXY_API_VERSION + "/" + path
         if data is not None:
             data = json.dumps(data)
 
