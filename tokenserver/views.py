@@ -189,7 +189,8 @@ def return_token(request):
     if generation > user['generation']:
         updates['generation'] = generation
     if client_state != user['client_state']:
-        updates['client_state'] = client_state
+        if client_state not in user['old_client_states']:
+            updates['client_state'] = client_state
     if updates:
         with time_backend_operation(request, 'tokenserver.sql.update_user'):
             backend.update_user(service, user, **updates)
