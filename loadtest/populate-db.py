@@ -1,7 +1,8 @@
 #! /usr/bin/env python
 # script to populate the database with records
+import time
 import random
-from wimms.sql import SQLMetadata, _INSERT
+from wimms.sql import SQLMetadata, _CREATE_USER_RECORD
 
 
 def populate_db(sqluri, service, nodes, user_range, host="loadtest.local"):
@@ -20,12 +21,18 @@ def populate_db(sqluri, service, nodes, user_range, host="loadtest.local"):
     :param user_range: the number of users to create
     :param host: the hostname to use when generating users
     """
+    params = {
+        'service': service,
+        'generation': 0,
+        'client_state': '',
+        'timestamp': int(time.time() * 1000),
+    }
     # for each user in the range, assign him to a node
     md = SQLMetadata(sqluri, create_tables=True)
     for idx in range(0, user_range):
         email = "%s@%s" % (idx, host)
         node = random.choice(nodes)
-        md._safe_execute(_INSERT, email=email, service=service, node=node)
+        md._safe_execute(_CREATE_USER_RECORD, email=email, node=node, **params)
 
 
 def main():

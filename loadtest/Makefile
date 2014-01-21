@@ -1,13 +1,12 @@
-.PHONY: bench test report createdb
+SERVER_URL = https://token.services.mozilla.com
+
+.PHONY: build test bench
 
 build:
-	../bin/easy_install funkload
+	../bin/pip install https://github.com/mozilla-services/loads/archive/master.zip
 
 test:
-	../bin/fl-run-test loadtest.py
+	../bin/loads-runner --hits=1 --users=1 loadtest.NodeAssignmentTest.test_realistic --server-url=$(SERVER_URL)
 
 bench:
-	../bin/fl-run-bench loadtest.py NodeAssignmentTest
-
-report:
-	../bin/fl-build-report --html -o html simple-bench.xml
+	../bin/loads-runner --users=20 --duration=1800 --include-file=./loadtest.py loadtest.NodeAssignmentTest.test_realistic --server-url=$(SERVER_URL)

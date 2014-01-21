@@ -1,45 +1,42 @@
-from funkload.FunkLoadTestCase import FunkLoadTestCase
+
 import time
+import uuid
+import random
+import urlparse
+
 import browserid
 import browserid.jwt
 from browserid.tests.support import make_assertion
-import random
-import uuid
+
+from loads import TestCase
 
 
-MOCKMYID_PRIVATE_KEY = browserid.jwt.RS256Key({
-  "algorithnm": "RS",
-  "n": "154988747580902760394650941058372315672655463739759604809411226511"\
-       "077728241215274831074023538998462524898370248701917073947431963995"\
-       "829594255139047629967566720896935410098920308488250796497830860055"\
-       "544424902329008757928517862039480884579424169789764552974280774608"\
-       "906504095492421246555369861413637195898821600814807850489656862851"\
-       "420023207670666748797372380120641566758995125031432254819338645077"\
-       "931184578057920644455028341623155321139637468017701876856504085604"\
-       "246826549377447138137738969622637096927246306509521595969513482640"\
-       "050043750176104418359560732757087402395180114009919728116694933566"\
-       "82993446554779893834303",
-  "e": "65537",
-  "d": "65399069618723544500872440362363672698042543818900958411270855515"\
-       "77495913426869112377010004955160417265879626558436936025363204803"\
-       "91331858268095155890431830889373003315817865054997037936791585608"\
-       "73644285308283967959957813646594134677848534354507623921570269626"\
-       "94408807947047846891301466649598749901605789115278274397848888140"\
-       "10530606360821777612754992672154421572087230519464512940305680198"\
-       "74227941147032559892027555115234340986250008269684300770919843514"\
-       "10839837395828971692109391386427709263149504336916566097901771762"\
-       "64809088099477332528320749664563079224800780517787353244131447050"\
-       "2254528486411726581424522838833"
+MOCKMYID_PRIVATE_KEY = browserid.jwt.DS128Key({
+    "algorithm": "DS",
+    "x": "385cb3509f086e110c5e24bdd395a84b335a09ae",
+    "y": "738ec929b559b604a232a9b55a5295afc368063bb9c20fac4e53a74970a4db795"
+         "6d48e4c7ed523405f629b4cc83062f13029c4d615bbacb8b97f5e56f0c7ac9bc1"
+         "d4e23809889fa061425c984061fca1826040c399715ce7ed385c4dd0d40225691"
+         "2451e03452d3c961614eb458f188e3e8d2782916c43dbe2e571251ce38262",
+    "p": "ff600483db6abfc5b45eab78594b3533d550d9f1bf2a992a7a8daa6dc34f8045a"
+         "d4e6e0c429d334eeeaaefd7e23d4810be00e4cc1492cba325ba81ff2d5a5b305a"
+         "8d17eb3bf4a06a349d392e00d329744a5179380344e82a18c47933438f891e22a"
+         "eef812d69c8f75e326cb70ea000c3f776dfdbd604638c2ef717fc26d02e17",
+    "q": "e21e04f911d1ed7991008ecaab3bf775984309c3",
+    "g": "c52a4a0ff3b7e61fdf1867ce84138369a6154f4afa92966e3c827e25cfa6cf508b"
+         "90e5de419e1337e07a2e9e2a3cd5dea704d175f8ebf6af397d69e110b96afb17c7"
+         "a03259329e4829b0d03bbc7896b15b4ade53e130858cc34d96269aa89041f40913"
+         "6c7242a38895c9d5bccad4f389af1d7a4bd1398bd072dffa896233397a",
 })
 
 
-# options to tweak test_realistic
+# enumeration of different kinds of users
 USER_EXIST = 1
 USER_NEW = 2
 USER_BAD = 3
 
 
-class NodeAssignmentTest(FunkLoadTestCase):
+class NodeAssignmentTest(TestCase):
     """This tests the assertion verification + node retrieval.
 
     Depending on the setup of the system under load, it could also test the
@@ -48,26 +45,31 @@ class NodeAssignmentTest(FunkLoadTestCase):
     You can populate the database of the system under load with the
     "populate-db" script.
     """
+
+    server_url = 'https://token.services.mozilla.com'
+
     def setUp(self):
-        self.root = self.conf_get('main', 'url')
-        self.token_exchange = '/1.0/aitc/1.0'
-        self.vusers = int(self.conf_get('main', 'vusers'))
-        self.existing = int(self.conf_get('main', 'existing'))
-        self.new = int(self.conf_get('main', 'new'))
-        self.bad = int(self.conf_get('main', 'bad'))
-        self.user_choice = ([USER_EXIST] * self.existing +
-          [USER_NEW] * self.new +
-          [USER_BAD] * self.bad)
+        self.token_exchange = '/1.0/sync/1.5'
+        # Options to tweak how many of each kind of user.
+        self.vusers = 10
+        self.existing = 95
+        self.new = 4
+        self.bad = 1
+        self.user_choice = (
+            [USER_EXIST] * self.existing +
+            [USER_NEW] * self.new +
+            [USER_BAD] * self.bad
+        )
         random.shuffle(self.user_choice)
         self.invalid_domain = 'mozilla.com'
         self.valid_domain = 'mockmyid.com'
-        self.audience = self.conf_get('main', 'audience')
+        self.audience = self.server_url
 
     def _do_token_exchange(self, assertion, status=200):
-        self.setHeader('Authorization', 'Browser-ID %s' % assertion)
-        self.setHeader('X-Conditions-Accepted', 'true')
-        res = self.get(self.root + self.token_exchange, ok_codes=[status])
-        self.assertEquals(res.code, status)
+        url = urlparse.urljoin(self.server_url, self.token_exchange)
+        headers = {'Authorization': 'BrowserID %s' % assertion}
+        res = self.session.get(url, headers=headers)
+        self.assertEquals(res.status_code, status)
         return res
 
     def test_single_token_exchange(self):
@@ -88,23 +90,17 @@ class NodeAssignmentTest(FunkLoadTestCase):
             audience=self.audience,
             issuer_keypair=(None, MOCKMYID_PRIVATE_KEY)))
 
-    def test_empty(self):
-        self.get('http://google.com')
-
     def test_realistic(self):
         # this test runs as following:
         #   - 95% ask for assertions on existing users (on a DB filled by
         #                                           test_single_token_exchange)
         #   - 4% ask for assertion on a new use
         #   - 1% ask for a bad assertion
-        #
-        #   Tweak it with the existing, new, bad variables in the conf file
         choice = random.choice(self.user_choice)
         if choice == USER_EXIST:
             return self.test_single_token_exchange()
         elif choice == USER_NEW:
             return self.test_single_token_exchange_new_user()
-
         return self._test_bad_assertion()
 
     def test_token_exchange(self):
@@ -156,8 +152,3 @@ class NodeAssignmentTest(FunkLoadTestCase):
         in_one_day = int(time.time() + 60 * 60 * 24) * 1000
         for idx in range(self.vusers):
             self._test_bad_assertion(idx, in_one_day)
-
-
-if __name__ == '__main__':
-    import unittest
-    unittest.main()
