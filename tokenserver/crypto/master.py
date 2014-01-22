@@ -81,7 +81,14 @@ class PowerHoseRunner(object):
     def __init__(self, endpoint, **kw):
         pid = str(os.getpid())
         self.endpoint = endpoint.replace('$PID', pid)
-        self.pool = Pool(int(kw.get('pool_size', 5)), self.endpoint)
+        pool_kwds = {
+          'size': 5,
+          'frontend': self.endpoint,
+        }
+        for key in kw:
+            if key.startswith('pool_'):
+                pool_kwds[key[5:]] = int(kw[key])
+        self.pool = Pool(**pool_kwds)
         self._metlog = None
 
     @property

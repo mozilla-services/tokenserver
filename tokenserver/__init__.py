@@ -28,13 +28,14 @@ logger = logging.getLogger('tokenserver')
 
 
 def includeme(config):
-    monkey_patch_gevent()
+    settings = config.registry.settings
+    if settings.get('tokenserver.monkey_patch_gevent', True):
+        monkey_patch_gevent()
 
     config.include("cornice")
     config.include("mozsvc")
     config.include("tokenserver.tweens")
     config.scan("tokenserver.views")
-    settings = config.registry.settings
 
     # default metlog setup
     if 'metlog.backend' not in settings:
