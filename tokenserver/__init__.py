@@ -21,7 +21,7 @@ from metlog.logging import hook_logger
 
 from mozsvc.config import get_configurator
 from mozsvc.plugin import load_and_register, load_from_settings
-from mozsvc.secrets import Secrets
+from mozsvc.secrets import Secrets, FixedSecrets
 
 
 logger = logging.getLogger('tokenserver')
@@ -77,19 +77,28 @@ def includeme(config):
 
     settings[key] = applications
 
-    # load the secrets file(s)
-    key = 'tokenserver.secrets_file'
-    secret_file = settings[key]
-    if not isinstance(secret_file, list):
-        secret_file = [secret_file]
+    # load the secrets, either as a single shared secret
+    # or from one or more per-node secret file(s)
+    secret = settings.get('tokenserver.secret')
+    secrets_file = settings.get('tokenserver.secrets_file')
+    if secret is not None:
+        if secrets_file is not None:
+            raise ValueError('cant use both "secret" and "secrets_file"')
+        if not isinstance(secret, list):
+            secret = [s for s in secret.split() if s]
+        secrets = FixedSecrets(secret)
+    else:
+        if secrets_file is None:
+            raise ValueError('must specify either "secret" or "secrets_file"')
+        elif not isinstance(secrets_file, list):
+            secrets_file = [secrets_file]
+        files = []
+        for line in secrets_file:
+            files.extend(f for f in line.split() if f)
+        secrets = Secrets(files, auto_reload=True)
 
-    files = []
-    for line in secret_file:
-        secret_file = [file for file in [file.strip() for file in line.split()]
-                       if file != '']
-        files.extend(secret_file)
+    settings['tokenserver.secrets_file'] = secrets
 
-    settings[key] = Secrets(files)
     read_endpoints(config)
 
 
