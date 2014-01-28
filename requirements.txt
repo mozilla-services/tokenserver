@@ -38,7 +38,7 @@ umemcache==1.6.3
 requests==2.1
 chardet==2.2.1
 metlog-py==0.10
-https://github.com/mozilla-services/wimms/archive/c6e847f898e26a91f585a86844e4debc63452369.zip
+https://github.com/mozilla-services/wimms/archive/f1040301e2f2f0fc37bd1648f86a32ef2d4c0c89.zip
 powerhose==0.7
 tokenlib==0.3.1
 http://github.com/mozilla-services/mozservices/archive/046ef8a25fe718c77c8a5cc0093cc9be9aed28ed.zip
