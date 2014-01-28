@@ -63,7 +63,7 @@ build:
 	$(INSTALL) WebTest
 	$(INSTALL) wsgi_intercept
 	$(INSTALL) Cython
-	$(INSTALL) https://github.com/zeromq/pyzmq/archive/master.zip
+	$(INSTALL) https://github.com/zeromq/pyzmq/archive/ad78488d2d72beab5915bbc21be7f13e4c347eec.zip
 	bin/easy_install `bin/python ezm2c.py`
 	$(BUILDAPP) -t $(TIMEOUT) -c $(CHANNEL) $(PYPIOPTIONS) $(DEPS)
 
