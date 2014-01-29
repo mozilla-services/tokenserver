@@ -172,7 +172,8 @@ def return_token(request):
     backend = request.registry.getUtility(INodeAssignment)
     email = request.validated['assertion']['email']
     try:
-        generation = request.validated['assertion']['idpClaims']['generation']
+        idp_claims = request.validated['assertion']['idpClaims']
+        generation = idp_claims['fxa-generation']
     except KeyError:
         generation = 0
     application = request.validated['application']
