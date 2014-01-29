@@ -171,7 +171,10 @@ def return_token(request):
     # number were valid, so let's build the authentication token and return it.
     backend = request.registry.getUtility(INodeAssignment)
     email = request.validated['assertion']['email']
-    generation = request.validated['assertion'].get('generation', 0)
+    try:
+        generation = request.validated['assertion']['idpClaims']['generation']
+    except KeyError:
+        generation = 0
     application = request.validated['application']
     version = request.validated['version']
     pattern = request.validated['pattern']
