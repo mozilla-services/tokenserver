@@ -5,8 +5,9 @@ from pyramid.threadlocal import get_current_registry
 from zope.interface import implements, Interface
 
 from browserid.verifiers.local import LocalVerifier as LocalVerifier_
-from browserid.verifiers.remote import RemoteVerifier as RemoteVerifier_
-from browserid.errors import InvalidSignatureError, ExpiredSignatureError
+from browserid.verifiers.remote import netutils
+from browserid.errors import (InvalidSignatureError, ExpiredSignatureError,
+                              ConnectionError, AudienceMismatchError)
 
 from tokenserver.crypto.master import get_runner
 
@@ -26,8 +27,52 @@ class IBrowserIdVerifier(Interface):
 class LocalVerifier(LocalVerifier_):
     implements(IBrowserIdVerifier)
 
-class RemoteVerifier(RemoteVerifier_):
+
+# A verifier that posts to a remote verifier service.
+# The RemoteVerifier implementation from PyBrowserID does its own parsing
+# of the assertion, and hasn't been updated for the new BrowserID formats.
+# Rather than blocking on that work, we use a simple work-alike that doesn't
+# do any local inspection of the assertion.
+class RemoteVerifier(object):
     implements(IBrowserIdVerifier)
+
+    def __init__(self, audiences=None, trusted_issuers=None,
+                 verifier_url=None):
+        # Since we don't parse the assertion locally, we cannot support
+        # list- or pattern-based audience strings.
+        assert isinstance(audiences, basestring)
+        self.audiences = audiences
+        self.trusted_issuers = trusted_issuers
+        if verifier_url is None:
+            verifier_url = "https://verifier.accounts.firefox.com/v2"
+        self.verifier_url = verifier_url
+
+    def verify(self, assertion, audience=None):
+        if audience is None:
+            audience = self.audiences
+
+        body = {'assertion': assertion, 'audience': audience}
+        if self.trusted_issuers is None:
+            body['trustedIssuers'] = self.trusted_issuers
+        headers = {'content-type': 'application/json'}
+        response = netutils.request('POST', self.verifier_url,
+                                    data=json.dumps(body), headers=headers)
+
+        if response.status_code != 200:
+            raise ConnectionError('server returned invalid response')
+        try:
+            data = json.loads(response.text)
+        except ValueError:
+            raise ConnectionError("server returned invalid response")
+
+        if data.get('status') != "okay":
+            reason = data.get('reason', 'unknown error')
+            if "audience mismatch" in reason:
+                raise AudienceMismatchError(data.get("audience"), audience)
+            if "expired" in reason or "issued later than" in reason:
+                raise ExpiredSignatureError(reason)
+            raise InvalidSignatureError(reason)
+        return data
 
 
 class PowerHoseVerifier(LocalVerifier):
