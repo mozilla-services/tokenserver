@@ -42,6 +42,8 @@ class RemoteVerifier(object):
         # list- or pattern-based audience strings.
         assert isinstance(audiences, basestring)
         self.audiences = audiences
+        if isinstance(trusted_issuers, basestring):
+            trusted_issuers = trusted_issuers.split()
         self.trusted_issuers = trusted_issuers
         if verifier_url is None:
             verifier_url = "https://verifier.accounts.firefox.com/v2"
