@@ -207,7 +207,7 @@ def return_token(request):
     if client_state in user['old_client_states']:
         raise _unauthorized("invalid-client-state")
 
-    secrets = request.registry.settings['tokenserver.secrets_file']
+    secrets = request.registry.settings['tokenserver.secrets']
     node_secrets = secrets.get(user['node'])
     if not node_secrets:
         raise Exception("The specified node does not have any shared secret")

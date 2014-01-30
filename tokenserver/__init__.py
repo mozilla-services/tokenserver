@@ -77,19 +77,19 @@ def includeme(config):
 
     settings[key] = applications
 
-    # load the secrets file(s)
-    key = 'tokenserver.secrets_file'
-    secret_file = settings[key]
-    if not isinstance(secret_file, list):
-        secret_file = [secret_file]
+    # load the secrets backend, with a b/w-compat hook
+    # for the old 'secrets_file' setting.
+    secrets_file = settings.get('tokenserver.secrets_file')
+    if secrets_file is not None:
+        if 'tokenserver.secrets.backend' in settings:
+            raise ValueError("can't use secrets_file with secrets.backend")
+        if isinstance(secrets_file, basestring):
+            secrets_file = secrets_file.split()
+        settings['tokenserver.secrets.backend'] = 'mozsvc.secrets.Secrets'
+        settings['tokenserver.secrets.filename'] = secrets_file
+    secrets = load_from_settings('tokenserver.secrets', settings)
+    settings['tokenserver.secrets'] = secrets
 
-    files = []
-    for line in secret_file:
-        secret_file = [file for file in [file.strip() for file in line.split()]
-                       if file != '']
-        files.extend(secret_file)
-
-    settings[key] = Secrets(files)
     read_endpoints(config)
 
 
