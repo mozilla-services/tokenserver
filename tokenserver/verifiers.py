@@ -7,7 +7,8 @@ from zope.interface import implements, Interface
 from browserid.verifiers.local import LocalVerifier as LocalVerifier_
 from browserid.verifiers.remote import netutils
 from browserid.errors import (InvalidSignatureError, ExpiredSignatureError,
-                              ConnectionError, AudienceMismatchError)
+                              ConnectionError, AudienceMismatchError,
+                              InvalidIssuerError)
 
 from tokenserver.crypto.master import get_runner
 
@@ -37,7 +38,7 @@ class RemoteVerifier(object):
     implements(IBrowserIdVerifier)
 
     def __init__(self, audiences=None, trusted_issuers=None,
-                 verifier_url=None):
+                 allowed_issuers=None, verifier_url=None):
         # Since we don't parse the assertion locally, we cannot support
         # list- or pattern-based audience strings.
         assert isinstance(audiences, basestring)
@@ -45,6 +46,9 @@ class RemoteVerifier(object):
         if isinstance(trusted_issuers, basestring):
             trusted_issuers = trusted_issuers.split()
         self.trusted_issuers = trusted_issuers
+        if isinstance(allowed_issuers, basestring):
+            allowed_issuers = allowed_issuers.split()
+        self.allowed_issuers = allowed_issuers
         if verifier_url is None:
             verifier_url = "https://verifier.accounts.firefox.com/v2"
         self.verifier_url = verifier_url
@@ -54,7 +58,7 @@ class RemoteVerifier(object):
             audience = self.audiences
 
         body = {'assertion': assertion, 'audience': audience}
-        if self.trusted_issuers is None:
+        if self.trusted_issuers is not None:
             body['trustedIssuers'] = self.trusted_issuers
         headers = {'content-type': 'application/json'}
         response = netutils.request('POST', self.verifier_url,
@@ -74,6 +78,10 @@ class RemoteVerifier(object):
             if "expired" in reason or "issued later than" in reason:
                 raise ExpiredSignatureError(reason)
             raise InvalidSignatureError(reason)
+        if self.allowed_issuers is not None:
+            issuer = data.get('issuer')
+            if issuer not in self.allowed_issuers:
+                raise InvalidIssuerError("Issuer not allowed: %s" % (issuer,))
         return data
 
 
