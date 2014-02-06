@@ -1,14 +1,8 @@
+*.pyc
+*.swp
 lib
 lib64
 bin
 include
 man
-*.pyc
 tokenserver.egg-info
-.Python
-loadtest/*.xml*
-loadtest/assertions.py
-loadtest/html
-nosetests.xml
-.channel
-*.swp
