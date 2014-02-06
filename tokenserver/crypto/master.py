@@ -54,7 +54,7 @@ class PowerHoseRunner(object):
 
     You need to instanciate this class with the following parameters::
 
-        >>> runner = PowerHoseRunner(endpoint, workers_cmd)
+        runner = PowerHoseRunner(endpoint, workers_cmd)
 
     :param endpoint: the zmq endpoint used to communicate between the powerhose
                      master process and the workers.
@@ -66,7 +66,7 @@ class PowerHoseRunner(object):
     This allows to make calls directly to this object. IOW, it is possible
     to call the methods listed in "methods" on the object::
 
-        >>> runner.check_signature(**args)
+        runner.check_signature(**args)
 
     However, all the arguments need to be passed as keyword arguments.
     """
@@ -82,8 +82,8 @@ class PowerHoseRunner(object):
         pid = str(os.getpid())
         self.endpoint = endpoint.replace('$PID', pid)
         pool_kwds = {
-          'size': 5,
-          'frontend': self.endpoint,
+            'size': 5,
+            'frontend': self.endpoint,
         }
         for key in kw:
             if key.startswith('pool_'):

@@ -4,7 +4,6 @@
 from base64 import b32encode
 from hashlib import sha1
 import os
-import sys
 import json
 
 from pyramid.threadlocal import get_current_registry

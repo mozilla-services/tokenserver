@@ -23,7 +23,7 @@ class MemcachedClientWithTTL(MemcachedClient):
 
     def __init__(self, *args, **kwargs):
         self.ttl = kwargs.pop('ttl', 0)
-        super(MemcachaedClientWithTTL, self).__init__(*args, **kwargs)
+        super(MemcachedClientWithTTL, self).__init__(*args, **kwargs)
 
     def set(self, key, value, time=None, *args, **kwargs):
         if time is None:
@@ -270,10 +270,11 @@ def get_crypto_worker(cls, config_file=None, **kwargs):
     verify = config.get('verify_ssl', True)
 
     supportdocs = SupportDocumentManagerWithCache(
-                loadtest_mode=loadtest_mode,
-                memory=memory,
-                memcache=memcache,
-                verify=verify)
+        loadtest_mode=loadtest_mode,
+        memory=memory,
+        memcache=memcache,
+        verify=verify
+    )
     return cls(supportdocs=supportdocs)
 
 
@@ -281,7 +282,7 @@ _class = None
 
 
 def crypto_worker(job, args=None):
-    if args == None:
+    if args is None:
         args = get_params()
     global _class
     if _class is None:

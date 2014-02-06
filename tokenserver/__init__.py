@@ -21,7 +21,6 @@ from metlog.logging import hook_logger
 
 from mozsvc.config import get_configurator
 from mozsvc.plugin import load_and_register, load_from_settings
-from mozsvc.secrets import Secrets
 
 
 logger = logging.getLogger('tokenserver')
@@ -41,8 +40,7 @@ def includeme(config):
     if 'metlog.backend' not in settings:
         settings['metlog.backend'] = 'mozsvc.metrics.MetlogPlugin'
         settings['metlog.enabled'] = True
-        settings['metlog.sender_class'] = \
-                'metlog.senders.StdOutSender'
+        settings['metlog.sender_class'] = 'metlog.senders.StdOutSender'
 
     metlog_wrapper = load_from_settings('metlog', settings)
 
@@ -107,8 +105,8 @@ class LazyDict(dict):
 
 def load_endpoints(mapping, config):
     patterns = dict([(key.split('.', 1)[-1], value)
-                        for key, value in config.registry.settings.items()
-                        if key.startswith('endpoints.')])
+                     for key, value in config.registry.settings.items()
+                     if key.startswith('endpoints.')])
     mapping.update(patterns)
 
     if len(mapping) == 0:

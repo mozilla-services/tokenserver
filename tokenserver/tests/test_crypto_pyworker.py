@@ -3,8 +3,10 @@ import time
 import os
 
 from tokenserver.tests.mockworker import MockCryptoWorker
-from browserid.tests.support import (patched_supportdoc_fetching,
-                                    fetch_support_document)
+from browserid.tests.support import (
+    patched_supportdoc_fetching,
+    fetch_support_document
+)
 from tokenserver.crypto.pyworker import (
     CryptoWorker,
     TTLedDict,
@@ -30,8 +32,12 @@ class TestPythonCryptoWorker(unittest.TestCase):
         data = 'NOBODY EXPECTS THE SPANISH INQUISITION!'
 
         sig = sign_data(hostname, data)
-        result = self.runner.check_signature(hostname=hostname,
-                signed_data=data, signature=sig, algorithm="DS128")
+        result = self.runner.check_signature(
+            hostname=hostname,
+            signed_data=data,
+            signature=sig,
+            algorithm="DS128"
+        )
         self.assertTrue(result)
 
     def test_the_crypto_tester(self):
@@ -42,8 +48,12 @@ class TestPythonCryptoWorker(unittest.TestCase):
         data = 'NOBODY EXPECTS THE SPANISH INQUISITION!'
 
         sig = sign_data(hostname, data)
-        result = self.runner.check_signature(hostname=hostname,
-                signed_data=data, signature=sig, algorithm="DS128")
+        result = self.runner.check_signature(
+            hostname=hostname,
+            signed_data=data,
+            signature=sig,
+            algorithm="DS128"
+        )
         self.assertTrue(result)
 
     def test_check_signature_with_key(self):
@@ -53,8 +63,12 @@ class TestPythonCryptoWorker(unittest.TestCase):
         sig = sign_data(hostname, data)
         cert = json.dumps(fetch_support_document(hostname)["public-key"])
 
-        result = self.runner.check_signature_with_cert(cert=cert,
-                signed_data=data, signature=sig, algorithm='DS128')
+        result = self.runner.check_signature_with_cert(
+            cert=cert,
+            signed_data=data,
+            signature=sig,
+            algorithm='DS128'
+        )
 
         self.assertTrue(result)
 
@@ -69,8 +83,12 @@ class TestPythonCryptoWorker(unittest.TestCase):
         signature = sign_data(hostname, data)
 
         # as you may have noticed, we are not mocking the key fetching here.
-        result = self.runner.check_signature(hostname=hostname,
-                signed_data=data, signature=signature, algorithm="DS128")
+        result = self.runner.check_signature(
+            hostname=hostname,
+            signed_data=data,
+            signature=signature,
+            algorithm="DS128"
+        )
 
         self.assertTrue(result)
 

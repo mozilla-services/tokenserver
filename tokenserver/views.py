@@ -107,7 +107,7 @@ def valid_app(request):
 
     if application not in supported:
         raise json_error(404, location='url', name='application',
-                        description='Unsupported application')
+                         description='Unsupported application')
     else:
         request.validated['application'] = application
 
@@ -115,7 +115,7 @@ def valid_app(request):
 
     if version not in supported_versions:
         raise json_error(404, location='url', name=version,
-                        description='Unsupported application version')
+                         description='Unsupported application version')
     else:
         request.validated['version'] = version
 
@@ -143,14 +143,14 @@ def pattern_exists(request):
     try:
         pattern = defined_patterns[service]
     except KeyError:
-        raise json_error(503,
-                description="The api_endpoint pattern for %r is not known"
-                % service)
+        description = "The api_endpoint pattern for %r is not known" % service
+        raise json_error(503, description=description)
 
     request.validated['pattern'] = pattern
 
 
 VALIDATORS = (valid_app, valid_client_state, valid_assertion, pattern_exists)
+
 
 @token.get(validators=VALIDATORS)
 def return_token(request):
@@ -186,7 +186,8 @@ def return_token(request):
         user = backend.get_user(service, email)
     if not user:
         with time_backend_operation(request, 'tokenserver.sql.create_user'):
-            user = backend.create_user(service, email, generation, client_state)
+            user = backend.create_user(service, email, generation,
+                                       client_state)
 
     # Update if this client is ahead of previously-seen clients.
     updates = {}
@@ -214,13 +215,18 @@ def return_token(request):
     secret = node_secrets[-1]  # the last one is the most recent one
 
     token_duration = request.registry.settings.get(
-            'tokenserver.token_duration', DEFAULT_TOKEN_DURATION)
+        'tokenserver.token_duration', DEFAULT_TOKEN_DURATION
+    )
 
     token = tokenlib.make_token({'uid': user['uid'], 'node': user['node']},
                                 timeout=token_duration, secret=secret)
     secret = tokenlib.get_derived_secret(token, secret=secret)
 
-    endpoint = pattern.format(uid=user['uid'], service=service, node=user['node'])
+    endpoint = pattern.format(
+        uid=user['uid'],
+        service=service,
+        node=user['node']
+    )
 
     return {'id': token, 'key': secret, 'uid': user['uid'],
             'api_endpoint': endpoint, 'duration': token_duration,

@@ -1,7 +1,3 @@
-import urllib2
-import json
-import random
-import time
 import os
 
 from browserid.verifiers.local import LocalVerifier
@@ -59,11 +55,11 @@ class MockCryptoWorker(CryptoWorker):
     def check_signature(self, *args, **kwargs):
         with patched_supportdoc_fetching():
             return super(MockCryptoWorker, self)\
-                    .check_signature(*args, **kwargs)
+                .check_signature(*args, **kwargs)
 
 
 def get_assertion(email, audience="*", issuer='browserid.org',
-        bad_issuer_cert=False, bad_email_cert=False, exp=None):
+                  bad_issuer_cert=False, bad_email_cert=False, exp=None):
     """Creates a browserid assertion for the given email, audience and
     hostname.
 
@@ -74,11 +70,11 @@ def get_assertion(email, audience="*", issuer='browserid.org',
     kwargs = {'exp': exp}
     if bad_issuer_cert:
         kwargs['issuer_keypair'] =\
-                get_keypair(hostname="not-the-right-host.com")
+            get_keypair(hostname="not-the-right-host.com")
 
     if bad_email_cert:
         kwargs['email_keypair'] =\
-                get_keypair(hostname="not-the-right-host.com")
+            get_keypair(hostname="not-the-right-host.com")
 
     assertion = make_assertion(email, audience, issuer=issuer, **kwargs)
     return assertion.encode('ascii')

@@ -46,8 +46,8 @@ class TestPowerHoseVerifier(unittest.TestCase):
         # An assertion not signed with the root issuer certificate should
         # fail.
 
-        self.assertRaises(InvalidSignatureError, verifier.verify,
-                get_assertion(DEFAULT_EMAIL, bad_issuer_cert=True))
+        with self.assertRaises(InvalidSignatureError):
+            verifier.verify(get_assertion(DEFAULT_EMAIL, bad_issuer_cert=True))
 
     def test_loadtest_mode(self):
         worker = get_crypto_worker(CryptoWorker, loadtest_mode=True,
@@ -76,7 +76,7 @@ class TestPowerService(unittest.TestCase):
         load_into_settings(cls.get_ini(), settings)
         cls.config.add_settings(settings)
         metlog_wrapper = load_from_settings('metlog',
-                cls.config.registry.settings)
+                                            cls.config.registry.settings)
         for logger in ('tokenserver', 'mozsvc', 'powerhose'):
             hook_logger(logger, metlog_wrapper.client)
         cls.config.registry['metlog'] = metlog_wrapper.client
@@ -138,9 +138,9 @@ class TestPowerService(unittest.TestCase):
         res = self.app.get(TOKEN_URI, headers=headers, status=401)
 
         assertion = get_assertion('alexis@mozilla.com',
-                                   issuer='loadtest.local')
+                                  issuer='loadtest.local')
         res = self.app.get(TOKEN_URI, headers=headers, status=401)
 
         assertion = get_assertion('alexis@mozilla.com',
-                                exp=int(time.time() - 60) * 1000)
+                                  exp=int(time.time() - 60) * 1000)
         res = self.app.get(TOKEN_URI, headers=headers, status=401)

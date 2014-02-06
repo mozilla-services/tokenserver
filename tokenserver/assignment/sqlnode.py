@@ -6,7 +6,6 @@ aka "WIMMS" to implement the storage backend.  WIMMS provides a bunch of
 management infrastructure atop an SQL database.
 """
 
-import sys
 import json
 import time
 
@@ -93,7 +92,7 @@ class SecuredShardedSQLNodeAssignment(ShardedSQLNodeAssignment):
                 body = json.loads(body)
             except ValueError:
                 self.get_logger().error("bad json body from sreg (%s): %s" %
-                                                        (url, body))
+                                        (url, body))
                 raise BackendError('Bad answer from proxy')
         return body
 
@@ -120,4 +119,4 @@ class SecuredShardedSQLNodeAssignment(ShardedSQLNodeAssignment):
         """Calls the proxy to update an existing user record."""
         # Actually this is just the same API as create_user.
         email = user['email']
-        return self.create_user(service, email, generation, client_state) 
+        return self.create_user(service, email, generation, client_state)

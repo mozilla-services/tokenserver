@@ -1,5 +1,5 @@
 VIRTUALENV = virtualenv
-NOSE = bin/nosetests -s
+NOSE = bin/nosetests
 PYTHON = bin/python
 PIP = bin/pip
 FLAKE8 = bin/flake8
@@ -26,7 +26,7 @@ build:
 
 
 test:
-	#$(FLAKE8) tokenserver
+	$(FLAKE8) --exclude=messages.py tokenserver
 	$(NOSE) tokenserver/tests
 
 

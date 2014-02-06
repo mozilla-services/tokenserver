@@ -63,4 +63,3 @@ class TestSQLBackend(unittest.TestCase):
         # patterns should have been populated
         patterns = get_current_registry()['endpoints_patterns']
         self.assertDictEqual(patterns, {'sync-1.0': '{node}/{version}/{uid}'})
-                

@@ -4,7 +4,7 @@
 
 import time
 
-from pyramid.httpexceptions import HTTPException, HTTPServiceUnavailable
+from pyramid.httpexceptions import HTTPException
 
 
 def set_x_timestamp_header(handler, registry):

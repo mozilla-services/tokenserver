@@ -156,9 +156,12 @@ class PowerHoseVerifier(LocalVerifier):
 
         if cert:
             key = json.dumps(cert.payload['public-key'])
-            return self.runner.check_signature_with_cert(cert=key,
-                    signed_data=data.signed_data, signature=data.signature,
-                    algorithm=data.algorithm)
+            return self.runner.check_signature_with_cert(
+                cert=key,
+                signed_data=data.signed_data,
+                signature=data.signature,
+                algorithm=data.algorithm
+            )
 
         return self.runner.check_signature(hostname=hostname,
                                            signed_data=data.signed_data,
