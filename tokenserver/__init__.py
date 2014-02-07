@@ -12,7 +12,6 @@ if runner.endswith('nosetests'):
 
 
 import logging
-from ConfigParser import NoSectionError
 from collections import defaultdict
 
 from tokenserver.assignment import INodeAssignment
@@ -54,11 +53,10 @@ def includeme(config):
     load_and_register("tokenserver", config)
 
     # initialize the powerhose and browserid backends if they exist
-    for section in ("powerhose", "browserid"):
-        try:
-            load_and_register(section, config)
-        except NoSectionError:
-            pass
+    if "powerhose.backend" in settings:
+        load_and_register("powerhose", config)
+    if "browserid.backend" in settings:
+        load_and_register("browserid", config)
 
     # load apps and set them up back in the setting
     key = 'tokenserver.applications'
