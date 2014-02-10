@@ -84,7 +84,8 @@ def valid_assertion(request):
 
     try:
         verifier = get_verifier()
-        assertion = verifier.verify(assertion)
+        with time_backend_operation(request, 'assertion.verify'):
+            assertion = verifier.verify(assertion)
     except ClientCatchedError as e:
         _handle_exception(e.error_type)
     except BrowserIDError as e:
@@ -182,10 +183,10 @@ def return_token(request):
     service = get_service_name(application, version)
     client_state = request.validated['client-state']
 
-    with time_backend_operation(request, 'tokenserver.sql.get_user'):
+    with time_backend_operation(request, 'backend.get_user'):
         user = backend.get_user(service, email)
     if not user:
-        with time_backend_operation(request, 'tokenserver.sql.create_user'):
+        with time_backend_operation(request, 'backend.create_user'):
             user = backend.create_user(service, email, generation,
                                        client_state)
 
@@ -197,7 +198,7 @@ def return_token(request):
         if client_state not in user['old_client_states']:
             updates['client_state'] = client_state
     if updates:
-        with time_backend_operation(request, 'tokenserver.sql.update_user'):
+        with time_backend_operation(request, 'backend.update_user'):
             backend.update_user(service, user, **updates)
 
     # Error out if this client is behind some previously-seen client.
@@ -241,4 +242,4 @@ def time_backend_operation(request, name):
         yield
     finally:
         duration = time.time() - start
-        metlog.timer_send(name, duration)
+        metlog.timer_send('tokenserver.' + name, duration)
