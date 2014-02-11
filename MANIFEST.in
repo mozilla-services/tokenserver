@@ -2,4 +2,4 @@ include *.txt
 include *.rst
 include *.spec
 recursive-include etc *.ini *.conf 
-recursive-include tokenserver *.json
+recursive-include tokenserver *.json *.ini
