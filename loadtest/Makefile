@@ -15,4 +15,4 @@ bench:
 
 # Run a full bench, by submitting to broker in AWS.
 megabench:
-	../bin/loads-runner --broker=tcp://loads.services.mozilla.com:7780 --users=20 --duration=1800 --agents=5 --include-file=./loadtest.py --python-dep=PyBrowserID loadtest.NodeAssignmentTest.test_realistic --server-url=$(SERVER_URL)
+	../bin/loads-runner --broker=tcp://loads.services.mozilla.com:7780 --users=20 --duration=1800 --agents=5 --include-file=./loadtest.py --python-dep=PyBrowserID --detach loadtest.NodeAssignmentTest.test_realistic --server-url=$(SERVER_URL)
