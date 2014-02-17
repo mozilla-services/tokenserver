@@ -1,10 +1,8 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
-import time
-import os
-import json
 import re
+import time
 import contextlib
 
 from mozsvc.metrics import MetricsService
@@ -18,9 +16,8 @@ from tokenserver.assignment import INodeAssignment
 from browserid.errors import Error as BrowserIDError
 from tokenserver.crypto.master import ClientCatchedError
 
-# A GET on / returns the discovery API
 
-discovery = MetricsService(name='discovery', path='/')
+root = MetricsService(name='root', path='/')
 token = MetricsService(name='token', path='/1.0/{application}/{version}')
 
 DEFAULT_TOKEN_DURATION = 5 * 60
@@ -30,15 +27,10 @@ def get_service_name(application, version):
     return "%s-%s" % (application, version)
 
 
-@discovery.get()
-def _discovery(request):
-    """Returns a JSON file containing the list of services supported byt the
-    server"""
-
-    discovery = os.path.join(os.path.dirname(__file__), 'discovery.json')
-
-    with open(discovery) as f:
-        return json.loads(f.read())
+@root.get()
+def _root(request):
+    """A simple "ok" page to let us know the server is running."""
+    return "ok"
 
 
 def _unauthorized(status_message='error', **kw):

@@ -80,16 +80,14 @@ class TestService(unittest.TestCase):
         headers = {'Authorization': 'BrowserID %s' % self._getassertion()}
         self.app.get('/1.0/sync/2.1', headers=headers, status=503)
 
-    def test_discovery(self):
+    def test_root_url(self):
         res = self.app.get('/')
-        self.assertEqual(res.json['auth'],
-                         'https://token.services.mozilla.com')
+        self.assertEqual(res.json, 'ok')
 
     def test_stats_capture(self):
         # make a simple request
         res = self.app.get('/')
-        self.assertEqual(res.json['auth'],
-                         'https://token.services.mozilla.com')
+        self.assertEqual(res.json, 'ok')
         msgs = self.config.registry['metlog'].sender.msgs
 
         def is_in_msgs(subset):
@@ -101,7 +99,7 @@ class TestService(unittest.TestCase):
                     return True
             return False
 
-        fields = {'rate': 1.0, 'name': 'tokenserver.views._discovery'}
+        fields = {'rate': 1.0, 'name': 'tokenserver.views._root'}
         timer_subset = {'type': 'timer',
                         'fields': fields,
                         }
