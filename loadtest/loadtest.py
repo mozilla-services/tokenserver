@@ -47,6 +47,7 @@ class NodeAssignmentTest(TestCase):
     """
 
     server_url = 'https://token.services.mozilla.com'
+    timeskew = 0
 
     def setUp(self):
         self.token_exchange = '/1.0/sync/1.5'
@@ -65,6 +66,11 @@ class NodeAssignmentTest(TestCase):
         self.valid_domain = 'mockmyid.com'
         self.audience = self.server_url
 
+    def _make_assertion(self, email, **kwds):
+        if "exp" not in kwds:
+            kwds["exp"] = int((time.time() + 60 + self.timeskew) * 1000)
+        return make_assertion(email, **kwds)
+
     def _do_token_exchange(self, assertion, status=200):
         url = urlparse.urljoin(self.server_url, self.token_exchange)
         headers = {'Authorization': 'BrowserID %s' % assertion}
@@ -75,7 +81,7 @@ class NodeAssignmentTest(TestCase):
     def test_single_token_exchange(self):
         uid = random.randint(1, 1000000)
         email = "user{uid}@{host}".format(uid=uid, host=self.valid_domain)
-        self._do_token_exchange(make_assertion(
+        self._do_token_exchange(self._make_assertion(
             email=email,
             issuer=self.valid_domain,
             audience=self.audience,
@@ -84,7 +90,7 @@ class NodeAssignmentTest(TestCase):
     def test_single_token_exchange_new_user(self):
         uid = str(uuid.uuid1())
         email = "loadtest-{uid}@{host}".format(uid=uid, host=self.valid_domain)
-        self._do_token_exchange(make_assertion(
+        self._do_token_exchange(self._make_assertion(
             email=email,
             issuer=self.valid_domain,
             audience=self.audience,
@@ -110,7 +116,7 @@ class NodeAssignmentTest(TestCase):
         # assertions.
         for idx in range(self.vusers):
             email = "{uid}@{host}".format(uid=idx, host=self.valid_domain)
-            self._do_token_exchange(make_assertion(
+            self._do_token_exchange(self._make_assertion(
                 email=email,
                 issuer=self.valid_domain,
                 audience=self.audience,
@@ -124,7 +130,7 @@ class NodeAssignmentTest(TestCase):
             in_one_day = int(time.time() + 60 * 60 * 24) * 1000
         email = "{uid}@{host}".format(uid=idx, host="mockmyid.com")
         # expired assertion
-        expired = make_assertion(
+        expired = self._make_assertion(
                 email=email,
                 issuer=self.valid_domain,
                 exp=int(time.time() - 60) * 1000,
@@ -133,13 +139,13 @@ class NodeAssignmentTest(TestCase):
         self._do_token_exchange(expired, 401)
 
         # wrong issuer
-        wrong_issuer = make_assertion(email, exp=in_one_day,
-                                        audience=self.audience)
+        wrong_issuer = self._make_assertion(email, exp=in_one_day,
+                                            audience=self.audience)
         self._do_token_exchange(wrong_issuer, 401)
 
         # wrong email host
         email = "{uid}@{host}".format(uid=idx, host=self.invalid_domain)
-        wrong_email_host = make_assertion(
+        wrong_email_host = self._make_assertion(
                 email, issuer=self.valid_domain,
                 exp=in_one_day,
                 audience=self.audience,
