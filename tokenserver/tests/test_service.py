@@ -82,14 +82,18 @@ class TestService(unittest.TestCase):
 
     def test_discovery(self):
         res = self.app.get('/')
-        self.assertEqual(res.json['auth'],
-                         'https://token.services.mozilla.com')
+        self.assertEqual(res.json, {
+            'auth': 'http://localhost',
+            'services': {
+                'aitc': ['1.0'],
+                'sync': ['2.1'],
+            }
+        })
 
     def test_stats_capture(self):
         # make a simple request
         res = self.app.get('/')
-        self.assertEqual(res.json['auth'],
-                         'https://token.services.mozilla.com')
+        self.assertEqual(res.json["auth"], "http://localhost")
         msgs = self.config.registry['metlog'].sender.msgs
 
         def is_in_msgs(subset):

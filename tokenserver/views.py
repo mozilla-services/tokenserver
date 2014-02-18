@@ -1,10 +1,8 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
-import time
-import os
-import json
 import re
+import time
 import contextlib
 
 from mozsvc.metrics import MetricsService
@@ -32,13 +30,12 @@ def get_service_name(application, version):
 
 @discovery.get()
 def _discovery(request):
-    """Returns a JSON file containing the list of services supported byt the
-    server"""
-
-    discovery = os.path.join(os.path.dirname(__file__), 'discovery.json')
-
-    with open(discovery) as f:
-        return json.loads(f.read())
+    """Returns a JSON file listing the services supported by the server."""
+    services = request.registry.settings['tokenserver.applications']
+    discovery = {}
+    discovery["services"] = services
+    discovery["auth"] = request.url.rstrip("/")
+    return discovery
 
 
 def _unauthorized(status_message='error', **kw):
