@@ -16,8 +16,9 @@ from tokenserver.assignment import INodeAssignment
 from browserid.errors import Error as BrowserIDError
 from tokenserver.crypto.master import ClientCatchedError
 
+# A GET on / returns the discovery API
 
-root = MetricsService(name='root', path='/')
+discovery = MetricsService(name='discovery', path='/')
 token = MetricsService(name='token', path='/1.0/{application}/{version}')
 
 DEFAULT_TOKEN_DURATION = 5 * 60
@@ -27,10 +28,14 @@ def get_service_name(application, version):
     return "%s-%s" % (application, version)
 
 
-@root.get()
-def _root(request):
-    """A simple "ok" page to let us know the server is running."""
-    return "ok"
+@discovery.get()
+def _discovery(request):
+    """Returns a JSON file listing the services supported by the server."""
+    services = request.registry.settings['tokenserver.applications']
+    discovery = {}
+    discovery["services"] = services
+    discovery["auth"] = request.url.rstrip("/")
+    return discovery
 
 
 def _unauthorized(status_message='error', **kw):

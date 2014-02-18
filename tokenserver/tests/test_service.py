@@ -80,14 +80,20 @@ class TestService(unittest.TestCase):
         headers = {'Authorization': 'BrowserID %s' % self._getassertion()}
         self.app.get('/1.0/sync/2.1', headers=headers, status=503)
 
-    def test_root_url(self):
+    def test_discovery(self):
         res = self.app.get('/')
-        self.assertEqual(res.json, 'ok')
+        self.assertEqual(res.json, {
+            'auth': 'http://localhost',
+            'services': {
+                'aitc': ['1.0'],
+                'sync': ['2.1'],
+            }
+        })
 
     def test_stats_capture(self):
         # make a simple request
         res = self.app.get('/')
-        self.assertEqual(res.json, 'ok')
+        self.assertEqual(res.json["auth"], "http://localhost")
         msgs = self.config.registry['metlog'].sender.msgs
 
         def is_in_msgs(subset):
@@ -99,7 +105,7 @@ class TestService(unittest.TestCase):
                     return True
             return False
 
-        fields = {'rate': 1.0, 'name': 'tokenserver.views._root'}
+        fields = {'rate': 1.0, 'name': 'tokenserver.views._discovery'}
         timer_subset = {'type': 'timer',
                         'fields': fields,
                         }
