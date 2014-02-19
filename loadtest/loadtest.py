@@ -75,6 +75,13 @@ class NodeAssignmentTest(TestCase):
         url = urlparse.urljoin(self.server_url, self.token_exchange)
         headers = {'Authorization': 'BrowserID %s' % assertion}
         res = self.session.get(url, headers=headers)
+        # Adjust for timeskew if necessary.
+        if res.status_code == 401 and status != 401:
+            err = res.json()
+            if err["status"] == "invalid-timestamp":
+                server_time = int(res.headers["X-Timestamp"])
+                NodeAssignmentTest.timeskew = server_time - int(time.time())
+                res = self.session.get(url, headers=headers)
         self.assertEquals(res.status_code, status)
         return res
 
