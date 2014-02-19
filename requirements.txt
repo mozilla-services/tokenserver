@@ -45,4 +45,3 @@ tokenlib==0.3.1
 PyBrowserID==0.9.1
 https://argparse.googlecode.com/files/argparse-1.2.1.tar.gz
 circus==0.10
-uWSGI==1.9.20
