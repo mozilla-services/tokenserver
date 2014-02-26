@@ -15,4 +15,4 @@ bench:
 
 # Run a full bench, by submitting to broker in AWS.
 megabench:
-	../bin/loads-runner --config=./config/megabench.ini --server-url=$(SERVER_URL) loadtest.NodeAssignmentTest.test_realistic
+	../bin/loads-runner --config=./config/megabench.ini --user-id=$(USER) --server-url=$(SERVER_URL) loadtest.NodeAssignmentTest.test_realistic
