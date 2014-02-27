@@ -4,8 +4,10 @@ import json
 from pyramid.threadlocal import get_current_registry
 from zope.interface import implements, Interface
 
+import socket
+import requests
+
 from browserid.verifiers.local import LocalVerifier as LocalVerifier_
-from browserid.verifiers.remote import netutils
 from browserid.errors import (InvalidSignatureError, ExpiredSignatureError,
                               ConnectionError, AudienceMismatchError,
                               InvalidIssuerError)
@@ -52,6 +54,8 @@ class RemoteVerifier(object):
         if verifier_url is None:
             verifier_url = "https://verifier.accounts.firefox.com/v2"
         self.verifier_url = verifier_url
+        self.session = requests.Session()
+        self.session.verify = True
 
     def verify(self, assertion, audience=None):
         if audience is None:
@@ -61,8 +65,13 @@ class RemoteVerifier(object):
         if self.trusted_issuers is not None:
             body['trustedIssuers'] = self.trusted_issuers
         headers = {'content-type': 'application/json'}
-        response = netutils.request('POST', self.verifier_url,
-                                    data=json.dumps(body), headers=headers)
+        try:
+            response = self.session.post(self.verifier_url,
+                                         data=json.dumps(body),
+                                         headers=headers)
+        except (socket.error, requests.RequestException), e:
+            msg = "Failed to POST %s. Reason: %s" % (self.verifier_url, str(e))
+            raise ConnectionError(msg)
 
         if response.status_code != 200:
             raise ConnectionError('server returned invalid response')
