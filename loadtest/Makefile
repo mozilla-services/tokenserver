@@ -16,3 +16,7 @@ bench:
 # Run a full bench, by submitting to broker in AWS.
 megabench:
 	../bin/loads-runner --config=./config/megabench.ini --user-id=$(USER) --server-url=$(SERVER_URL) loadtest.NodeAssignmentTest.test_realistic
+
+# Purge any currently-running loadtest runs.
+purge:
+	../bin/loads-runner --config=./config/megabench.ini --purge-broker
