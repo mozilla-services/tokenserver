@@ -11,6 +11,9 @@ from browserid.tests.support import make_assertion
 from loads import TestCase
 
 
+ONE_YEAR = 60 * 60 * 24 * 365
+
+
 MOCKMYID_PRIVATE_KEY = browserid.jwt.DS128Key({
     "algorithm": "DS",
     "x": "385cb3509f086e110c5e24bdd395a84b335a09ae",
@@ -47,7 +50,6 @@ class NodeAssignmentTest(TestCase):
     """
 
     server_url = 'https://token.services.mozilla.com'
-    timeskew = 0
 
     def setUp(self):
         self.token_exchange = '/1.0/sync/1.5'
@@ -68,20 +70,13 @@ class NodeAssignmentTest(TestCase):
 
     def _make_assertion(self, email, **kwds):
         if "exp" not in kwds:
-            kwds["exp"] = int((time.time() + 60 + self.timeskew) * 1000)
+            kwds["exp"] = int((time.time() + ONE_YEAR) * 1000)
         return make_assertion(email, **kwds)
 
     def _do_token_exchange(self, assertion, status=200):
         url = urlparse.urljoin(self.server_url, self.token_exchange)
         headers = {'Authorization': 'BrowserID %s' % assertion}
         res = self.session.get(url, headers=headers)
-        # Adjust for timeskew if necessary.
-        if res.status_code == 401 and status != 401:
-            err = res.json()
-            if err["status"] == "invalid-timestamp":
-                server_time = int(res.headers["X-Timestamp"])
-                NodeAssignmentTest.timeskew = server_time - int(time.time())
-                res = self.session.get(url, headers=headers)
         self.assertEquals(res.status_code, status)
         return res
 
@@ -129,32 +124,28 @@ class NodeAssignmentTest(TestCase):
                 audience=self.audience,
                 issuer_keypair=(None, MOCKMYID_PRIVATE_KEY)))
 
-    def _test_bad_assertion(self, idx=None, in_one_day=None):
+    def _test_bad_assertion(self, idx=None):
         if idx is None:
             idx = random.choice(range(self.vusers))
 
-        if in_one_day is None:
-            in_one_day = int(time.time() + 60 * 60 * 24) * 1000
         email = "{uid}@{host}".format(uid=idx, host="mockmyid.s3-us-west-2.amazonaws.com")
         # expired assertion
         expired = self._make_assertion(
                 email=email,
                 issuer=self.valid_domain,
-                exp=int(time.time() - 60) * 1000,
+                exp=int(time.time() - ONE_YEAR) * 1000,
                 audience=self.audience,
                 issuer_keypair=(None, MOCKMYID_PRIVATE_KEY))
         self._do_token_exchange(expired, 401)
 
         # wrong issuer
-        wrong_issuer = self._make_assertion(email, exp=in_one_day,
-                                            audience=self.audience)
+        wrong_issuer = self._make_assertion(email, audience=self.audience)
         self._do_token_exchange(wrong_issuer, 401)
 
         # wrong email host
         email = "{uid}@{host}".format(uid=idx, host=self.invalid_domain)
         wrong_email_host = self._make_assertion(
                 email, issuer=self.valid_domain,
-                exp=in_one_day,
                 audience=self.audience,
                 issuer_keypair=(None, MOCKMYID_PRIVATE_KEY))
         self._do_token_exchange(wrong_email_host, 401)
@@ -162,6 +153,5 @@ class NodeAssignmentTest(TestCase):
     def test_bad_assertions(self):
         # similarly, try to send out bad assertions for the defined virtual
         # users.
-        in_one_day = int(time.time() + 60 * 60 * 24) * 1000
         for idx in range(self.vusers):
-            self._test_bad_assertion(idx, in_one_day)
+            self._test_bad_assertion(idx)
