@@ -24,16 +24,16 @@ class mockobj(object):
 class TestRemoteVerifier(unittest.TestCase):
 
     DEFAULT_SETTINGS = {
-      "tokenserver.backend":
-          "tokenserver.assignment.memorynode.MemoryNodeAssignmentBackend",
-      "browserid.backend":
-          "tokenserver.verifiers.RemoteVerifier",
-      "tokenserver.secrets.backend":
-          "mozsvc.secrets.FixedSecrets",
-      "tokenserver.secrets.secrets":
-          "steve-let-the-dogs-out",
-      "browserid.backend":
-          "tokenserver.verifiers.RemoteVerifier",
+        "tokenserver.backend":
+            "tokenserver.assignment.memorynode.MemoryNodeAssignmentBackend",
+        "browserid.backend":
+            "tokenserver.verifiers.RemoteVerifier",
+        "tokenserver.secrets.backend":
+            "mozsvc.secrets.FixedSecrets",
+        "tokenserver.secrets.secrets":
+            "steve-let-the-dogs-out",
+        "browserid.backend":
+            "tokenserver.verifiers.RemoteVerifier",
     }
 
     def _make_config(self, settings={}):
