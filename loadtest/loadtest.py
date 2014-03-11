@@ -63,7 +63,7 @@ class NodeAssignmentTest(TestCase):
         )
         random.shuffle(self.user_choice)
         self.invalid_domain = 'mozilla.com'
-        self.valid_domain = 'mockmyid.com'
+        self.valid_domain = 'mockmyid.s3-us-west-2.amazonaws.com'
         self.audience = self.server_url
 
     def _make_assertion(self, email, **kwds):
@@ -135,7 +135,7 @@ class NodeAssignmentTest(TestCase):
 
         if in_one_day is None:
             in_one_day = int(time.time() + 60 * 60 * 24) * 1000
-        email = "{uid}@{host}".format(uid=idx, host="mockmyid.com")
+        email = "{uid}@{host}".format(uid=idx, host="mockmyid.s3-us-west-2.amazonaws.com")
         # expired assertion
         expired = self._make_assertion(
                 email=email,
