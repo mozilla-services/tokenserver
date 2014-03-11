@@ -43,7 +43,8 @@ class RemoteVerifier(object):
                  allowed_issuers=None, verifier_url=None):
         # Since we don't parse the assertion locally, we cannot support
         # list- or pattern-based audience strings.
-        assert isinstance(audiences, basestring)
+        if audiences is not None:
+            assert isinstance(audiences, basestring)
         self.audiences = audiences
         if isinstance(trusted_issuers, basestring):
             trusted_issuers = trusted_issuers.split()
