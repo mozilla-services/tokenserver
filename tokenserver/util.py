@@ -3,7 +3,6 @@
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 from base64 import b32encode
 from hashlib import sha1
-import os
 import json
 
 from pyramid.threadlocal import get_current_registry
@@ -11,8 +10,6 @@ from pyramid.response import Response
 from pyramid import httpexceptions as exc
 
 from cornice.errors import Errors
-
-from mozsvc.secrets import Secrets
 
 
 def monkey_patch_gevent():
@@ -70,51 +67,6 @@ def json_error(status_code=400, status_message='error', **kw):
     kw.setdefault('description', '')
     errors.add(**kw)
     return _JSONError(errors, status_code, status_message)
-
-
-# XXXX needs to move into mozsvc.secrets.Secrets
-def generate_secret(filename, node):
-    """Generates a new secret for the given node and saves it to a secrets
-    file.
-
-    :param filename: the complete path to the filename we want to put the
-                     secret into.
-    :param node: the node we want to generate the secret for.
-    """
-    if os.path.exists(filename):
-        secrets = Secrets(filename)
-    else:
-        secrets = Secrets()
-
-    secrets.add(node)
-    secrets.save(filename)
-    return node, secrets.get(node)[0]
-
-
-# XXXX needs to move into mozsvc.secrets.Secrets
-def display_secrets(filename, node=None):
-    """Read a secret file and return its content.
-
-    If a node is specified, return only the information for this node
-
-    :param filename: the filename to read from
-    :param node: only display the records for this node (optional)
-    """
-    def _display_node(secrets, node):
-        # sort the records by timestamp and display them
-        records = list(secrets._secrets[node])
-        records.sort()
-
-        print("%s secrets for %s" % (len(records), node))
-        for timestamp, secret in records:
-            print("- %s" % secret)
-
-    secrets = Secrets(filename)
-    if node is not None:
-        _display_node(secrets, node)
-    else:
-        for node in secrets._secrets:
-            _display_node(secrets, node)
 
 
 def get_logger():
