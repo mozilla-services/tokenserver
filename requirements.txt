@@ -35,7 +35,7 @@ pymysql_sa==1.0
 protobuf==2.5
 gevent==1.0
 umemcache==1.6.3
-requests==2.1
+requests==2.2.1
 chardet==2.2.1
 metlog-py==0.10
 https://github.com/mozilla-services/mozservices/archive/7abbc6f9c0408bed87b2db7c73404c402827ecb1.zip
@@ -45,3 +45,4 @@ tokenlib==0.3.1
 PyBrowserID==0.9.1
 https://argparse.googlecode.com/files/argparse-1.2.1.tar.gz
 circus==0.10
+hawkauthlib==0.1.1
