@@ -100,6 +100,18 @@ class LazyDict(dict):
             self._loaded = True
         return super(LazyDict, self).__getitem__(name)
 
+    def __iter__(self):
+        if not self._loaded:
+            self.callable(self)
+            self._loaded = True
+        return super(LazyDict, self).__iter__()
+
+    def keys(self):
+        if not self._loaded:
+            self.callable(self)
+            self._loaded = True
+        return super(LazyDict, self).keys()
+
 
 def load_endpoints(mapping, config):
     patterns = dict([(key.split('.', 1)[-1], value)
