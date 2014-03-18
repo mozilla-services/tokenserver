@@ -1,8 +1,9 @@
-SERVER_URL = https://token.services.mozilla.com
+SERVER_URL = https://token.stage.mozaws.net
 
 .PHONY: build test bench
 
 build:
+	../bin/pip install pexpect
 	../bin/pip install https://github.com/mozilla-services/loads/archive/master.zip
 
 # Run a single test from the local machine, for sanity-checking.

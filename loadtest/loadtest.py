@@ -49,7 +49,7 @@ class NodeAssignmentTest(TestCase):
     "populate-db" script.
     """
 
-    server_url = 'https://token.services.mozilla.com'
+    server_url = 'https://token.stage.mozaws.net'
 
     def setUp(self):
         self.token_exchange = '/1.0/sync/1.5'

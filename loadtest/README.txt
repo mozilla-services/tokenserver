@@ -9,6 +9,7 @@ To run them, you will need the following dependencies:
   * Python development files (e.g. python-dev or python-devel package)
   * Virtualenv (e.g. python-virtualenv package)
   * ZeroMQ development files (e.g. libzmq-dev package)
+  * (for megabench) ssh access to the mozilla loads cluster
 
 Then do the following:
 
@@ -16,7 +17,7 @@ Then do the following:
   $> make test        # runs a single test, to check that everything's working
   $> make bench       # runs a longer, higher-concurrency test.
   $> make megabench   # runs a really-long, really-high-concurrent test
-                      # using http://loads.services.mozilla.com
+                      # using https://loads.services.mozilla.com
 
 To hit a specific server you can specify the SERVER_URL make variable, like
 this:
