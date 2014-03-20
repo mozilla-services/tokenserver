@@ -178,3 +178,23 @@ class TestService(unittest.TestCase):
         del headers['X-Client-State']
         res = self.app.get('/1.0/aitc/1.0', headers=headers, status=401)
         self.assertEqual(res.json['status'], 'invalid-client-state')
+
+    def test_client_state_cannot_revert_to_empty(self):
+        # Start with a client-state header.
+        headers = {
+            'Authorization': 'BrowserID %s' % self._getassertion(),
+            'X-Client-State': 'aaa',
+        }
+        res = self.app.get('/1.0/aitc/1.0', headers=headers)
+        uid0 = res.json['uid']
+        # Sending no client-state will fail.
+        del headers['X-Client-State']
+        res = self.app.get('/1.0/aitc/1.0', headers=headers, status=401)
+        self.assertEqual(res.json['status'], 'invalid-client-state')
+        headers['X-Client-State'] = ''
+        res = self.app.get('/1.0/aitc/1.0', headers=headers, status=401)
+        self.assertEqual(res.json['status'], 'invalid-client-state')
+        # And the uid will be unchanged.
+        headers['X-Client-State'] = 'aaa'
+        res = self.app.get('/1.0/aitc/1.0', headers=headers)
+        self.assertEqual(res.json['uid'], uid0)

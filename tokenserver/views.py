@@ -192,8 +192,11 @@ def return_token(request):
     if generation > user['generation']:
         updates['generation'] = generation
     if client_state != user['client_state']:
-        if client_state not in user['old_client_states']:
-            updates['client_state'] = client_state
+        # Don't revert to a previous client-state, or
+        # from has-client-state to not-has-client-state.
+        if not client_state or client_state in user['old_client_states']:
+            raise _unauthorized("invalid-client-state")
+        updates['client_state'] = client_state
     if updates:
         with time_backend_operation(request, 'backend.update_user'):
             backend.update_user(service, user, **updates)
@@ -203,8 +206,6 @@ def return_token(request):
     # client may have raced with a concurrent update.
     if user['generation'] > generation:
         raise _unauthorized("invalid-generation")
-    if client_state in user['old_client_states']:
-        raise _unauthorized("invalid-client-state")
 
     secrets = request.registry.settings['tokenserver.secrets']
     node_secrets = secrets.get(user['node'])
