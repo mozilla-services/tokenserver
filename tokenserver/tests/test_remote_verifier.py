@@ -158,6 +158,10 @@ class TestRemoteVerifier(unittest.TestCase):
         with self._mock_verifier(verifier, text=json.dumps(mock_response)):
             with self.assertRaises(browserid.errors.InvalidIssuerError):
                 verifier.verify(assertion)
+        mock_response["issuer"] = None
+        with self._mock_verifier(verifier, text=json.dumps(mock_response)):
+            with self.assertRaises(browserid.errors.InvalidIssuerError):
+                verifier.verify(assertion)
         del mock_response["issuer"]
         with self._mock_verifier(verifier, text=json.dumps(mock_response)):
             with self.assertRaises(browserid.errors.InvalidIssuerError):
