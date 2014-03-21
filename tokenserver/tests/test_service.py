@@ -198,3 +198,17 @@ class TestService(unittest.TestCase):
         headers['X-Client-State'] = 'aaa'
         res = self.app.get('/1.0/aitc/1.0', headers=headers)
         self.assertEqual(res.json['uid'], uid0)
+
+    def test_client_specified_duration(self):
+        headers = {'Authorization': 'BrowserID %s' % self._getassertion()}
+        # It's ok to request a shorter-duration token.
+        res = self.app.get('/1.0/aitc/1.0?duration=12', headers=headers)
+        self.assertEquals(res.json['duration'], 12)
+        # But you can't exceed the server's default value.
+        res = self.app.get('/1.0/aitc/1.0?duration=4000', headers=headers)
+        self.assertEquals(res.json['duration'], 3600)
+        # And nonsense values are ignored.
+        res = self.app.get('/1.0/aitc/1.0?duration=lolwut', headers=headers)
+        self.assertEquals(res.json['duration'], 3600)
+        res = self.app.get('/1.0/aitc/1.0?duration=-1', headers=headers)
+        self.assertEquals(res.json['duration'], 3600)

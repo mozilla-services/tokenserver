@@ -216,6 +216,13 @@ def return_token(request):
     token_duration = request.registry.settings.get(
         'tokenserver.token_duration', DEFAULT_TOKEN_DURATION
     )
+    try:
+        requested_duration = int(request.params["duration"])
+    except (KeyError, ValueError):
+        pass
+    else:
+        if 0 < requested_duration < token_duration:
+            token_duration = requested_duration
 
     token = tokenlib.make_token({'uid': user['uid'], 'node': user['node']},
                                 timeout=token_duration, secret=secret)
