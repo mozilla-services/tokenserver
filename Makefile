@@ -26,7 +26,7 @@ build:
 
 
 test:
-	$(FLAKE8) --exclude=messages.py,test_remote_verifier.py tokenserver
+	$(FLAKE8) tokenserver
 	$(NOSE) tokenserver/tests
 
 

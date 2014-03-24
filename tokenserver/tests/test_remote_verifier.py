@@ -23,7 +23,7 @@ class mockobj(object):
 
 class TestRemoteVerifier(unittest.TestCase):
 
-    DEFAULT_SETTINGS = {
+    DEFAULT_SETTINGS = {  # noqa; identation below is non-standard
         "tokenserver.backend":
             "tokenserver.assignment.memorynode.MemoryNodeAssignmentBackend",
         "browserid.backend":
@@ -72,7 +72,7 @@ class TestRemoteVerifier(unittest.TestCase):
         self.assertEquals(verifier.allowed_issuers, None)
 
     def test_verifier_config_loading_values(self):
-        config = self._make_config({
+        config = self._make_config({  # noqa; indentation below is non-standard
             "browserid.verifier_url":
                 "https://trustyverifier.notascam.com/endpoint/path",
             "browserid.audiences":
@@ -93,7 +93,7 @@ class TestRemoteVerifier(unittest.TestCase):
                           ["example.com", "trustyidp.org", "mockmyid.com"])
 
     def test_verifier_failure_cases(self):
-        config = self._make_config({
+        config = self._make_config({  # noqa; indentation below is non-standard
             "browserid.audiences":
                 "https://testmytoken.com",
         })
@@ -114,7 +114,7 @@ class TestRemoteVerifier(unittest.TestCase):
                 verifier.verify(assertion)
 
     def test_verifier_rejects_unallowed_issuers(self):
-        config = self._make_config({
+        config = self._make_config({  # noqa; indentation below is non-standard
             "browserid.audiences":
                 "https://testmytoken.com",
             "browserid.allowed_issuers":
