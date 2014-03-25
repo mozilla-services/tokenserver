@@ -194,10 +194,16 @@ def return_token(request):
     if generation > user['generation']:
         updates['generation'] = generation
     if client_state != user['client_state']:
-        # Don't revert to a previous client-state, or
-        # from has-client-state to not-has-client-state.
-        if not client_state or client_state in user['old_client_states']:
-            raise _unauthorized("invalid-client-state")
+        # Don't revert from some-client-state to no-client-state.
+        if not client_state:
+            raise _unauthorized('invalid-client-state')
+        # Don't revert to a previous client-state.
+        if client_state in user['old_client_states']:
+            raise _unauthorized('invalid-client-state')
+        # If the IdP has been sending generation numbers, then
+        # don't update client-state without a change in generation number.
+        if user['generation'] > 0 and 'generation' not in updates:
+            raise _unauthorized('invalid-client-state')
         updates['client_state'] = client_state
     if updates:
         with time_backend_operation(request, 'backend.update_user'):

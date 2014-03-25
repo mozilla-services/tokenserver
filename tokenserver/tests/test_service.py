@@ -227,36 +227,61 @@ class TestService(unittest.TestCase):
         self.assertEqual(res.json["status"], "invalid-generation")
 
     def test_client_state_change(self):
+        mock_response = {
+            "status": "okay",
+            "email": "test@mozilla.com",
+            "idpClaims": {"fxa-generation": 1234},
+        }
         # Start with no client-state header.
         headers = {'Authorization': 'BrowserID %s' % self._getassertion()}
-        res = self.app.get('/1.0/aitc/1.0', headers=headers)
+        with self.mock_verifier(response=mock_response):
+            res = self.app.get('/1.0/aitc/1.0', headers=headers)
         uid0 = res.json['uid']
         # No change == same uid.
-        res = self.app.get('/1.0/aitc/1.0', headers=headers)
+        with self.mock_verifier(response=mock_response):
+            res = self.app.get('/1.0/aitc/1.0', headers=headers)
         self.assertEqual(res.json['uid'], uid0)
-        # Send a client-state header, get a new uid.
+        # Changing client-state header requires changing generation number.
         headers['X-Client-State'] = 'aaaa'
-        res = self.app.get('/1.0/aitc/1.0', headers=headers)
+        with self.mock_verifier(response=mock_response):
+            res = self.app.get('/1.0/aitc/1.0', headers=headers, status=401)
+        self.assertEqual(res.json['status'], 'invalid-client-state')
+        # Change the client-state header, get a new uid.
+        headers['X-Client-State'] = 'aaaa'
+        mock_response["idpClaims"]["fxa-generation"] += 1
+        with self.mock_verifier(response=mock_response):
+            res = self.app.get('/1.0/aitc/1.0', headers=headers)
         uid1 = res.json['uid']
         self.assertNotEqual(uid1, uid0)
         # No change == same uid.
-        res = self.app.get('/1.0/aitc/1.0', headers=headers)
+        with self.mock_verifier(response=mock_response):
+            res = self.app.get('/1.0/aitc/1.0', headers=headers)
         self.assertEqual(res.json['uid'], uid1)
-        # Change the client-state header, get a new uid.
+        # Send a client-state header, get a new uid.
         headers['X-Client-State'] = 'bbbb'
-        res = self.app.get('/1.0/aitc/1.0', headers=headers)
+        mock_response["idpClaims"]["fxa-generation"] += 1
+        with self.mock_verifier(response=mock_response):
+            res = self.app.get('/1.0/aitc/1.0', headers=headers)
         uid2 = res.json['uid']
         self.assertNotEqual(uid2, uid0)
         self.assertNotEqual(uid2, uid1)
         # No change == same uid.
-        res = self.app.get('/1.0/aitc/1.0', headers=headers)
+        with self.mock_verifier(response=mock_response):
+            res = self.app.get('/1.0/aitc/1.0', headers=headers)
         self.assertEqual(res.json['uid'], uid2)
         # Use a previous client-state, get an auth error.
         headers['X-Client-State'] = 'aaaa'
-        res = self.app.get('/1.0/aitc/1.0', headers=headers, status=401)
+        with self.mock_verifier(response=mock_response):
+            res = self.app.get('/1.0/aitc/1.0', headers=headers, status=401)
         self.assertEqual(res.json['status'], 'invalid-client-state')
         del headers['X-Client-State']
-        res = self.app.get('/1.0/aitc/1.0', headers=headers, status=401)
+        with self.mock_verifier(response=mock_response):
+            res = self.app.get('/1.0/aitc/1.0', headers=headers, status=401)
+        self.assertEqual(res.json['status'], 'invalid-client-state')
+        headers['X-Client-State'] = 'aaaa'
+        mock_response["idpClaims"]["fxa-generation"] += 1
+        with self.mock_verifier(response=mock_response):
+            res = self.app.get('/1.0/aitc/1.0', headers=headers, status=401)
         self.assertEqual(res.json['status'], 'invalid-client-state')
 
     def test_client_state_cannot_revert_to_empty(self):
