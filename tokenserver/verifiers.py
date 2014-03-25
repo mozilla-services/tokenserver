@@ -15,9 +15,11 @@ from browserid.errors import (InvalidSignatureError, ExpiredSignatureError,
 from tokenserver.crypto.master import get_runner
 
 
-def get_verifier():
+def get_verifier(registry=None):
     """returns the registered verifier, building it if necessary."""
-    return get_current_registry().getUtility(IBrowserIdVerifier)
+    if registry is None:
+        registry = get_current_registry()
+    return registry.getUtility(IBrowserIdVerifier)
 
 
 # This is to simplify the registering of the implementations using pyramid

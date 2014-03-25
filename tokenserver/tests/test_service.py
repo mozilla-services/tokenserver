@@ -3,7 +3,7 @@
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 import os
 import json
-import time
+import contextlib
 
 from webtest import TestApp
 from pyramid import testing
@@ -15,11 +15,12 @@ from mozsvc.plugin import load_and_register, load_from_settings
 from metlog.logging import hook_logger
 
 from tokenserver.assignment import INodeAssignment
-from browserid.tests.support import (
-    make_assertion,
-    patched_supportdoc_fetching,
-    unittest
-)
+from tokenserver.verifiers import get_verifier
+from tokenserver.tests.support import unittest
+
+import browserid.errors
+from browserid.tests.support import make_assertion
+from browserid.utils import get_assertion_info
 
 
 here = os.path.dirname(__file__)
@@ -48,12 +49,34 @@ class TestService(unittest.TestCase):
         wsgiapp = self.config.make_wsgi_app()
         wsgiapp = CatchErrors(wsgiapp)
         self.app = TestApp(wsgiapp)
-
-        self.patched = patched_supportdoc_fetching()
-        self.patched.__enter__()
+        # Mock out the verifier to return successfully by default.
+        self.mock_verifier_context = self.mock_verifier()
+        self.mock_verifier_context.__enter__()
 
     def tearDown(self):
-        self.patched.__exit__(None, None, None)
+        self.mock_verifier_context.__exit__(None, None, None)
+
+    @contextlib.contextmanager
+    def mock_verifier(self, response=None, exc=None):
+        def mock_verify_method(assertion):
+            if exc is not None:
+                raise exc
+            if response is not None:
+                return response
+            return {
+                "status": "okay",
+                "email": get_assertion_info(assertion)["principal"]["email"],
+            }
+        verifier = get_verifier(self.config.registry)
+        orig_verify_method = verifier.__dict__.get("verify", None)
+        verifier.__dict__["verify"] = mock_verify_method
+        try:
+            yield None
+        finally:
+            if orig_verify_method is None:
+                del verifier.__dict__["verify"]
+            else:
+                verifier.__dict__["verify"] = orig_verify_method
 
     def _getassertion(self, **kw):
         kw.setdefault('email', 'tarek@mozilla.com')
@@ -114,37 +137,94 @@ class TestService(unittest.TestCase):
         self.assertTrue(is_in_msgs(counter_subset))
 
     def test_unauthorized_error_status(self):
+        assertion = self._getassertion()
         # Totally busted auth -> generic error.
         headers = {'Authorization': 'Unsupported-Auth-Scheme IHACKYOU'}
         res = self.app.get('/1.0/aitc/1.0', headers=headers, status=401)
         self.assertEqual(res.json['status'], 'error')
         # Bad signature -> "invalid-credentials"
-        assertion = self._getassertion(assertion_sig='IHACKYOU')
         headers = {'Authorization': 'BrowserID %s' % assertion}
-        res = self.app.get('/1.0/aitc/1.0', headers=headers, status=401)
+        with self.mock_verifier(exc=browserid.errors.InvalidSignatureError):
+            res = self.app.get('/1.0/aitc/1.0', headers=headers, status=401)
         self.assertEqual(res.json['status'], 'invalid-credentials')
         # Bad audience -> "invalid-credentials"
-        assertion = self._getassertion(audience='http://i.hackyou.com')
-        headers = {'Authorization': 'BrowserID %s' % assertion}
-        res = self.app.get('/1.0/aitc/1.0', headers=headers, status=401)
+        with self.mock_verifier(exc=browserid.errors.AudienceMismatchError):
+            res = self.app.get('/1.0/aitc/1.0', headers=headers, status=401)
         self.assertEqual(res.json['status'], 'invalid-credentials')
         # Expired timestamp -> "invalid-timestamp"
-        assertion = self._getassertion(exp=42)
-        headers = {'Authorization': 'BrowserID %s' % assertion}
-        res = self.app.get('/1.0/aitc/1.0', headers=headers, status=401)
+        with self.mock_verifier(exc=browserid.errors.ExpiredSignatureError):
+            res = self.app.get('/1.0/aitc/1.0', headers=headers, status=401)
         self.assertEqual(res.json['status'], 'invalid-timestamp')
         self.assertTrue('X-Timestamp' in res.headers)
-        # Far-future timestamp -> "invalid-timestamp"
-        assertion = self._getassertion(exp=int(time.time() + 3600))
-        headers = {'Authorization': 'BrowserID %s' % assertion}
-        res = self.app.get('/1.0/aitc/1.0', headers=headers, status=401)
-        self.assertEqual(res.json['status'], 'invalid-timestamp')
-        self.assertTrue('X-Timestamp' in res.headers)
+        # Connection error -> 503
+        with self.mock_verifier(exc=browserid.errors.ConnectionError):
+            res = self.app.get('/1.0/aitc/1.0', headers=headers, status=503)
+        # Some other wacky error -> not captured
+        with self.mock_verifier(exc=ValueError):
+            with self.assertRaises(ValueError):
+                res = self.app.get('/1.0/aitc/1.0', headers=headers)
 
     def test_generation_number_change(self):
-        # We can't test for this until PyBrowserID grows support for it,
-        # which is waiting on final spec approval.
-        raise unittest.SkipTest
+        headers = {"Authorization": "BrowserID %s" % self._getassertion()}
+        # Start with no generation number.
+        mock_response = {"status": "okay", "email": "test@mozilla.com"}
+        with self.mock_verifier(response=mock_response):
+            res1 = self.app.get("/1.0/aitc/1.0", headers=headers)
+        # Now send an explicit generation number.
+        # The node assignment should not change.
+        mock_response["idpClaims"] = {"fxa-generation": 12}
+        with self.mock_verifier(response=mock_response):
+            res2 = self.app.get("/1.0/aitc/1.0", headers=headers)
+        self.assertEqual(res1.json["uid"], res2.json["uid"])
+        self.assertEqual(res1.json["api_endpoint"], res2.json["api_endpoint"])
+        # Previous generation numbers get an invalid-generation response.
+        del mock_response["idpClaims"]
+        with self.mock_verifier(response=mock_response):
+            res = self.app.get("/1.0/aitc/1.0", headers=headers, status=401)
+        self.assertEqual(res.json["status"], "invalid-generation")
+        mock_response["idpClaims"] = {"some-nonsense": "lolwut"}
+        with self.mock_verifier(response=mock_response):
+            res = self.app.get("/1.0/aitc/1.0", headers=headers, status=401)
+        self.assertEqual(res.json["status"], "invalid-generation")
+        mock_response["idpClaims"] = {"fxa-generation": 10}
+        with self.mock_verifier(response=mock_response):
+            res = self.app.get("/1.0/aitc/1.0", headers=headers, status=401)
+        self.assertEqual(res.json["status"], "invalid-generation")
+        # Equal generation numbers are accepted.
+        mock_response["idpClaims"] = {"fxa-generation": 12}
+        with self.mock_verifier(response=mock_response):
+            res2 = self.app.get("/1.0/aitc/1.0", headers=headers)
+        self.assertEqual(res1.json["uid"], res2.json["uid"])
+        self.assertEqual(res1.json["api_endpoint"], res2.json["api_endpoint"])
+        # Later generation numbers are accepted.
+        # Again, the node assignment should not change.
+        mock_response["idpClaims"] = {"fxa-generation": 13}
+        with self.mock_verifier(response=mock_response):
+            res2 = self.app.get("/1.0/aitc/1.0", headers=headers)
+        self.assertEqual(res1.json["uid"], res2.json["uid"])
+        self.assertEqual(res1.json["api_endpoint"], res2.json["api_endpoint"])
+        # And that should lock out the previous generation number
+        mock_response["idpClaims"] = {"fxa-generation": 12}
+        with self.mock_verifier(response=mock_response):
+            res = self.app.get("/1.0/aitc/1.0", headers=headers, status=401)
+        self.assertEqual(res.json["status"], "invalid-generation")
+        # Various nonsense generation numbers should give errors.
+        mock_response["idpClaims"] = {"fxa-generation": "whatswrongwithyour"}
+        with self.mock_verifier(response=mock_response):
+            res = self.app.get("/1.0/aitc/1.0", headers=headers, status=401)
+        self.assertEqual(res.json["status"], "invalid-generation")
+        mock_response["idpClaims"] = {"fxa-generation": None}
+        with self.mock_verifier(response=mock_response):
+            res = self.app.get("/1.0/aitc/1.0", headers=headers, status=401)
+        self.assertEqual(res.json["status"], "invalid-generation")
+        mock_response["idpClaims"] = {"fxa-generation": "42"}
+        with self.mock_verifier(response=mock_response):
+            res = self.app.get("/1.0/aitc/1.0", headers=headers, status=401)
+        self.assertEqual(res.json["status"], "invalid-generation")
+        mock_response["idpClaims"] = {"fxa-generation": ["I", "HACK", "YOU"]}
+        with self.mock_verifier(response=mock_response):
+            res = self.app.get("/1.0/aitc/1.0", headers=headers, status=401)
+        self.assertEqual(res.json["status"], "invalid-generation")
 
     def test_client_state_change(self):
         # Start with no client-state header.

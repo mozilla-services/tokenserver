@@ -172,6 +172,8 @@ def return_token(request):
     try:
         idp_claims = request.validated['assertion']['idpClaims']
         generation = idp_claims['fxa-generation']
+        if not isinstance(generation, (int, long)):
+            raise _unauthorized("invalid-generation")
     except KeyError:
         generation = 0
     application = request.validated['application']
