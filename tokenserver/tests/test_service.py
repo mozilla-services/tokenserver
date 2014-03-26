@@ -89,27 +89,26 @@ class TestService(unittest.TestCase):
         self.assertTrue('errors' in resp.json)
 
     def test_no_auth(self):
-        self.app.get('/1.0/sync/2.1', status=401)
+        self.app.get('/1.0/sync/1.5', status=401)
 
     def test_valid_app(self):
         headers = {'Authorization': 'BrowserID %s' % self._getassertion()}
-        res = self.app.get('/1.0/aitc/1.0', headers=headers)
-        self.assertIn('https://example.com/1.0', res.json['api_endpoint'])
+        res = self.app.get('/1.0/sync/1.1', headers=headers)
+        self.assertIn('https://example.com/1.1', res.json['api_endpoint'])
         self.assertIn('duration', res.json)
         self.assertEquals(res.json['duration'], 3600)
 
     def test_unknown_pattern(self):
-        # sync 2.1 is defined in the .ini file, but  no pattern exists for it.
+        # sync 1.5 is defined in the .ini file, but  no pattern exists for it.
         headers = {'Authorization': 'BrowserID %s' % self._getassertion()}
-        self.app.get('/1.0/sync/2.1', headers=headers, status=503)
+        self.app.get('/1.0/sync/1.5', headers=headers, status=503)
 
     def test_discovery(self):
         res = self.app.get('/')
         self.assertEqual(res.json, {
             'auth': 'http://localhost',
             'services': {
-                'aitc': ['1.0'],
-                'sync': ['2.1'],
+                'sync': ['1.1', '1.5'],
             }
         })
 
@@ -140,90 +139,90 @@ class TestService(unittest.TestCase):
         assertion = self._getassertion()
         # Totally busted auth -> generic error.
         headers = {'Authorization': 'Unsupported-Auth-Scheme IHACKYOU'}
-        res = self.app.get('/1.0/aitc/1.0', headers=headers, status=401)
+        res = self.app.get('/1.0/sync/1.1', headers=headers, status=401)
         self.assertEqual(res.json['status'], 'error')
         # Bad signature -> "invalid-credentials"
         headers = {'Authorization': 'BrowserID %s' % assertion}
         with self.mock_verifier(exc=browserid.errors.InvalidSignatureError):
-            res = self.app.get('/1.0/aitc/1.0', headers=headers, status=401)
+            res = self.app.get('/1.0/sync/1.1', headers=headers, status=401)
         self.assertEqual(res.json['status'], 'invalid-credentials')
         # Bad audience -> "invalid-credentials"
         with self.mock_verifier(exc=browserid.errors.AudienceMismatchError):
-            res = self.app.get('/1.0/aitc/1.0', headers=headers, status=401)
+            res = self.app.get('/1.0/sync/1.1', headers=headers, status=401)
         self.assertEqual(res.json['status'], 'invalid-credentials')
         # Expired timestamp -> "invalid-timestamp"
         with self.mock_verifier(exc=browserid.errors.ExpiredSignatureError):
-            res = self.app.get('/1.0/aitc/1.0', headers=headers, status=401)
+            res = self.app.get('/1.0/sync/1.1', headers=headers, status=401)
         self.assertEqual(res.json['status'], 'invalid-timestamp')
         self.assertTrue('X-Timestamp' in res.headers)
         # Connection error -> 503
         with self.mock_verifier(exc=browserid.errors.ConnectionError):
-            res = self.app.get('/1.0/aitc/1.0', headers=headers, status=503)
+            res = self.app.get('/1.0/sync/1.1', headers=headers, status=503)
         # Some other wacky error -> not captured
         with self.mock_verifier(exc=ValueError):
             with self.assertRaises(ValueError):
-                res = self.app.get('/1.0/aitc/1.0', headers=headers)
+                res = self.app.get('/1.0/sync/1.1', headers=headers)
 
     def test_generation_number_change(self):
         headers = {"Authorization": "BrowserID %s" % self._getassertion()}
         # Start with no generation number.
         mock_response = {"status": "okay", "email": "test@mozilla.com"}
         with self.mock_verifier(response=mock_response):
-            res1 = self.app.get("/1.0/aitc/1.0", headers=headers)
+            res1 = self.app.get("/1.0/sync/1.1", headers=headers)
         # Now send an explicit generation number.
         # The node assignment should not change.
         mock_response["idpClaims"] = {"fxa-generation": 12}
         with self.mock_verifier(response=mock_response):
-            res2 = self.app.get("/1.0/aitc/1.0", headers=headers)
+            res2 = self.app.get("/1.0/sync/1.1", headers=headers)
         self.assertEqual(res1.json["uid"], res2.json["uid"])
         self.assertEqual(res1.json["api_endpoint"], res2.json["api_endpoint"])
         # Previous generation numbers get an invalid-generation response.
         del mock_response["idpClaims"]
         with self.mock_verifier(response=mock_response):
-            res = self.app.get("/1.0/aitc/1.0", headers=headers, status=401)
+            res = self.app.get("/1.0/sync/1.1", headers=headers, status=401)
         self.assertEqual(res.json["status"], "invalid-generation")
         mock_response["idpClaims"] = {"some-nonsense": "lolwut"}
         with self.mock_verifier(response=mock_response):
-            res = self.app.get("/1.0/aitc/1.0", headers=headers, status=401)
+            res = self.app.get("/1.0/sync/1.1", headers=headers, status=401)
         self.assertEqual(res.json["status"], "invalid-generation")
         mock_response["idpClaims"] = {"fxa-generation": 10}
         with self.mock_verifier(response=mock_response):
-            res = self.app.get("/1.0/aitc/1.0", headers=headers, status=401)
+            res = self.app.get("/1.0/sync/1.1", headers=headers, status=401)
         self.assertEqual(res.json["status"], "invalid-generation")
         # Equal generation numbers are accepted.
         mock_response["idpClaims"] = {"fxa-generation": 12}
         with self.mock_verifier(response=mock_response):
-            res2 = self.app.get("/1.0/aitc/1.0", headers=headers)
+            res2 = self.app.get("/1.0/sync/1.1", headers=headers)
         self.assertEqual(res1.json["uid"], res2.json["uid"])
         self.assertEqual(res1.json["api_endpoint"], res2.json["api_endpoint"])
         # Later generation numbers are accepted.
         # Again, the node assignment should not change.
         mock_response["idpClaims"] = {"fxa-generation": 13}
         with self.mock_verifier(response=mock_response):
-            res2 = self.app.get("/1.0/aitc/1.0", headers=headers)
+            res2 = self.app.get("/1.0/sync/1.1", headers=headers)
         self.assertEqual(res1.json["uid"], res2.json["uid"])
         self.assertEqual(res1.json["api_endpoint"], res2.json["api_endpoint"])
         # And that should lock out the previous generation number
         mock_response["idpClaims"] = {"fxa-generation": 12}
         with self.mock_verifier(response=mock_response):
-            res = self.app.get("/1.0/aitc/1.0", headers=headers, status=401)
+            res = self.app.get("/1.0/sync/1.1", headers=headers, status=401)
         self.assertEqual(res.json["status"], "invalid-generation")
         # Various nonsense generation numbers should give errors.
         mock_response["idpClaims"] = {"fxa-generation": "whatswrongwithyour"}
         with self.mock_verifier(response=mock_response):
-            res = self.app.get("/1.0/aitc/1.0", headers=headers, status=401)
+            res = self.app.get("/1.0/sync/1.1", headers=headers, status=401)
         self.assertEqual(res.json["status"], "invalid-generation")
         mock_response["idpClaims"] = {"fxa-generation": None}
         with self.mock_verifier(response=mock_response):
-            res = self.app.get("/1.0/aitc/1.0", headers=headers, status=401)
+            res = self.app.get("/1.0/sync/1.1", headers=headers, status=401)
         self.assertEqual(res.json["status"], "invalid-generation")
         mock_response["idpClaims"] = {"fxa-generation": "42"}
         with self.mock_verifier(response=mock_response):
-            res = self.app.get("/1.0/aitc/1.0", headers=headers, status=401)
+            res = self.app.get("/1.0/sync/1.1", headers=headers, status=401)
         self.assertEqual(res.json["status"], "invalid-generation")
         mock_response["idpClaims"] = {"fxa-generation": ["I", "HACK", "YOU"]}
         with self.mock_verifier(response=mock_response):
-            res = self.app.get("/1.0/aitc/1.0", headers=headers, status=401)
+            res = self.app.get("/1.0/sync/1.1", headers=headers, status=401)
         self.assertEqual(res.json["status"], "invalid-generation")
 
     def test_client_state_change(self):
@@ -235,53 +234,53 @@ class TestService(unittest.TestCase):
         # Start with no client-state header.
         headers = {'Authorization': 'BrowserID %s' % self._getassertion()}
         with self.mock_verifier(response=mock_response):
-            res = self.app.get('/1.0/aitc/1.0', headers=headers)
+            res = self.app.get('/1.0/sync/1.1', headers=headers)
         uid0 = res.json['uid']
         # No change == same uid.
         with self.mock_verifier(response=mock_response):
-            res = self.app.get('/1.0/aitc/1.0', headers=headers)
+            res = self.app.get('/1.0/sync/1.1', headers=headers)
         self.assertEqual(res.json['uid'], uid0)
         # Changing client-state header requires changing generation number.
         headers['X-Client-State'] = 'aaaa'
         with self.mock_verifier(response=mock_response):
-            res = self.app.get('/1.0/aitc/1.0', headers=headers, status=401)
+            res = self.app.get('/1.0/sync/1.1', headers=headers, status=401)
         self.assertEqual(res.json['status'], 'invalid-client-state')
         # Change the client-state header, get a new uid.
         headers['X-Client-State'] = 'aaaa'
         mock_response["idpClaims"]["fxa-generation"] += 1
         with self.mock_verifier(response=mock_response):
-            res = self.app.get('/1.0/aitc/1.0', headers=headers)
+            res = self.app.get('/1.0/sync/1.1', headers=headers)
         uid1 = res.json['uid']
         self.assertNotEqual(uid1, uid0)
         # No change == same uid.
         with self.mock_verifier(response=mock_response):
-            res = self.app.get('/1.0/aitc/1.0', headers=headers)
+            res = self.app.get('/1.0/sync/1.1', headers=headers)
         self.assertEqual(res.json['uid'], uid1)
         # Send a client-state header, get a new uid.
         headers['X-Client-State'] = 'bbbb'
         mock_response["idpClaims"]["fxa-generation"] += 1
         with self.mock_verifier(response=mock_response):
-            res = self.app.get('/1.0/aitc/1.0', headers=headers)
+            res = self.app.get('/1.0/sync/1.1', headers=headers)
         uid2 = res.json['uid']
         self.assertNotEqual(uid2, uid0)
         self.assertNotEqual(uid2, uid1)
         # No change == same uid.
         with self.mock_verifier(response=mock_response):
-            res = self.app.get('/1.0/aitc/1.0', headers=headers)
+            res = self.app.get('/1.0/sync/1.1', headers=headers)
         self.assertEqual(res.json['uid'], uid2)
         # Use a previous client-state, get an auth error.
         headers['X-Client-State'] = 'aaaa'
         with self.mock_verifier(response=mock_response):
-            res = self.app.get('/1.0/aitc/1.0', headers=headers, status=401)
+            res = self.app.get('/1.0/sync/1.1', headers=headers, status=401)
         self.assertEqual(res.json['status'], 'invalid-client-state')
         del headers['X-Client-State']
         with self.mock_verifier(response=mock_response):
-            res = self.app.get('/1.0/aitc/1.0', headers=headers, status=401)
+            res = self.app.get('/1.0/sync/1.1', headers=headers, status=401)
         self.assertEqual(res.json['status'], 'invalid-client-state')
         headers['X-Client-State'] = 'aaaa'
         mock_response["idpClaims"]["fxa-generation"] += 1
         with self.mock_verifier(response=mock_response):
-            res = self.app.get('/1.0/aitc/1.0', headers=headers, status=401)
+            res = self.app.get('/1.0/sync/1.1', headers=headers, status=401)
         self.assertEqual(res.json['status'], 'invalid-client-state')
 
     def test_client_state_cannot_revert_to_empty(self):
@@ -290,30 +289,30 @@ class TestService(unittest.TestCase):
             'Authorization': 'BrowserID %s' % self._getassertion(),
             'X-Client-State': 'aaa',
         }
-        res = self.app.get('/1.0/aitc/1.0', headers=headers)
+        res = self.app.get('/1.0/sync/1.1', headers=headers)
         uid0 = res.json['uid']
         # Sending no client-state will fail.
         del headers['X-Client-State']
-        res = self.app.get('/1.0/aitc/1.0', headers=headers, status=401)
+        res = self.app.get('/1.0/sync/1.1', headers=headers, status=401)
         self.assertEqual(res.json['status'], 'invalid-client-state')
         headers['X-Client-State'] = ''
-        res = self.app.get('/1.0/aitc/1.0', headers=headers, status=401)
+        res = self.app.get('/1.0/sync/1.1', headers=headers, status=401)
         self.assertEqual(res.json['status'], 'invalid-client-state')
         # And the uid will be unchanged.
         headers['X-Client-State'] = 'aaa'
-        res = self.app.get('/1.0/aitc/1.0', headers=headers)
+        res = self.app.get('/1.0/sync/1.1', headers=headers)
         self.assertEqual(res.json['uid'], uid0)
 
     def test_client_specified_duration(self):
         headers = {'Authorization': 'BrowserID %s' % self._getassertion()}
         # It's ok to request a shorter-duration token.
-        res = self.app.get('/1.0/aitc/1.0?duration=12', headers=headers)
+        res = self.app.get('/1.0/sync/1.1?duration=12', headers=headers)
         self.assertEquals(res.json['duration'], 12)
         # But you can't exceed the server's default value.
-        res = self.app.get('/1.0/aitc/1.0?duration=4000', headers=headers)
+        res = self.app.get('/1.0/sync/1.1?duration=4000', headers=headers)
         self.assertEquals(res.json['duration'], 3600)
         # And nonsense values are ignored.
-        res = self.app.get('/1.0/aitc/1.0?duration=lolwut', headers=headers)
+        res = self.app.get('/1.0/sync/1.1?duration=lolwut', headers=headers)
         self.assertEquals(res.json['duration'], 3600)
-        res = self.app.get('/1.0/aitc/1.0?duration=-1', headers=headers)
+        res = self.app.get('/1.0/sync/1.1?duration=-1', headers=headers)
         self.assertEquals(res.json['duration'], 3600)
