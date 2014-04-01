@@ -232,8 +232,12 @@ def return_token(request):
         if 0 < requested_duration < token_duration:
             token_duration = requested_duration
 
-    token = tokenlib.make_token({'uid': user['uid'], 'node': user['node']},
-                                timeout=token_duration, secret=secret)
+    token_data = {
+        'uid': user['uid'],
+        'node': user['node'],
+        'expires': int(time.time()) + token_duration,
+    }
+    token = tokenlib.make_token(token_data, secret=secret)
     secret = tokenlib.get_derived_secret(token, secret=secret)
 
     endpoint = pattern.format(
