@@ -20,7 +20,6 @@ build:
 	$(INSTALL) nose
 	$(INSTALL) flake8
 	$(INSTALL) https://github.com/zeromq/pyzmq/archive/ad78488d2d72beab5915bbc21be7f13e4c347eec.zip
-	bin/easy_install `bin/python ezm2c.py`
 	$(INSTALL) -r requirements.txt
 	$(PYTHON) ./setup.py develop
 
@@ -35,4 +34,4 @@ protobuf:
 
 
 clean:
-	rm -rf bin lib include local docs/build
+	rm -rf bin lib lib64 include local docs/build man
