@@ -33,7 +33,7 @@ logger = logging.getLogger("tokenserver.scripts.process_account_deletions")
 
 
 def process_account_deletions(config_file, queue_name, aws_region=None,
-                              queue_wait_time=60):
+                              queue_wait_time=20):
     """Process account-deletion events from an SQS queue.
 
     This function polls the specified SQS queue for account-deletion events,
@@ -50,7 +50,8 @@ def process_account_deletions(config_file, queue_name, aws_region=None,
         # If no region is given, infer it from the instance metadata.
         if aws_region is None:
             logger.debug("Finding default region from instance metadata")
-            aws_region = boto.utils.get_instance_metadata()['placement'][:-1]
+            aws_info = boto.utils.get_instance_metadata()
+            aws_region = aws_info["placement"]["availability-zone"][:-1]
         logger.debug("Connecting to queue %r in %r", queue_name, aws_region)
         conn = boto.sqs.connect_to_region(aws_region)
         queue = conn.get_queue(queue_name)
@@ -75,6 +76,7 @@ def process_account_deletions(config_file, queue_name, aws_region=None,
             else:
                 # Mark the user as retired.
                 # Actual cleanup is done by a separate process.
+                logger.info("Processing account deletion for %r", email)
                 backend.retire_user(email)
             queue.delete_message(msg)
             msg = queue.read(wait_time_seconds=queue_wait_time)
@@ -95,7 +97,7 @@ def main(args=None):
     parser = optparse.OptionParser(usage=usage)
     parser.add_option("", "--aws-region",
                       help="aws region in which the queue can be found")
-    parser.add_option("", "--queue-wait-time", type="int", default=60,
+    parser.add_option("", "--queue-wait-time", type="int", default=20,
                       help="Number of seconds to wait for jobs on the queue")
     parser.add_option("-v", "--verbose", action="count", dest="verbosity",
                       help="Control verbosity of log messages")

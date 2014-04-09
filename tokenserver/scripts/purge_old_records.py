@@ -57,7 +57,7 @@ def purge_old_records(config_file, grace_period=-1, max_per_loop=10,
                 }
                 rows = list(backend.get_old_user_records(service, **kwds))
                 for row in rows:
-                    logger.debug("Purging uid %s on %s", row.uid, row.node)
+                    logger.info("Purging uid %s on %s", row.uid, row.node)
                     delete_service_data(config, service, row.uid, row.node,
                                         timeout=request_timeout)
                     backend.delete_user_record(service, row.uid)
