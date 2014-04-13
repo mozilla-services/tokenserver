@@ -10,12 +10,13 @@ import os
 from logging.config import fileConfig
 from ConfigParser import NoSectionError
 
+from tokenserver.util import find_config_file
+
 # setting up the egg cache to a place where apache can write
 os.environ['PYTHON_EGG_CACHE'] = '/tmp/python-eggs'
 
 # setting up logging
-ini_file = '/etc/mozilla-services/token/production.ini'
-ini_file = os.environ.get('TOKEN_INI', ini_file)
+ini_file = find_config_file()
 try:
     fileConfig(ini_file)
 except NoSectionError:

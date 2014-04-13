@@ -46,3 +46,4 @@ https://argparse.googlecode.com/files/argparse-1.2.1.tar.gz
 circus==0.10
 hawkauthlib==0.1.1
 boto==2.27
+alembic==0.6.4

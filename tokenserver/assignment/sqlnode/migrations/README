@@ -1,0 +1,8 @@
+
+Database migrations for WIMMS.
+
+This directory contains alembic migrations tracking the database schema
+changes made in WIMMS:
+
+  http://alembic.readthedocs.org/
+

@@ -1,6 +1,7 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
+import os
 from base64 import b32encode
 from hashlib import sha1
 import json
@@ -71,3 +72,19 @@ def json_error(status_code=400, status_message='error', **kw):
 
 def get_logger():
     return get_current_registry()['metlog']
+
+
+def find_config_file(*paths):
+    ini_files = []
+    ini_files.append(os.environ.get('TOKEN_INI'))
+    ini_files.extend(paths)
+    ini_files.extend((
+        '/data/tokenserver/token-prod.ini',
+        '/etc/mozilla-services/token/production.ini',
+    ))
+    for ini_file in ini_files:
+        ini_file = os.path.abspath(ini_file)
+        if ini_file is not None:
+            if os.path.exists(ini_file):
+                return ini_file
+    raise RuntimeError("Could not locate tokenserver ini file")
