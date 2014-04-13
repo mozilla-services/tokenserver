@@ -185,9 +185,9 @@ def return_token(request):
     with time_backend_operation(request, 'backend.get_user'):
         user = backend.get_user(service, email)
     if not user:
-        with time_backend_operation(request, 'backend.create_user'):
-            user = backend.create_user(service, email, generation,
-                                       client_state)
+        with time_backend_operation(request, 'backend.allocate_user'):
+            user = backend.allocate_user(service, email, generation,
+                                         client_state)
 
     # Update if this client is ahead of previously-seen clients.
     updates = {}

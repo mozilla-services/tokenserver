@@ -34,7 +34,7 @@ class MemoryNodeAssignmentBackend(object):
     def get_user(self, service, email):
         return self._users.get((service, email), None)
 
-    def create_user(self, service, email, generation=0, client_state=''):
+    def allocate_user(self, service, email, generation=0, client_state=''):
         if (service, email) in self._users:
             raise BackendError('user already exists: ' + email)
         user = {

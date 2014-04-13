@@ -31,14 +31,14 @@ class TestFixedBackend(unittest.TestCase):
         self.backend.clear()
 
     def test_read_config(self):
-        user = self.backend.create_user(DEFAULT_SERVICE, DEFAULT_EMAIL)
+        user = self.backend.allocate_user(DEFAULT_SERVICE, DEFAULT_EMAIL)
         self.assertEqual(user['node'], DEFAULT_NODE)
 
     def test_assignation(self):
         user = self.backend.get_user(DEFAULT_SERVICE, DEFAULT_EMAIL)
         self.assertEquals(user, None)
 
-        user = self.backend.create_user(DEFAULT_EMAIL, DEFAULT_SERVICE)
+        user = self.backend.allocate_user(DEFAULT_EMAIL, DEFAULT_SERVICE)
         self.assertEquals(user['uid'], 1)
         self.assertEquals(user['node'], DEFAULT_NODE)
 

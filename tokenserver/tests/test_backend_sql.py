@@ -51,7 +51,7 @@ class TestSQLBackend(unittest.TestCase):
         user = self.backend.get_user("sync-1.0", "tarek@mozilla.com")
         self.assertEquals(user, None)
 
-        user = self.backend.create_user("sync-1.0", "tarek@mozilla.com")
+        user = self.backend.allocate_user("sync-1.0", "tarek@mozilla.com")
         self.assertEqual(user['email'], "tarek@mozilla.com")
         self.assertEqual(user['node'], "https://phx12")
 

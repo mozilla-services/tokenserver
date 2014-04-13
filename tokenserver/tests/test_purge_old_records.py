@@ -75,7 +75,7 @@ class TestPurgeOldRecordsScript(unittest.TestCase):
         # Make some old user records.
         service = "test-1.0"
         email = "test@mozilla.com"
-        user = self.backend.create_user(service, email, client_state="a")
+        user = self.backend.allocate_user(service, email, client_state="a")
         self.backend.update_user(service, user, client_state="b")
         self.backend.update_user(service, user, client_state="c")
         user_records = list(self.backend.get_user_records(service, email))

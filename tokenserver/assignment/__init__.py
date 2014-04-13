@@ -19,7 +19,7 @@ class INodeAssignment(Interface):
 
         """
 
-    def create_user(self, service, email, generation=0, client_state=''):
+    def allocate_user(self, service, email, generation=0, client_state=''):
         """Create a new user record for the given service and email.
 
         The newly-created user record is returned in the format described
