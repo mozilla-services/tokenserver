@@ -44,6 +44,7 @@ class _UsersBase(object):
                  nullable=False)
     service = Column(Integer(), nullable=False)
     email = Column(String(255), nullable=False)
+    nodeid = Column(BigInteger(), nullable=True)
     node = Column(String(64), nullable=False)
     generation = Column(BigInteger(), nullable=False)
     client_state = Column(String(32), nullable=False)
@@ -59,7 +60,7 @@ class _UsersBase(object):
             # Index used for purging user_records that have been replaced.
             Index('replaced_at_idx', 'service', 'replaced_at'),
             # Index used for looking up all assignments on a node.
-            Index('node_idx', 'service', 'node'),
+            Index('node_idx', 'service', 'nodeid'),
             {'mysql_engine': 'InnoDB', 'mysql_charset': 'utf8'}
         )
 

@@ -42,7 +42,7 @@ _Base = declarative_base()
 
 _GET_USER_RECORDS = sqltext("""\
 select
-    uid, node, generation, client_state, created_at, replaced_at
+    uid, nodeid, node, generation, client_state, created_at, replaced_at
 from
     users
 where
@@ -59,9 +59,11 @@ limit
 _CREATE_USER_RECORD = sqltext("""\
 insert into
     users
-    (service, email, node, generation, client_state, created_at, replaced_at)
+    (service, email, nodeid, node, generation, client_state,
+     created_at, replaced_at)
 values
-    (:service, :email, :node, :generation, :client_state, :timestamp, NULL)
+    (:service, :email, :nodeid, :node, :generation, :client_state,
+     :timestamp, NULL)
 """)
 
 
@@ -103,7 +105,7 @@ where
 
 _GET_OLD_USER_RECORDS_FOR_SERVICE = sqltext("""\
 select
-    uid, node
+    uid, nodeid, node
 from
     users
 where
@@ -119,7 +121,7 @@ limit
 
 _GET_ALL_USER_RECORDS_FOR_SERVICE = sqltext("""\
 select
-    uid, node
+    uid, nodeid, node
 from
     users
 where
@@ -244,6 +246,7 @@ class SQLNodeAssignment(object):
             user = {
                 'email': email,
                 'uid': cur_row.uid,
+                '_nodeid': cur_row.nodeid,
                 'node': cur_row.node,
                 'generation': cur_row.generation,
                 'client_state': cur_row.client_state,
@@ -273,17 +276,18 @@ class SQLNodeAssignment(object):
                       timestamp=None):
         if timestamp is None:
             timestamp = get_timestamp()
-        node = self.get_best_node(service)
+        nodeid, node = self.get_best_node(service)
         params = {
-            'service': service, 'email': email, 'node': node,
-            'generation': generation, 'client_state': client_state,
-            'timestamp': timestamp
+            'service': service, 'email': email, 'nodeid': nodeid,
+            'node': node, 'generation': generation,
+            'client_state': client_state, 'timestamp': timestamp
         }
         res = self._safe_execute(_CREATE_USER_RECORD, **params)
         res.close()
         return {
             'email': email,
             'uid': res.lastrowid,
+            '_nodeid': nodeid,
             'node': node,
             'generation': generation,
             'client_state': client_state,
@@ -316,8 +320,9 @@ class SQLNodeAssignment(object):
             now = get_timestamp()
             params = {
                 'service': service, 'email': user['email'],
-                'node': user['node'], 'timestamp': now,
-                'generation': generation, 'client_state': client_state
+                'nodeid': user['_nodeid'], 'node': user['node'],
+                'generation': generation, 'client_state': client_state,
+                'timestamp': now,
             }
             res = self._safe_execute(_CREATE_USER_RECORD, **params)
             res.close()
@@ -453,29 +458,46 @@ class SQLNodeAssignment(object):
         )
         res.close()
 
-    def remove_node(self, service, node, timestamp=None):
-        """Remove definition for a node."""
+    def get_node_id(self, service, node):
+        """Get numeric id for a node."""
         res = self._safe_execute(sqltext(
             """
-            delete from nodes
+            select id from nodes
             where service=:service and node=:node
             """),
             service=service, node=node
         )
+        row = res.fetchone()
         res.close()
-        self.unassign_node(service, node, timestamp)
+        if row is None:
+            raise ValueError("unknown node: " + node)
+        return row[0]
 
-    def unassign_node(self, service, node, timestamp=None):
+    def remove_node(self, service, node, timestamp=None):
+        """Remove definition for a node."""
+        nodeid = self.get_node_id(service, node)
+        res = self._safe_execute(sqltext(
+            """
+            delete from nodes where id=:nodeid
+            """),
+            service=service, nodeid=nodeid
+        )
+        res.close()
+        self.unassign_node(service, node, timestamp, nodeid=nodeid)
+
+    def unassign_node(self, service, node, timestamp=None, nodeid=None):
         """Clear any assignments to a node."""
         if timestamp is None:
             timestamp = get_timestamp()
+        if nodeid is None:
+            nodeid = self.get_node_id(service, node)
         res = self._safe_execute(sqltext(
             """
             update users
             set replaced_at=:timestamp
-            where service=:service and node=:node
+            where nodeid=:nodeid
             """),
-            service=service, node=node, timestamp=timestamp
+            nodeid=nodeid, timestamp=timestamp
         )
         res.close()
 
@@ -511,6 +533,7 @@ class SQLNodeAssignment(object):
             res.close()
             raise BackendError('unable to get a node')
 
+        nodeid = one.id
         node = str(one.node)
         res.close()
 
@@ -523,7 +546,7 @@ class SQLNodeAssignment(object):
         con = self._safe_execute(query, close=True)
         con.close()
 
-        return node
+        return nodeid, node
 
     def _get_services_table(self, service):
         return self.services

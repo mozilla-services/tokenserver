@@ -8,7 +8,7 @@ requires = ['cornice', 'mozsvc', 'powerhose', 'circus', 'wimms', 'PyBrowserID',
             'metlog-py']
 
 setup(name='tokenserver',
-        version='1.2.1',
+        version='1.2.2',
       packages=find_packages(),
       include_package_data=True,
       zip_safe=False,
