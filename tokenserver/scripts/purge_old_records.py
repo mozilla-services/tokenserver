@@ -18,6 +18,7 @@ overheads, improve performance etc if run regularly.
 
 import os
 import time
+import random
 import logging
 import optparse
 
@@ -144,8 +145,12 @@ def main(args=None):
                       request_timeout=opts.request_timeout)
     if not opts.oneshot:
         while True:
-            logger.debug("Sleeping for %d seconds", opts.purge_interval)
-            time.sleep(opts.purge_interval)
+            # Randomize sleep interval +/- thirty percent to desynchronize
+            # instances of this script running on multiple webheads.
+            sleep_time = opts.purge_interval
+            sleep_time += random.randint(-0.3 * sleep_time, 0.3 * sleep_time)
+            logger.debug("Sleeping for %d seconds", sleep_time)
+            time.sleep(sleep_time)
             purge_old_records(config_file,
                               grace_period=opts.grace_period,
                               max_per_loop=opts.max_per_loop,
