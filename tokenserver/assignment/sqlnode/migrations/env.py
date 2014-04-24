@@ -1,3 +1,12 @@
+import os
+import sys
+
+# ensure that the containing module is on sys.path
+# this is a hack for using alembic in our built virtualenv.
+mod_dir = os.path.join(os.path.dirname(__file__), "..", "..", "..", "..")
+if mod_dir not in sys.path:
+    sys.path.append(mod_dir)
+
 from alembic import context
 from logging.config import fileConfig
 

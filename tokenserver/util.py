@@ -83,8 +83,8 @@ def find_config_file(*paths):
         '/etc/mozilla-services/token/production.ini',
     ))
     for ini_file in ini_files:
-        ini_file = os.path.abspath(ini_file)
         if ini_file is not None:
+            ini_file = os.path.abspath(ini_file)
             if os.path.exists(ini_file):
                 return ini_file
     raise RuntimeError("Could not locate tokenserver ini file")
