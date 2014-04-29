@@ -38,7 +38,8 @@ umemcache==1.6.3
 requests==2.2.1
 chardet==2.2.1
 metlog-py==0.10
-https://github.com/mozilla-services/mozservices/archive/e079f9d1c9e2062c42213a0b53c6227ffcc32321.zip
+https://github.com/mozilla-services/mozservices/archive/89e45068496e6d43218228164a9c9f37f3c94720.zip
+konfig==0.9
 powerhose==0.7
 tokenlib==0.3.1
 PyBrowserID==0.9.1
