@@ -20,7 +20,6 @@ zope.component==4.1.0
 zope.deprecation==4.1.0
 zope.event==4.0.2
 zope.interface==4.0.5
-psutil==1.2.1
 ordereddict==1.1
 unittest2==0.5.1
 WebTest==2.0.11
@@ -32,7 +31,6 @@ Pygments==1.6
 cef==0.5
 PyMySQL==0.6.1
 pymysql_sa==1.0
-protobuf==2.5
 gevent==1.0
 umemcache==1.6.3
 requests==2.2.1
@@ -40,11 +38,8 @@ chardet==2.2.1
 metlog-py==0.10
 https://github.com/mozilla-services/mozservices/archive/89e45068496e6d43218228164a9c9f37f3c94720.zip
 konfig==0.9
-powerhose==0.7
 tokenlib==0.3.1
 PyBrowserID==0.9.1
-https://argparse.googlecode.com/files/argparse-1.2.1.tar.gz
-circus==0.10
 hawkauthlib==0.1.1
 boto==2.27
 alembic==0.6.4

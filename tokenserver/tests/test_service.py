@@ -39,7 +39,7 @@ class TestService(unittest.TestCase):
         self.config.add_settings(settings)
         metlog_wrapper = load_from_settings('metlog',
                                             self.config.registry.settings)
-        for logger in ('tokenserver', 'mozsvc', 'powerhose'):
+        for logger in ('tokenserver', 'mozsvc'):
             hook_logger(logger, metlog_wrapper.client)
 
         self.config.registry['metlog'] = metlog_wrapper.client
