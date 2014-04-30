@@ -44,7 +44,7 @@ def includeme(config):
     metlog_wrapper = load_from_settings('metlog', settings)
 
     if settings['metlog.enabled']:
-        for logger in ('tokenserver', 'mozsvc', 'powerhose'):
+        for logger in ('tokenserver', 'mozsvc'):
             hook_logger(logger, metlog_wrapper.client)
 
     config.registry['metlog'] = metlog_wrapper.client
@@ -52,9 +52,7 @@ def includeme(config):
     # initializes the assignment backend
     load_and_register("tokenserver", config)
 
-    # initialize the powerhose and browserid backends if they exist
-    if "powerhose.backend" in settings:
-        load_and_register("powerhose", config)
+    # initialize the and browserid backend if it exists
     if "browserid.backend" in settings:
         load_and_register("browserid", config)
 

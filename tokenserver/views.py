@@ -14,7 +14,6 @@ from tokenserver.verifiers import get_verifier
 from tokenserver.assignment import INodeAssignment
 
 from browserid.errors import Error as BrowserIDError
-from tokenserver.crypto.master import ClientCatchedError
 
 # A GET on / returns the discovery API
 
@@ -83,8 +82,6 @@ def valid_assertion(request):
         verifier = get_verifier()
         with time_backend_operation(request, 'assertion.verify'):
             assertion = verifier.verify(assertion)
-    except ClientCatchedError as e:
-        _handle_exception(e.error_type)
     except BrowserIDError as e:
         _handle_exception(e.__class__.__name__)
 

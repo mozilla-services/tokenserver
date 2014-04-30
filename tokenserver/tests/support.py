@@ -1,12 +1,7 @@
 import os
 
 from browserid.verifiers.local import LocalVerifier
-from browserid.tests.support import (make_assertion, get_keypair,
-                                     patched_supportdoc_fetching)
-
-from powerhose.job import Job
-from tokenserver.crypto.master import PowerHoseRunner
-from tokenserver.crypto.pyworker import CryptoWorker, get_crypto_worker
+from browserid.tests.support import (make_assertion, get_keypair)
 
 # if unittest2 isn't available, assume that we are python 2.7
 try:
@@ -31,31 +26,6 @@ def load_key(hostname):
 def sign_data(hostname, data, key=None):
     # load the cert with the private key
     return load_key(hostname).sign(data)
-
-
-class PurePythonRunner(PowerHoseRunner):
-    def __init__(self, runner=None, **kwargs):
-        if runner is None:
-            runner = get_crypto_worker(CryptoWorker, **kwargs)
-        self.runner = runner
-
-        def patched_runner(job):
-            return self.runner(Job(job))
-
-        setattr(self, 'execute', patched_runner)
-
-
-class MockCryptoWorker(CryptoWorker):
-    """Test implementation of the crypto worker, using the patched certificate
-    handling.
-    """
-    def __init__(self, *args, **kwargs):
-        super(MockCryptoWorker, self).__init__(*args, **kwargs)
-
-    def check_signature(self, *args, **kwargs):
-        with patched_supportdoc_fetching():
-            return super(MockCryptoWorker, self)\
-                .check_signature(*args, **kwargs)
 
 
 def get_assertion(email, audience="*", issuer='browserid.org',
