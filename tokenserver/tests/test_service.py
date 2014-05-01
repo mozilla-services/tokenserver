@@ -316,3 +316,29 @@ class TestService(unittest.TestCase):
         self.assertEquals(res.json['duration'], 3600)
         res = self.app.get('/1.0/sync/1.1?duration=-1', headers=headers)
         self.assertEquals(res.json['duration'], 3600)
+
+    def test_allow_new_users(self):
+        # New users are allowed by default.
+        settings = self.config.registry.settings
+        self.assertEquals(settings.get('tokenserver.allow_new_users'), None)
+        assertion = self._getassertion(email="newuser1@test.com")
+        headers = {'Authorization': 'BrowserID %s' % assertion}
+        self.app.get('/1.0/sync/1.1', headers=headers, status=200)
+        # They're allowed if we explicitly allow them.
+        settings['tokenserver.allow_new_users'] = True
+        assertion = self._getassertion(email="newuser2@test.com")
+        headers = {'Authorization': 'BrowserID %s' % assertion}
+        self.app.get('/1.0/sync/1.1', headers=headers, status=200)
+        # They're not allowed if we explicitly disable them.
+        settings['tokenserver.allow_new_users'] = False
+        assertion = self._getassertion(email="newuser3@test.com")
+        headers = {'Authorization': 'BrowserID %s' % assertion}
+        res = self.app.get('/1.0/sync/1.1', headers=headers, status=401)
+        self.assertEqual(res.json['status'], 'invalid-credentials')
+        # But existing users are still allowed.
+        assertion = self._getassertion(email="newuser1@test.com")
+        headers = {'Authorization': 'BrowserID %s' % assertion}
+        self.app.get('/1.0/sync/1.1', headers=headers, status=200)
+        assertion = self._getassertion(email="newuser2@test.com")
+        headers = {'Authorization': 'BrowserID %s' % assertion}
+        self.app.get('/1.0/sync/1.1', headers=headers, status=200)

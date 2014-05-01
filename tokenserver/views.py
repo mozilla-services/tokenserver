@@ -165,6 +165,7 @@ def return_token(request):
     # at this stage, we are sure that the assertion, application and version
     # number were valid, so let's build the authentication token and return it.
     backend = request.registry.getUtility(INodeAssignment)
+    settings = request.registry.settings
     email = request.validated['assertion']['email']
     try:
         idp_claims = request.validated['assertion']['idpClaims']
@@ -182,6 +183,9 @@ def return_token(request):
     with time_backend_operation(request, 'backend.get_user'):
         user = backend.get_user(service, email)
     if not user:
+        allowed = settings.get('tokenserver.allow_new_users', True)
+        if not allowed:
+            raise _unauthorized('invalid-credentials')
         with time_backend_operation(request, 'backend.allocate_user'):
             user = backend.allocate_user(service, email, generation,
                                          client_state)
@@ -212,13 +216,13 @@ def return_token(request):
     if user['generation'] > generation:
         raise _unauthorized("invalid-generation")
 
-    secrets = request.registry.settings['tokenserver.secrets']
+    secrets = settings['tokenserver.secrets']
     node_secrets = secrets.get(user['node'])
     if not node_secrets:
         raise Exception("The specified node does not have any shared secret")
     secret = node_secrets[-1]  # the last one is the most recent one
 
-    token_duration = request.registry.settings.get(
+    token_duration = settings.get(
         'tokenserver.token_duration', DEFAULT_TOKEN_DURATION
     )
     try:
