@@ -44,6 +44,11 @@ class NodeAssignmentTests(object):
         user2 = self.backend.allocate_user("sync-1.0", "test2@mozilla.com")
         self.assertNotEqual(user1['node'], user2['node'])
 
+    def test_allocation_is_not_allowed_to_downed_nodes(self):
+        self.backend.update_node('sync-1.0', 'https://phx12', downed=True)
+        with self.assertRaises(BackendError):
+            self.backend.allocate_user("sync-1.0", "test1@mozilla.com")
+
     def test_update_generation_number(self):
         user = self.backend.allocate_user("sync-1.0", "tarek@mozilla.com")
         self.assertEqual(user['generation'], 0)

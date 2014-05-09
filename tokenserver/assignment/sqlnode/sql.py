@@ -32,6 +32,9 @@ logger = logging.getLogger('tokenserver.assignment.sqlnode')
 MAX_GENERATION = 9223372036854775807
 
 
+NODE_FIELDS = ("capacity", "available", "current_load", "downed", "backoff")
+
+
 def get_timestamp():
     """Get current timestamp in milliseconds."""
     return int(time.time() * 1000)
@@ -147,10 +150,6 @@ where
 and
     uid = :uid
 """)
-
-
-WRITEABLE_FIELDS = ['available', 'current_load', 'capacity', 'downed',
-                    'backoff']
 
 
 class SQLNodeAssignment(object):
@@ -455,6 +454,26 @@ class SQLNodeAssignment(object):
             backoff=kwds.get('backoff', 0),
         )
         res.close()
+
+    def update_node(self, service, node, **kwds):
+        """Updates node fields in the db."""
+
+        nodes = self._get_nodes_table(service)
+        service = self._get_service_id(service)
+
+        where = [nodes.c.service == service, nodes.c.node == node]
+        where = and_(*where)
+        values = {}
+        for field in NODE_FIELDS:
+            try:
+                values[field] = kwds.pop(field)
+            except KeyError:
+                pass
+        if kwds:
+            raise ValueError("unknown fields: " + str(kwds.keys()))
+        query = update(nodes, where, values)
+        con = self._safe_execute(query, close=True)
+        con.close()
 
     def get_node_id(self, service, node):
         """Get numeric id for a node."""
