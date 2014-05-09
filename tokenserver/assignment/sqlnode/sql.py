@@ -42,13 +42,11 @@ _Base = declarative_base()
 
 _GET_USER_RECORDS = sqltext("""\
 select
-    uid, nodeid, node, generation, client_state, created_at, replaced_at
+    uid, nodes.node, generation, client_state, created_at, replaced_at
 from
-    users
+    users left outer join nodes on users.nodeid = nodes.id
 where
-    email = :email
-and
-    service = :service
+    email = :email and users.service = :service
 order by
     created_at desc, uid desc
 limit
@@ -59,11 +57,9 @@ limit
 _CREATE_USER_RECORD = sqltext("""\
 insert into
     users
-    (service, email, nodeid, node, generation, client_state,
-     created_at, replaced_at)
+    (service, email, nodeid, generation, client_state, created_at, replaced_at)
 values
-    (:service, :email, :nodeid, :node, :generation, :client_state,
-     :timestamp, NULL)
+    (:service, :email, :nodeid, :generation, :client_state, :timestamp, NULL)
 """)
 
 
@@ -105,11 +101,11 @@ where
 
 _GET_OLD_USER_RECORDS_FOR_SERVICE = sqltext("""\
 select
-    uid, nodeid, node
+    uid, nodes.node
 from
-    users
+    users left outer join nodes on users.nodeid = nodes.id
 where
-    service = :service
+    users.service = :service
 and
     replaced_at is not null and replaced_at < :timestamp
 order by
@@ -121,13 +117,11 @@ limit
 
 _GET_ALL_USER_RECORDS_FOR_SERVICE = sqltext("""\
 select
-    uid, nodeid, node
+    uid, nodes.node
 from
-    users
+    users left outer join nodes on users.nodeid = nodes.id
 where
-    email = :email
-and
-    service = :service
+    email = :email and users.service = :service
 order by
     created_at asc, uid desc
 """)
@@ -246,15 +240,14 @@ class SQLNodeAssignment(object):
             user = {
                 'email': email,
                 'uid': cur_row.uid,
-                '_nodeid': cur_row.nodeid,
                 'node': cur_row.node,
                 'generation': cur_row.generation,
                 'client_state': cur_row.client_state,
                 'old_client_states': {}
             }
-            # If the current row is marked as replaced, and they haven't
-            # been retired, then create them a new node assignment.
-            if cur_row.replaced_at is not None:
+            # If the current row is marked as replaced or is missing a node,
+            # and they haven't been retired, then assign them a new node.
+            if cur_row.replaced_at is not None or cur_row.node is None:
                 if cur_row.generation < MAX_GENERATION:
                     user = self.allocate_user(service, email,
                                               cur_row.generation,
@@ -279,15 +272,14 @@ class SQLNodeAssignment(object):
         nodeid, node = self.get_best_node(service)
         params = {
             'service': service, 'email': email, 'nodeid': nodeid,
-            'node': node, 'generation': generation,
-            'client_state': client_state, 'timestamp': timestamp
+            'generation': generation, 'client_state': client_state,
+            'timestamp': timestamp
         }
         res = self._safe_execute(_CREATE_USER_RECORD, **params)
         res.close()
         return {
             'email': email,
             'uid': res.lastrowid,
-            '_nodeid': nodeid,
             'node': node,
             'generation': generation,
             'client_state': client_state,
@@ -313,6 +305,13 @@ class SQLNodeAssignment(object):
             if client_state in user['old_client_states']:
                 raise BackendError('previously seen client-state string')
             # need to create a new record for new client_state.
+            # try to keep them on the same node, but if e.g. it no longer
+            # exists them allocate them to a new one.
+            try:
+                nodeid = self.get_node_id(service, user['node'])
+            except ValueError:
+                nodeid, node = self.get_best_node(service)
+                user['node'] = node
             if generation is not None:
                 generation = max(user['generation'], generation)
             else:
@@ -320,9 +319,8 @@ class SQLNodeAssignment(object):
             now = get_timestamp()
             params = {
                 'service': service, 'email': user['email'],
-                'nodeid': user['_nodeid'], 'node': user['node'],
-                'generation': generation, 'client_state': client_state,
-                'timestamp': now,
+                'nodeid': nodeid, 'generation': generation,
+                'client_state': client_state, 'timestamp': now,
             }
             res = self._safe_execute(_CREATE_USER_RECORD, **params)
             res.close()

@@ -263,6 +263,15 @@ class NodeAssignmentTests(object):
         for user in (user1, user2, user3, user4):
             new_user = self.backend.get_user("sync-1.0", user["email"])
             self.assertEqual(new_user["node"], NODE1)
+        # The old users records pointing to NODE2 should have a NULL 'node'
+        # property since it has been removed from the db.
+        null_node_count = 0
+        for row in self.backend.get_old_user_records("sync-1.0", 0):
+            if row.node is None:
+                null_node_count += 1
+            else:
+                self.assertEqual(row.node, NODE1)
+        self.assertEqual(null_node_count, 3)
 
     def test_that_race_recovery_respects_generation_after_reassignment(self):
         timestamp = get_timestamp()
