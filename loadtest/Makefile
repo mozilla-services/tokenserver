@@ -1,10 +1,16 @@
 SERVER_URL = https://token.stage.mozaws.net
 
+# Hackety-hack around OSX system python bustage.
+# The need for this should go away with a future osx/xcode update.
+ARCHFLAGS = -Wno-error=unused-command-line-argument-hard-error-in-future
+
+INSTALL = ARCHFLAGS=$(ARCHFLAGS) ../bin/pip install
+
 .PHONY: build test bench
 
 build:
-	../bin/pip install pexpect
-	../bin/pip install https://github.com/mozilla-services/loads/archive/master.zip
+	$(INSTALL) pexpect
+	$(INSTALL) https://github.com/mozilla-services/loads/archive/master.zip
 
 # Run a single test from the local machine, for sanity-checking.
 test:
