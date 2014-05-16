@@ -2,17 +2,15 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 import os
-import json
 import contextlib
 
 from webtest import TestApp
 from pyramid import testing
+from testfixtures import LogCapture
 
 from cornice.tests.support import CatchErrors
 from mozsvc.config import load_into_settings
-from mozsvc.plugin import load_and_register, load_from_settings
-
-from metlog.logging import hook_logger
+from mozsvc.plugin import load_and_register
 
 from tokenserver.assignment import INodeAssignment
 from tokenserver.verifiers import get_verifier
@@ -37,12 +35,6 @@ class TestService(unittest.TestCase):
         settings = {}
         load_into_settings(self.get_ini(), settings)
         self.config.add_settings(settings)
-        metlog_wrapper = load_from_settings('metlog',
-                                            self.config.registry.settings)
-        for logger in ('tokenserver', 'mozsvc'):
-            hook_logger(logger, metlog_wrapper.client)
-
-        self.config.registry['metlog'] = metlog_wrapper.client
         self.config.include("tokenserver")
         load_and_register("tokenserver", self.config)
         self.backend = self.config.registry.getUtility(INodeAssignment)
@@ -52,9 +44,22 @@ class TestService(unittest.TestCase):
         # Mock out the verifier to return successfully by default.
         self.mock_verifier_context = self.mock_verifier()
         self.mock_verifier_context.__enter__()
+        self.logs = LogCapture()
 
     def tearDown(self):
+        self.logs.uninstall()
         self.mock_verifier_context.__exit__(None, None, None)
+
+    def assertMetricWasLogged(self, key):
+        """Check that a metric was logged during the request."""
+        for r in self.logs.records:
+            if key in r.__dict__:
+                break
+        else:
+            assert False, "metric %r was not logged" % (key,)
+
+    def clearLogs(self):
+        del self.logs.records[:]
 
     @contextlib.contextmanager
     def mock_verifier(self, response=None, exc=None):
@@ -97,6 +102,8 @@ class TestService(unittest.TestCase):
         self.assertIn('https://example.com/1.1', res.json['api_endpoint'])
         self.assertIn('duration', res.json)
         self.assertEquals(res.json['duration'], 3600)
+        self.assertMetricWasLogged('token.assertion.verify_success')
+        self.clearLogs()
 
     def test_unknown_pattern(self):
         # sync 1.5 is defined in the .ini file, but  no pattern exists for it.
@@ -111,29 +118,6 @@ class TestService(unittest.TestCase):
                 'sync': ['1.1', '1.5'],
             }
         })
-
-    def test_stats_capture(self):
-        # make a simple request
-        res = self.app.get('/')
-        self.assertEqual(res.json["auth"], "http://localhost")
-        msgs = self.config.registry['metlog'].sender.msgs
-
-        def is_in_msgs(subset):
-            subset_items = subset.items()
-            for msg in msgs:
-                msg_items = json.loads(msg).items()
-                match = all(item in msg_items for item in subset_items)
-                if match:
-                    return True
-            return False
-
-        fields = {'rate': 1.0, 'name': 'tokenserver.views._discovery'}
-        timer_subset = {'type': 'timer',
-                        'fields': fields,
-                        }
-        self.assertTrue(is_in_msgs(timer_subset))
-        counter_subset = {'type': 'counter', 'fields': fields}
-        self.assertTrue(is_in_msgs(counter_subset))
 
     def test_unauthorized_error_status(self):
         assertion = self._getassertion()
@@ -150,14 +134,23 @@ class TestService(unittest.TestCase):
         with self.mock_verifier(exc=browserid.errors.AudienceMismatchError):
             res = self.app.get('/1.0/sync/1.1', headers=headers, status=401)
         self.assertEqual(res.json['status'], 'invalid-credentials')
+        self.assertMetricWasLogged('token.assertion.verify_failure')
+        self.assertMetricWasLogged('token.assertion.audience_mismatch_error')
+        self.clearLogs()
         # Expired timestamp -> "invalid-timestamp"
         with self.mock_verifier(exc=browserid.errors.ExpiredSignatureError):
             res = self.app.get('/1.0/sync/1.1', headers=headers, status=401)
         self.assertEqual(res.json['status'], 'invalid-timestamp')
         self.assertTrue('X-Timestamp' in res.headers)
+        self.assertMetricWasLogged('token.assertion.verify_failure')
+        self.assertMetricWasLogged('token.assertion.expired_signature_error')
+        self.clearLogs()
         # Connection error -> 503
         with self.mock_verifier(exc=browserid.errors.ConnectionError):
             res = self.app.get('/1.0/sync/1.1', headers=headers, status=503)
+        self.assertMetricWasLogged('token.assertion.verify_failure')
+        self.assertMetricWasLogged('token.assertion.connection_error')
+        self.clearLogs()
         # Some other wacky error -> not captured
         with self.mock_verifier(exc=ValueError):
             with self.assertRaises(ValueError):
