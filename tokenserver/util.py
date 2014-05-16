@@ -6,7 +6,6 @@ from base64 import b32encode
 from hashlib import sha1
 import json
 
-from pyramid.threadlocal import get_current_registry
 from pyramid.response import Response
 from pyramid import httpexceptions as exc
 
@@ -68,10 +67,6 @@ def json_error(status_code=400, status_message='error', **kw):
     kw.setdefault('description', '')
     errors.add(**kw)
     return _JSONError(errors, status_code, status_message)
-
-
-def get_logger():
-    return get_current_registry()['metlog']
 
 
 def find_config_file(*paths):

@@ -3,9 +3,9 @@
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 import re
 import time
-import contextlib
 
-from mozsvc.metrics import MetricsService
+from cornice import Service
+from mozsvc.metrics import metrics_timer
 
 import tokenlib
 
@@ -17,8 +17,8 @@ from browserid.errors import Error as BrowserIDError
 
 # A GET on / returns the discovery API
 
-discovery = MetricsService(name='discovery', path='/')
-token = MetricsService(name='token', path='/1.0/{application}/{version}')
+discovery = Service(name='discovery', path='/')
+token = Service(name='token', path='/1.0/{application}/{version}')
 
 DEFAULT_TOKEN_DURATION = 5 * 60
 
@@ -49,8 +49,6 @@ def valid_assertion(request):
     If not, add errors in the response so that the client can know what
     happened.
     """
-    metlog = request.registry['metlog']
-
     token = request.headers.get('Authorization')
     if token is None:
         raise _unauthorized()
@@ -69,8 +67,8 @@ def valid_assertion(request):
         # convert CamelCase to camel_case
         error_type = re.sub('(?<=.)([A-Z])', r'_\1', error_type).lower()
 
-        metlog.incr('token.assertion.verify_failure')
-        metlog.incr('token.assertion.%s' % error_type)
+        request.metrics['token.assertion.verify_failure'] = 1
+        request.metrics['token.assertion.%s' % error_type] = 1
         if error_type == "connection_error":
             raise json_error(503, description="Resource is not available")
         if error_type == "expired_signature_error":
@@ -80,14 +78,14 @@ def valid_assertion(request):
 
     try:
         verifier = get_verifier()
-        with time_backend_operation(request, 'assertion.verify'):
+        with metrics_timer('tokenserver.assertion.verify', request):
             assertion = verifier.verify(assertion)
     except BrowserIDError as e:
         _handle_exception(e.__class__.__name__)
 
     # everything sounds good, add the assertion to the list of validated fields
     # and continue
-    metlog.incr('token.assertion.verify_success')
+    request.metrics['token.assertion.verify_success'] = 1
     request.validated['assertion'] = assertion
 
 
@@ -180,13 +178,13 @@ def return_token(request):
     service = get_service_name(application, version)
     client_state = request.validated['client-state']
 
-    with time_backend_operation(request, 'backend.get_user'):
+    with metrics_timer('tokenserver.backend.get_user', request):
         user = backend.get_user(service, email)
     if not user:
         allowed = settings.get('tokenserver.allow_new_users', True)
         if not allowed:
             raise _unauthorized('invalid-credentials')
-        with time_backend_operation(request, 'backend.allocate_user'):
+        with metrics_timer('tokenserver.backend.allocate_user', request):
             user = backend.allocate_user(service, email, generation,
                                          client_state)
 
@@ -207,7 +205,7 @@ def return_token(request):
             raise _unauthorized('invalid-client-state')
         updates['client_state'] = client_state
     if updates:
-        with time_backend_operation(request, 'backend.update_user'):
+        with metrics_timer('tokenserver.backend.update_user', request):
             backend.update_user(service, user, **updates)
 
     # Error out if this client is behind some previously-seen client.
@@ -250,14 +248,3 @@ def return_token(request):
     return {'id': token, 'key': secret, 'uid': user['uid'],
             'api_endpoint': endpoint, 'duration': token_duration,
             'hashalg': tokenlib.DEFAULT_HASHMOD}
-
-
-@contextlib.contextmanager
-def time_backend_operation(request, name):
-    metlog = request.registry['metlog']
-    start = time.time()
-    try:
-        yield
-    finally:
-        duration = time.time() - start
-        metlog.timer_send('tokenserver.' + name, duration)

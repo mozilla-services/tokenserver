@@ -10,8 +10,6 @@ Admin/managment scripts for TokenServer.
 import sys
 import logging
 
-from metlog.senders.logging import StdLibLoggingSender
-
 import tokenserver
 
 
@@ -34,9 +32,6 @@ def load_configurator(config_file):
     config = tokenserver.get_configurator({"__file__": config_file})
     config.include(tokenserver)
     config.commit()
-    # We want any metlog messages to come back out via stdlib logging,
-    # so they can be displayed on stderr along with script output.
-    config.registry["metlog"].sender = StdLibLoggingSender(json_types=[])
     return config
 
 
