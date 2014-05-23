@@ -34,7 +34,7 @@ gevent==1.0
 umemcache==1.6.3
 requests==2.2.1
 chardet==2.2.1
-https://github.com/mozilla-services/mozservices/archive/f279ef02a25755999eada2d7e722d56279ed9fa6.zip
+https://github.com/mozilla-services/mozservices/archive/5fabece891bbd3bd2c9528cb3bf0562b3efb4af1.zip
 konfig==0.9
 tokenlib==0.3.1
 PyBrowserID==0.9.1
