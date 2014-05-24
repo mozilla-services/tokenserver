@@ -10,6 +10,7 @@ from browserid.verifiers.local import LocalVerifier as LocalVerifier_
 from browserid.errors import (InvalidSignatureError, ExpiredSignatureError,
                               ConnectionError, AudienceMismatchError,
                               InvalidIssuerError)
+from browserid.supportdoc import SupportDocumentManager
 
 
 def get_verifier(registry=None):
@@ -28,6 +29,15 @@ class IBrowserIdVerifier(Interface):
 # The default verifier from browserid
 class LocalVerifier(LocalVerifier_):
     implements(IBrowserIdVerifier)
+    def __init__(self,  **kwargs):
+        # to set verify to False if configured so
+        if 'verify' in kwargs:
+            verify=kwargs["verify"]
+            kwargs.pop("verify")
+        else:
+            verify=None
+        kwargs['supportdocs'] = SupportDocumentManager(verify=verify)
+        super(LocalVerifier, self).__init__(**kwargs)
 
 
 # A verifier that posts to a remote verifier service.
