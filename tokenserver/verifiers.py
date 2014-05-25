@@ -1,4 +1,5 @@
 import json
+import warnings
 
 from pyramid.threadlocal import get_current_registry
 from zope.interface import implements, Interface
@@ -30,14 +31,36 @@ class IBrowserIdVerifier(Interface):
 class LocalVerifier(LocalVerifier_):
     implements(IBrowserIdVerifier)
     def __init__(self,  **kwargs):
-        # to set verify to False if configured so
+        # - don't set verify for default behaviour:
+        #    equivalent to setting verify to True
+        # - set verify to True to:
+        #    validate server's certificate using default certificate authority
+        # - set verify to False to disable server's certificate validation.
+        #    this is not recommended since it would allow for man in the middle
+        #    attacks
+        # - set verify to a path pointing to your server's certificate
+        #    to validate against this CA bundle. This is what you want to do if
+        #    you use self-signed certificates
         if 'verify' in kwargs:
             verify=kwargs["verify"]
             kwargs.pop("verify")
+            if verify == False:
+                _emit_warning()
         else:
             verify=None
         kwargs['supportdocs'] = SupportDocumentManager(verify=verify)
         super(LocalVerifier, self).__init__(**kwargs)
+
+
+def _emit_warning():
+    """Emit a scary warning so users will use a path to private cert instead."""
+    msg = "verify=False disables server's certificate validation and poses "\
+           "a security risk. "\
+           "You should pass the path to your self-signed certificate(s) instead. "\
+           "For more information on the verify parameter, see "\
+           "http://docs.python-requests.org/en/latest/user/advanced/#ssl-cert-verification"
+    warnings.warn(msg, RuntimeWarning, stacklevel=2)
+
 
 
 # A verifier that posts to a remote verifier service.
