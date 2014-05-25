@@ -31,19 +31,19 @@ class IBrowserIdVerifier(Interface):
 class LocalVerifier(LocalVerifier_):
     implements(IBrowserIdVerifier)
     def __init__(self,  **kwargs):
-        # - don't set verify for default behaviour:
-        #    equivalent to setting verify to True
-        # - set verify to True to:
-        #    validate server's certificate using default certificate authority
-        # - set verify to False to disable server's certificate validation.
-        #    this is not recommended since it would allow for man in the middle
-        #    attacks
-        # - set verify to a path pointing to your server's certificate
-        #    to validate against this CA bundle. This is what you want to do if
-        #    you use self-signed certificates
-        if 'verify' in kwargs:
-            verify=kwargs["verify"]
-            kwargs.pop("verify")
+        """ - don't set ssl_certificate for default behaviour:
+               equivalent to setting ssl_certificate to True
+            - set ssl_certificate to True to:
+               validate server's certificate using default certificate authority
+            - set ssl_certificate to False to disable server's certificate validation.
+               this is not recommended since it would allow for man in the middle
+               attacks
+            - set ssl_certificate to a path pointing to your server's certificate
+               to validate against this CA bundle. This is what you want to do if
+               you use self-signed certificates"""
+        if 'ssl_certificate' in kwargs:
+            verify=kwargs["ssl_certificate"]
+            kwargs.pop("ssl_certificate")
             if verify == False:
                 _emit_warning()
         else:
@@ -54,10 +54,10 @@ class LocalVerifier(LocalVerifier_):
 
 def _emit_warning():
     """Emit a scary warning so users will use a path to private cert instead."""
-    msg = "verify=False disables server's certificate validation and poses "\
+    msg = "browserid.ssl_certificate=False disables server's certificate validation and poses "\
            "a security risk. "\
            "You should pass the path to your self-signed certificate(s) instead. "\
-           "For more information on the verify parameter, see "\
+           "For more information on the ssl_certificate parameter, see "\
            "http://docs.python-requests.org/en/latest/user/advanced/#ssl-cert-verification"
     warnings.warn(msg, RuntimeWarning, stacklevel=2)
 

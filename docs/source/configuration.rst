@@ -26,6 +26,7 @@ Example::
     [browserid]
     backend = tokenserver.verifiers.LocalVerifier
     audiences = *
+    ssl_certificate = /path/to/cert.pem
 
     [powerhose]
     backend = tokenserver.tests.support.PowerHoseVerifier
@@ -136,5 +137,21 @@ browserid
 
         See :ref:`verifiers` for more information.
 
-    **audience**
+     **audience**
         A whitelist of supported audience. "*" for all
+
+     **ssl_certificate**
+        How to validate the SSL certificate of the server when fetching its
+        informations to verify client assertions.
+
+        Possible values (defaults to **True**):
+
+        True
+           validate server's certificate using default Certificate Authorities
+        False
+           to disable server's certificate validation.
+           this is not recommended since it would allow for man in the middle
+           attacks
+        /path/pointing/to/your/servers/certificate
+           to validate against a custom CA bundle. This is what you want to do if
+           you use self-signed certificates
