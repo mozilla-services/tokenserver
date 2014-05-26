@@ -31,16 +31,11 @@ class IBrowserIdVerifier(Interface):
 class LocalVerifier(LocalVerifier_):
     implements(IBrowserIdVerifier)
     def __init__(self,  **kwargs):
-        """ - don't set ssl_certificate for default behaviour:
-               equivalent to setting ssl_certificate to True
-            - set ssl_certificate to True to:
-               validate server's certificate using default certificate authority
-            - set ssl_certificate to False to disable server's certificate validation.
-               this is not recommended since it would allow for man in the middle
-               attacks
-            - set ssl_certificate to a path pointing to your server's certificate
-               to validate against this CA bundle. This is what you want to do if
-               you use self-signed certificates"""
+        """:param ssl_certificate: The path to an optional ssl certificate to
+        use when doing SSL requests with the BrowserID server.
+        Set it to True (the default) to use default certificate authorities.
+        Set to false to disable SSL verification.
+        """
         if 'ssl_certificate' in kwargs:
             verify=kwargs["ssl_certificate"]
             kwargs.pop("ssl_certificate")
