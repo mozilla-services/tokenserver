@@ -1,4 +1,5 @@
 import json
+import warnings
 
 from pyramid.threadlocal import get_current_registry
 from zope.interface import implements, Interface
@@ -10,6 +11,7 @@ from browserid.verifiers.local import LocalVerifier as LocalVerifier_
 from browserid.errors import (InvalidSignatureError, ExpiredSignatureError,
                               ConnectionError, AudienceMismatchError,
                               InvalidIssuerError)
+from browserid.supportdoc import SupportDocumentManager
 
 
 def get_verifier(registry=None):
@@ -28,6 +30,32 @@ class IBrowserIdVerifier(Interface):
 # The default verifier from browserid
 class LocalVerifier(LocalVerifier_):
     implements(IBrowserIdVerifier)
+    def __init__(self,  **kwargs):
+        """:param ssl_certificate: The path to an optional ssl certificate to
+        use when doing SSL requests with the BrowserID server.
+        Set it to True (the default) to use default certificate authorities.
+        Set to false to disable SSL verification.
+        """
+        if 'ssl_certificate' in kwargs:
+            verify=kwargs["ssl_certificate"]
+            kwargs.pop("ssl_certificate")
+            if verify == False:
+                _emit_warning()
+        else:
+            verify=None
+        kwargs['supportdocs'] = SupportDocumentManager(verify=verify)
+        super(LocalVerifier, self).__init__(**kwargs)
+
+
+def _emit_warning():
+    """Emit a scary warning so users will use a path to private cert instead."""
+    msg = "browserid.ssl_certificate=False disables server's certificate validation and poses "\
+           "a security risk. "\
+           "You should pass the path to your self-signed certificate(s) instead. "\
+           "For more information on the ssl_certificate parameter, see "\
+           "http://docs.python-requests.org/en/latest/user/advanced/#ssl-cert-verification"
+    warnings.warn(msg, RuntimeWarning, stacklevel=2)
+
 
 
 # A verifier that posts to a remote verifier service.
