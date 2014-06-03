@@ -1,8 +1,8 @@
 VIRTUALENV = virtualenv
-NOSE = bin/nosetests
-PYTHON = bin/python
-PIP = bin/pip
-FLAKE8 = bin/flake8
+NOSE = local/bin/nosetests
+PYTHON = local/bin/python
+PIP = local/bin/pip
+FLAKE8 = local/bin/flake8
 PIP_CACHE = /tmp/pip-cache.${USER}
 BUILD_TMP = /tmp/syncstorage-build.${USER}
 PYPI = https://pypi.python.org/simple
@@ -14,29 +14,22 @@ ARCHFLAGS = -Wno-error=unused-command-line-argument-hard-error-in-future
 INSTALL = ARCHFLAGS=$(ARCHFLAGS) $(PIP) install -U -i $(PYPI)
 
 
-.PHONY: all build test protobuf
+.PHONY: all build test clean
 
 all:	build
 
 build:
-	$(VIRTUALENV) --no-site-packages --distribute .
+	$(VIRTUALENV) --no-site-packages --distribute ./local
 	$(INSTALL) --upgrade Distribute
-	$(INSTALL) Cython
-	$(INSTALL) nose
-	$(INSTALL) flake8
-	$(INSTALL) https://github.com/zeromq/pyzmq/archive/ad78488d2d72beab5915bbc21be7f13e4c347eec.zip
 	$(INSTALL) -r requirements.txt
 	$(PYTHON) ./setup.py develop
 
 
 test:
+	$(INSTALL) -q nose flake8
 	$(FLAKE8) tokenserver
 	$(NOSE) tokenserver/tests
 
 
-protobuf:
-	cd tokenserver/crypto && protoc messages.pb --python_out=. && echo "# flake8: noqa" > messages.py && cat messages/pb_pb2.py >> messages.py && rm -rf messages
-
-
 clean:
-	rm -rf bin lib lib64 include local docs/build man
+	rm -rf local
