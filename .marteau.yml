@@ -1,8 +1,0 @@
-name: TokenServer
-test: NodeAssignmentTest.test_empty
-script: loadtest.py
-xml: simple-bench.xml
-wdir: loadtest
-deps:
-    - PyBrowserID
-nodes: 2
