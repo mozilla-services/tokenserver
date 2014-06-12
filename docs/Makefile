@@ -4,7 +4,7 @@
 # You can set these variables from the command line.
 SPHINXOPTS    =
 ifndef SPHINXBUILD
-SPHINXBUILD   = ../bin/sphinx-build
+SPHINXBUILD   = ../local/bin/sphinx-build
 endif
 PAPER         =
 BUILDDIR      = build
@@ -155,6 +155,6 @@ doctest:
 	      "results in $(BUILDDIR)/doctest/output.txt."
 
 # Need it to avoid error
-bin/sphinx-build:
+local/bin/sphinx-build:
 	@echo "Doc updated"
 

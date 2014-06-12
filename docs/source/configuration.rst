@@ -10,7 +10,6 @@ Relevant sections:
 - tokenserver
 - endpoints
 - browserid
-- powerhose
 
 Example::
 
@@ -28,15 +27,6 @@ Example::
     audiences = *
     ssl_certificate = /path/to/cert.pem
 
-    [powerhose]
-    backend = tokenserver.tests.support.PowerHoseVerifier
-
-    [crypto-worker]
-    memory_ttl = 1800
-    memcache_host = http://localhost
-    memcache_ttl = 3600
-    http_proxy = http://proxy_host:port
-    https_proxy = http://proxy_host:port
 
 tokenserver
 ~~~~~~~~~~~
@@ -45,34 +35,24 @@ tokenserver
 
         Possible values:
 
-        - :class:`tokenserver.assignment.fixednode.DefaultNodeAssignmentBackend`
+        - :class:`tokenserver.assignment.memorynode.MemoryNodeAssignmentBackend`
         - :class:`tokenserver.assignment.sqlnode.SQLNodeAssignment`
-        - :class:`tokenserver.assignment.sqlnode.ShardedSQLNodeAssignment`
-        - :class:`tokenserver.assignment.sqlnode.SecuredShardedSQLNodeAssignment`
 
         See :ref:`nodeassign` for more information.
 
     **service_entry**
-        The node returned for all users when using :class:`DefaultNodeAssignmentBackend`
+        The node returned for all users when using :class:`MemoryNodeAssignmentBackend`
 
     **applications**
         The list of supported services, separated by commas. A service is composed
         of a name and a version.
 
-    **secrets_file**
-        The path to the secrets files. Can be one to multiple files - one per line.
+    **secrets.backend**
+        One of the classes from :module:`mozsvc.secrets` to be used for managing
+        node-specific secret keys.
 
     **sqluri** -- for SQL backends only
         The SQL URI for the User DB
-
-    **databases** -- for sharded SQL backends only --  **Overrides sqluri***
-        A list of column separated databases SQLURI. Each database is a name of
-        a service with its version, followed by a semi-column amd the SQLURI.
-
-        Example: aitc-1.0;sqluri://aitc.db,sync-1.1;sqluri://sync.db
-
-    **proxy_uri** -- for secured SQL backends only
-        The url to the stoken server to delegate writes on the User DB.
 
     **create_tables** -- for SQL backends only
         If True, creates the tables in the DB when they don't exist
@@ -132,13 +112,15 @@ browserid
 
         Possible values:
 
+        - :class:`tokenserver.verifiers.RemoteVerifier`
         - :class:`tokenserver.verifiers.LocalVerifier`
-        - :class:`tokenserver.verifiers.PowerHoseVerifier`
 
         See :ref:`verifiers` for more information.
 
      **audience**
-        A whitelist of supported audience. "*" for all
+        A whitelist of supported audiences.  Ordinarily this should be
+        set to the publicly-visible hostname of the server.  A value of
+        "*" will match any audience, and may be useful for testing purposes.
 
      **ssl_certificate**
         How to validate the SSL certificate of the server when fetching its
