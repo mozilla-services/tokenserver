@@ -8,6 +8,7 @@ typical Paste configuration file.
 Relevant sections:
 
 - tokenserver
+- tokenserver.secrets
 - endpoints
 - browserid
 
@@ -17,7 +18,8 @@ Example::
     backend = tokenserver.assignment.fixednode.DefaultNodeAssignmentBackend
     service_entry = example.com
     applications = sync-1.0, aitc-1.0
-    secrets_file = tokenserver/tests/secrets
+    secrets.backend = mozsvc.secrets.FixedSecrets
+    secrets.secrets = abcdef123456
 
     [endpoints]
     aitc-1.0 = {node}/1.0/{uid}
@@ -48,7 +50,7 @@ tokenserver
         of a name and a version.
 
     **secrets.backend**
-        One of the classes from :module:`mozsvc.secrets` to be used for managing
+        One of the classes from :class:`mozsvc.secrets` to be used for managing
         node-specific secret keys.
 
     **sqluri** -- for SQL backends only
@@ -83,6 +85,32 @@ tokenserver
         allow is pool_size. max_overflow can be set to -1 to indicate no overflow
         limit; no limit will be placed on the total number of concurrent connections.
         Defaults to 10.
+
+
+tokenserver.secrets
+~~~~~~~~~~~~~~~~~~~
+    Configures a "secrets management" class that is used to determine the
+    master token-signing secret for each node.
+
+    **backend**
+        The class used to manage per-node secret keys.
+
+        Possible values:
+
+        - :class:`mozsvc.secrets.Secrets`
+        - :class:`mozsvc.secrets.FixedSecrets`
+        - :class:`mozsvc.secrets.DerivedSecrets`
+
+    **filename** -- for Secrets class only
+        A file listing each available node along with its secret keys.
+
+    **secrets** -- for FixedSecrets class only
+        A list of hex-encoded secret keys, which will be used for all
+        nodes.
+
+    **master_secrets** -- for DerivedSecrets class only
+        A list of hex-encoded secret keys.  Unique secrets for each node will
+        be derived from these master secrets using HKDF.
 
 
 endpoint
