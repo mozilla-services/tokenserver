@@ -69,7 +69,7 @@ class RemoteVerifier(object):
     implements(IBrowserIdVerifier)
 
     def __init__(self, audiences=None, trusted_issuers=None,
-                 allowed_issuers=None, verifier_url=None):
+                 allowed_issuers=None, verifier_url=None, timeout=None):
         # Since we don't parse the assertion locally, we cannot support
         # list- or pattern-based audience strings.
         if audiences is not None:
@@ -84,6 +84,9 @@ class RemoteVerifier(object):
         if verifier_url is None:
             verifier_url = "https://verifier.accounts.firefox.com/v2"
         self.verifier_url = verifier_url
+        if timeout is None:
+            timeout = 30
+        self.timeout = timeout
         self.session = requests.Session()
         self.session.verify = True
 
@@ -98,7 +101,8 @@ class RemoteVerifier(object):
         try:
             response = self.session.post(self.verifier_url,
                                          data=json.dumps(body),
-                                         headers=headers)
+                                         headers=headers,
+                                         timeout=self.timeout)
         except (socket.error, requests.RequestException), e:
             msg = "Failed to POST %s. Reason: %s" % (self.verifier_url, str(e))
             raise ConnectionError(msg)
