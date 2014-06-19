@@ -150,6 +150,13 @@ class TestService(unittest.TestCase):
             res = self.app.get('/1.0/sync/1.1', headers=headers, status=503)
         self.assertMetricWasLogged('token.assertion.verify_failure')
         self.assertMetricWasLogged('token.assertion.connection_error')
+        # It should also log a full traceback of the error.
+        for r in self.logs.records:
+            if r.msg == "Unexpected verification error":
+                assert r.exc_info is not None
+                break
+        else:
+            assert False, "failed to log a traceback for ConnectionError"
         self.clearLogs()
         # Some other wacky error -> not captured
         with self.mock_verifier(exc=ValueError):

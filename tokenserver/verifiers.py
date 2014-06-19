@@ -108,11 +108,11 @@ class RemoteVerifier(object):
             raise ConnectionError(msg)
 
         if response.status_code != 200:
-            raise ConnectionError('server returned invalid response')
+            raise ConnectionError('server returned invalid response code')
         try:
             data = json.loads(response.text)
         except ValueError:
-            raise ConnectionError("server returned invalid response")
+            raise ConnectionError("server returned invalid response body")
 
         if data.get('status') != "okay":
             reason = data.get('reason', 'unknown error')

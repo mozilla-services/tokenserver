@@ -3,6 +3,7 @@
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 import re
 import time
+import logging
 
 from cornice import Service
 from mozsvc.metrics import metrics_timer
@@ -13,7 +14,10 @@ from tokenserver.util import json_error
 from tokenserver.verifiers import get_verifier
 from tokenserver.assignment import INodeAssignment
 
-from browserid.errors import Error as BrowserIDError
+import browserid.errors
+
+
+logger = logging.getLogger("tokenserver")
 
 # A GET on / returns the discovery API
 
@@ -63,25 +67,26 @@ def valid_assertion(request):
         resp.www_authenticate = ('BrowserID', {})
         raise resp
 
-    def _handle_exception(error_type):
-        # convert CamelCase to camel_case
-        error_type = re.sub('(?<=.)([A-Z])', r'_\1', error_type).lower()
-
-        request.metrics['token.assertion.verify_failure'] = 1
-        request.metrics['token.assertion.%s' % error_type] = 1
-        if error_type == "connection_error":
-            raise json_error(503, description="Resource is not available")
-        if error_type == "expired_signature_error":
-            raise _unauthorized("invalid-timestamp")
-        else:
-            raise _unauthorized("invalid-credentials")
-
     try:
         verifier = get_verifier()
         with metrics_timer('tokenserver.assertion.verify', request):
             assertion = verifier.verify(assertion)
-    except BrowserIDError as e:
-        _handle_exception(e.__class__.__name__)
+    except browserid.errors.Error as e:
+        # Convert CamelCase to under_scores for reporting.
+        error_type = e.__class__.__name__
+        error_type = re.sub('(?<=.)([A-Z])', r'_\1', error_type).lower()
+        request.metrics['token.assertion.verify_failure'] = 1
+        request.metrics['token.assertion.%s' % error_type] = 1
+        # Log a full traceback for errors that are not a simple
+        # "your assertion was bad and we dont trust it".
+        if not isinstance(e, browserid.errors.TrustError):
+            logger.exception("Unexpected verification error")
+        # Report an appropriate error code.
+        if isinstance(e, browserid.errors.ConnectionError):
+            raise json_error(503, description="Resource is not available")
+        if isinstance(e, browserid.errors.ExpiredSignatureError):
+            raise _unauthorized("invalid-timestamp")
+        raise _unauthorized("invalid-credentials")
 
     # everything sounds good, add the assertion to the list of validated fields
     # and continue
