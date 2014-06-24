@@ -34,9 +34,12 @@ class MemoryNodeAssignmentBackend(object):
     def get_user(self, service, email):
         return self._users.get((service, email), None)
 
-    def allocate_user(self, service, email, generation=0, client_state=''):
+    def allocate_user(self, service, email, generation=0, client_state='',
+                      node=None):
         if (service, email) in self._users:
             raise BackendError('user already exists: ' + email)
+        if node is not None and node != self.service_entry:
+            raise ValueError("unknown node: %s" % (node,))
         user = {
             'email': email,
             'uid': self._next_uid,
@@ -49,9 +52,12 @@ class MemoryNodeAssignmentBackend(object):
         self._next_uid += 1
         return user
 
-    def update_user(self, service, user, generation=None, client_state=None):
+    def update_user(self, service, user, generation=None, client_state=None,
+                    node=None):
         if (service, user['email']) not in self._users:
             raise BackendError('unknown user: ' + user['email'])
+        if node is not None and node != self.service_entry:
+            raise ValueError("unknown node: %s" % (node,))
         if generation is not None:
             user['generation'] = generation
         if client_state is not None:

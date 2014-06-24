@@ -297,6 +297,45 @@ class NodeAssignmentTests(object):
         self.assertNotEqual(user["uid"], user1["uid"])
         self.assertNotEqual(user["uid"], user2["uid"])
 
+    def test_that_we_can_allocate_users_to_a_specific_node(self):
+        node = "https://phx13"
+        self.backend.add_node('sync-1.0', node, 50)
+        # The new node is not selected by default, because of lower capacity.
+        user = self.backend.allocate_user("sync-1.0", "test1@mozilla.com")
+        self.assertNotEqual(user["node"], node)
+        # But we can force it using keyword argument.
+        user = self.backend.allocate_user("sync-1.0", "test2@mozilla.com",
+                                          node=node)
+        self.assertEqual(user["node"], node)
+
+    def test_that_we_can_move_users_to_a_specific_node(self):
+        node = "https://phx13"
+        self.backend.add_node('sync-1.0', node, 50)
+        # The new node is not selected by default, because of lower capacity.
+        user = self.backend.allocate_user("sync-1.0", "test@mozilla.com")
+        self.assertNotEqual(user["node"], node)
+        # But we can move them there explicitly using keyword argument.
+        self.backend.update_user("sync-1.0", user, node=node)
+        self.assertEqual(user["node"], node)
+        # Sanity-check by re-reading it from the db.
+        user = self.backend.get_user("sync-1.0", "test@mozilla.com")
+        self.assertEqual(user["node"], node)
+        # Check that it properly respects client-state and generation.
+        self.backend.update_user("sync-1.0", user, generation=12)
+        self.backend.update_user("sync-1.0", user, client_state="XXX")
+        self.backend.update_user("sync-1.0", user, generation=42,
+                                 client_state="YYY", node="https://phx12")
+        self.assertEqual(user["node"], "https://phx12")
+        self.assertEqual(user["generation"], 42)
+        self.assertEqual(user["client_state"], "YYY")
+        self.assertEqual(sorted(user["old_client_states"]), ["", "XXX"])
+        # Sanity-check by re-reading it from the db.
+        user = self.backend.get_user("sync-1.0", "test@mozilla.com")
+        self.assertEqual(user["node"], "https://phx12")
+        self.assertEqual(user["generation"], 42)
+        self.assertEqual(user["client_state"], "YYY")
+        self.assertEqual(sorted(user["old_client_states"]), ["", "XXX"])
+
 
 class TestSQLDB(NodeAssignmentTests, TestCase):
 

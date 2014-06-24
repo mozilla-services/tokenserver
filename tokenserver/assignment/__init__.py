@@ -19,19 +19,21 @@ class INodeAssignment(Interface):
 
         """
 
-    def allocate_user(self, service, email, generation=0, client_state=''):
+    def allocate_user(self, service, email, generation=0, client_state='',
+                      node=None):
         """Create a new user record for the given service and email.
 
         The newly-created user record is returned in the format described
         for the get_user() method.
         """
 
-    def update_user(self, service, user, generation=None, client_state=None):
+    def update_user(self, service, user, generation=None, client_state=None,
+                    node=None):
         """Update the user record for the given service.
 
-        This method can be used to update the last-seen generation number
-        and/or client-state string for a user.  Changing the client-state
-        string will also result in a new uid being generated.
+        This method can be used to update the last-seen generation number,
+        client-state string or node assignment for a user.  Changing the
+        client-state or node will result in a new uid being generated.
 
         The given user object is modified in-place to reflect the changes
         stored on the backend.

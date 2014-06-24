@@ -265,10 +265,13 @@ class SQLNodeAssignment(object):
             res.close()
 
     def allocate_user(self, service, email, generation=0, client_state='',
-                      timestamp=None):
+                      node=None, timestamp=None):
         if timestamp is None:
             timestamp = get_timestamp()
-        nodeid, node = self.get_best_node(service)
+        if node is None:
+            nodeid, node = self.get_best_node(service)
+        else:
+            nodeid = self.get_node_id(service, node)
         params = {
             'service': service, 'email': email, 'nodeid': nodeid,
             'generation': generation, 'client_state': client_state,
@@ -285,9 +288,10 @@ class SQLNodeAssignment(object):
             'old_client_states': {}
         }
 
-    def update_user(self, service, user, generation=None, client_state=None):
-        if client_state is None:
-            # uid can stay the same, just update the generation number.
+    def update_user(self, service, user, generation=None, client_state=None,
+                    node=None):
+        if client_state is None and node is None:
+            # We're just updating the generation, re-use the existing record.
             if generation is not None:
                 params = {
                     'service': service,
@@ -298,19 +302,27 @@ class SQLNodeAssignment(object):
                 res.close()
                 user['generation'] = max(generation, user['generation'])
         else:
-            # reject previously-seen client-state strings.
-            if client_state == user['client_state']:
-                raise BackendError('previously seen client-state string')
-            if client_state in user['old_client_states']:
-                raise BackendError('previously seen client-state string')
-            # need to create a new record for new client_state.
-            # try to keep them on the same node, but if e.g. it no longer
-            # exists them allocate them to a new one.
-            try:
-                nodeid = self.get_node_id(service, user['node'])
-            except ValueError:
-                nodeid, node = self.get_best_node(service)
+            # Reject previously-seen client-state strings.
+            if client_state is None:
+                client_state = user['client_state']
+            else:
+                if client_state == user['client_state']:
+                    raise BackendError('previously seen client-state string')
+                if client_state in user['old_client_states']:
+                    raise BackendError('previously seen client-state string')
+            # Need to create a new record for new user state.
+            # If the node is not explicitly changing, try to keep them on the
+            # same node, but if e.g. it no longer exists them allocate them to
+            # a new one.
+            if node is not None:
+                nodeid = self.get_node_id(service, node)
                 user['node'] = node
+            else:
+                try:
+                    nodeid = self.get_node_id(service, user['node'])
+                except ValueError:
+                    nodeid, node = self.get_best_node(service)
+                    user['node'] = node
             if generation is not None:
                 generation = max(user['generation'], generation)
             else:
