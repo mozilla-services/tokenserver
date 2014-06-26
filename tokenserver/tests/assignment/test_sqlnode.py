@@ -336,6 +336,22 @@ class NodeAssignmentTests(object):
         self.assertEqual(user["client_state"], "YYY")
         self.assertEqual(sorted(user["old_client_states"]), ["", "XXX"])
 
+    def test_that_record_cleanup_frees_slots_on_the_node(self):
+        service = "sync-1.0"
+        node = "https://phx12"
+        self.backend.update_node(service, node, capacity=10, available=1,
+                                 current_load=9)
+        # We should only be able to allocate one more user to that node.
+        user = self.backend.allocate_user(service, "test1@mozilla.com")
+        self.assertEqual(user["node"], node)
+        with self.assertRaises(BackendError):
+            self.backend.allocate_user(service, "test2@mozilla.com")
+        # But when we clean up the user's record, it frees up the slot.
+        self.backend.retire_user("test1@mozilla.com")
+        self.backend.delete_user_record(service, user["uid"])
+        user = self.backend.allocate_user(service, "test2@mozilla.com")
+        self.assertEqual(user["node"], node)
+
 
 class TestSQLDB(NodeAssignmentTests, TestCase):
 

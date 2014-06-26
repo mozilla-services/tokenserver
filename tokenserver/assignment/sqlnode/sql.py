@@ -152,6 +152,16 @@ and
 """)
 
 
+_FREE_SLOT_ON_NODE = sqltext("""\
+update
+    nodes
+set
+    available = available + 1, current_load = current_load - 1
+where
+    id = (SELECT nodeid FROM users WHERE service=:service AND uid=:uid)
+""")
+
+
 class SQLNodeAssignment(object):
 
     implements(INodeAssignment)
@@ -409,6 +419,8 @@ class SQLNodeAssignment(object):
     def delete_user_record(self, service, uid):
         """Delete the user record with the given uid."""
         params = {'service': service, 'uid': uid}
+        res = self._safe_execute(_FREE_SLOT_ON_NODE, **params)
+        res.close()
         res = self._safe_execute(_DELETE_USER_RECORD, **params)
         res.close()
 
