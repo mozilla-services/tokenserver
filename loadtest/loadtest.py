@@ -14,6 +14,9 @@ from loads import TestCase
 ONE_YEAR = 60 * 60 * 24 * 365
 
 
+# We use a custom mockmyid site to synthesize valid assertions.
+# It's hosted in a static S3 bucket so we don't swamp the live mockmyid server.
+MOCKMYID_DOMAIN = "mockmyid.s3-us-west-2.amazonaws.com"
 MOCKMYID_PRIVATE_KEY = browserid.jwt.DS128Key({
     "algorithm": "DS",
     "x": "385cb3509f086e110c5e24bdd395a84b335a09ae",
@@ -33,125 +36,103 @@ MOCKMYID_PRIVATE_KEY = browserid.jwt.DS128Key({
 })
 
 
-# enumeration of different kinds of users
-USER_EXIST = 1
-USER_NEW = 2
-USER_BAD = 3
+# There are three different kinds of test, one of which is randomly
+# selected for each run:
+#
+#    - get a token for a previously-seen user
+#    - get a token for a never-before-seen user
+#    - fail to get a token using an invalid assertion
+#
+# The first is the default operation and by far the most likely.
+# The below options control what percentage of the requests are each
+# of the other types.
+
+PERCENT_NEW_USER = 0.3  # yes, it really is that low, based on prod traffic
+PERCENT_BAD_USER = 1.0
 
 
 class NodeAssignmentTest(TestCase):
     """This tests the assertion verification + node retrieval.
 
-    Depending on the setup of the system under load, it could also test the
-    node allocation mechanism.
-
-    You can populate the database of the system under load with the
-    "populate-db" script.
+    It sends a combination of existing-user, new-user, and invalid-assertion
+    requests and does some basic sanity-checking on the results.
     """
 
     server_url = 'https://token.stage.mozaws.net'
 
     def setUp(self):
-        self.token_exchange = '/1.0/sync/1.5'
-        # Options to tweak how many of each kind of user.
-        self.vusers = 10
-        self.existing = 95
-        self.new = 4
-        self.bad = 1
-        self.user_choice = (
-            [USER_EXIST] * self.existing +
-            [USER_NEW] * self.new +
-            [USER_BAD] * self.bad
-        )
-        random.shuffle(self.user_choice)
-        self.invalid_domain = 'mozilla.com'
-        self.valid_domain = 'mockmyid.s3-us-west-2.amazonaws.com'
-        self.audience = self.server_url
+        self.endpoint = urlparse.urljoin(self.server_url, '/1.0/sync/1.5')
+        self.audience = self.server_url.rstrip('/')
+
+    def test_realistic(self):
+        if self._flip_a_coin(PERCENT_BAD_USER):
+            self._test_bad_assertion()
+        elif self._flip_a_coin(PERCENT_NEW_USER):
+            self._test_new_user()
+        else:
+            self._test_old_user()
 
     def _make_assertion(self, email, **kwds):
+        if "audience" not in kwds:
+            kwds["audience"] = self.audience
         if "exp" not in kwds:
             kwds["exp"] = int((time.time() + ONE_YEAR) * 1000)
+        if "issuer" not in kwds:
+            kwds["issuer"] = MOCKMYID_DOMAIN
+        if "issuer_keypair" not in kwds:
+            kwds["issuer_keypair"] = (None, MOCKMYID_PRIVATE_KEY)
         return make_assertion(email, **kwds)
 
     def _do_token_exchange(self, assertion, status=200):
-        url = urlparse.urljoin(self.server_url, self.token_exchange)
         headers = {'Authorization': 'BrowserID %s' % assertion}
-        res = self.session.get(url, headers=headers)
+        res = self.session.get(self.endpoint, headers=headers)
         self.assertEquals(res.status_code, status)
         return res
 
-    def test_single_token_exchange(self):
+    def _test_old_user(self):
+        # Get a token for an "existing" user account.
+        # There's no guarantee it will actually exist, but we pull from a
+        # fixed pool of user ids so they should get created and persist
+        # over time.
         uid = random.randint(1, 1000000)
-        email = "user{uid}@{host}".format(uid=uid, host=self.valid_domain)
-        self._do_token_exchange(self._make_assertion(
-            email=email,
-            issuer=self.valid_domain,
-            audience=self.audience,
-            issuer_keypair=(None, MOCKMYID_PRIVATE_KEY)))
+        email = "user{uid}@{host}".format(uid=uid, host=MOCKMYID_DOMAIN)
+        self._do_token_exchange(self._make_assertion(email))
 
-    def test_single_token_exchange_new_user(self):
+    def _test_new_user(self):
+        # Get a token for a never-before-seen user account.
         uid = str(uuid.uuid1())
-        email = "loadtest-{uid}@{host}".format(uid=uid, host=self.valid_domain)
-        self._do_token_exchange(self._make_assertion(
-            email=email,
-            issuer=self.valid_domain,
-            audience=self.audience,
-            issuer_keypair=(None, MOCKMYID_PRIVATE_KEY)))
+        email = "loadtest-{uid}@{host}".format(uid=uid, host=MOCKMYID_DOMAIN)
+        self._do_token_exchange(self._make_assertion(email))
 
-    def test_realistic(self):
-        # this test runs as following:
-        #   - 95% ask for assertions on existing users (on a DB filled by
-        #                                           test_single_token_exchange)
-        #   - 4% ask for assertion on a new use
-        #   - 1% ask for a bad assertion
-        choice = random.choice(self.user_choice)
-        if choice == USER_EXIST:
-            return self.test_single_token_exchange()
-        elif choice == USER_NEW:
-            return self.test_single_token_exchange_new_user()
-        return self._test_bad_assertion()
+    def _test_bad_assertion(self):
+        uid = random.randint(1, 1000000)
+        # Try to get a token using an invalid assertion.
+        # Obviously, this should result in a 401.
+        if self._flip_a_coin(25):
+            # expired assertion
+            assertion = self._make_assertion(
+                "{uid}@{host}".format(uid=uid, host=MOCKMYID_DOMAIN),
+                exp=int(time.time() - ONE_YEAR) * 1000
+            )
+        elif self._flip_a_coin(25):
+            # email/issuer mismatch
+            assertion = self._make_assertion(
+                "{uid}@hotmail.com".format(uid=uid)
+            )
+        elif self._flip_a_coin(25):
+            # invalid issuer privkey
+            assertion = self._make_assertion(
+                "{uid}@{host}".format(uid=uid, host=MOCKMYID_DOMAIN),
+                issuer="api.accounts.firefox.com"
+            )
+        else:
+            # invalid audience
+            assertion = self._make_assertion(
+                "{uid}@{host}".format(uid=uid, host=MOCKMYID_DOMAIN),
+                audience="http://123done.org"
+            )
+        self._do_token_exchange(assertion, 401)
 
-    def test_token_exchange(self):
-        # a valid browserid assertion should be taken by the server and turned
-        # back into an authentication token which is valid for 30 minutes.
-        # we want to test this for a number of users, with different
-        # assertions.
-        for idx in range(self.vusers):
-            email = "{uid}@{host}".format(uid=idx, host=self.valid_domain)
-            self._do_token_exchange(self._make_assertion(
-                email=email,
-                issuer=self.valid_domain,
-                audience=self.audience,
-                issuer_keypair=(None, MOCKMYID_PRIVATE_KEY)))
-
-    def _test_bad_assertion(self, idx=None):
-        if idx is None:
-            idx = random.choice(range(self.vusers))
-
-        email = "{uid}@{host}".format(uid=idx, host="mockmyid.s3-us-west-2.amazonaws.com")
-        # expired assertion
-        expired = self._make_assertion(
-                email=email,
-                issuer=self.valid_domain,
-                exp=int(time.time() - ONE_YEAR) * 1000,
-                audience=self.audience,
-                issuer_keypair=(None, MOCKMYID_PRIVATE_KEY))
-        self._do_token_exchange(expired, 401)
-
-        # wrong issuer
-        wrong_issuer = self._make_assertion(email, audience=self.audience)
-        self._do_token_exchange(wrong_issuer, 401)
-
-        # wrong email host
-        email = "{uid}@{host}".format(uid=idx, host=self.invalid_domain)
-        wrong_email_host = self._make_assertion(
-                email, issuer=self.valid_domain,
-                audience=self.audience,
-                issuer_keypair=(None, MOCKMYID_PRIVATE_KEY))
-        self._do_token_exchange(wrong_email_host, 401)
-
-    def test_bad_assertions(self):
-        # similarly, try to send out bad assertions for the defined virtual
-        # users.
-        for idx in range(self.vusers):
-            self._test_bad_assertion(idx)
+    def _flip_a_coin(self, percent=50):
+        # Return True on 'percent' percent of calls.
+        return (random.random() * 100) < percent
