@@ -8,7 +8,7 @@ docutils==0.11
 gevent==1.0.1
 greenlet==0.4.2
 hawkauthlib==0.1.1
-https://github.com/mozilla-services/mozservices/archive/27e88d3b8f5b787e6b6b8e22bc7a432ed4757ea1.zip
+https://github.com/mozilla-services/mozservices/archive/e00e1b68130423ad98d0f6185655bde650443da8.zip
 Jinja2==2.7.1
 konfig==0.9
 Mako==0.9.1
