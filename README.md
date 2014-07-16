@@ -6,7 +6,7 @@ https://wiki.mozilla.org/Services/Sagrada/TokenServer
 The following picture describes how the token server integrates with other
 pieces of software we developped.
 
-![Token Server diagram](http://ziade.org/token-org.png)
+![Token Server diagram](/token-server-diagram.png)
 
 ## How to run the tokenserver
 
