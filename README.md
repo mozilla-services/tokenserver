@@ -1,6 +1,4 @@
-============
-Token Server
-============
+# Token Server
 
 This application implements the Token Server as defined at
 https://wiki.mozilla.org/Services/Sagrada/TokenServer
@@ -8,12 +6,10 @@ https://wiki.mozilla.org/Services/Sagrada/TokenServer
 The following picture describes how the token server integrates with other
 pieces of software we developped.
 
-.. img:: http://ziade.org/token-org.png
+![Token Server diagram](http://ziade.org/token-org.png)
 
+## How to run the tokenserver
 
-How to run the tokenserver
-==========================
-
-To run the tokenserver, you just need to run::
+To run the tokenserver, you just need to run:
 
     $ bin/paster serve etc/tokenserver-dev.ini
