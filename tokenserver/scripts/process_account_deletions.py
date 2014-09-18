@@ -62,22 +62,22 @@ def process_account_deletions(config_file, queue_name, aws_region=None,
             msg = queue.read(wait_time_seconds=queue_wait_time)
             if msg is None:
                 continue
-            # The queue should contain *only* account-deletion messages.
-            # But we try very hard not to error out if there's other junk.
+            email = None
+            # Try very hard not to error out if there's junk in the queue.
             try:
                 body = json.loads(msg.get_body())
                 event = json.loads(body['Message'])
-                if event["event"] != "delete":
-                    msg = "non-delete event in the queue: %s" % (event,)
-                    raise ValueError(msg)
-                email = event["uid"]
+                # The queue may contain other event types; ignore them.
+                if event["event"] == "delete":
+                    email = event["uid"]
             except (ValueError, KeyError), e:
                 logger.exception("Invalid account-delete message: %s", e)
             else:
                 # Mark the user as retired.
                 # Actual cleanup is done by a separate process.
-                logger.info("Processing account deletion for %r", email)
-                backend.retire_user(email)
+                if email is not None:
+                    logger.info("Processing account deletion for %r", email)
+                    backend.retire_user(email)
             queue.delete_message(msg)
             msg = queue.read(wait_time_seconds=queue_wait_time)
     except Exception:
