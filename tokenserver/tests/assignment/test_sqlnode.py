@@ -49,6 +49,11 @@ class NodeAssignmentTests(object):
         with self.assertRaises(BackendError):
             self.backend.allocate_user("sync-1.0", "test1@mozilla.com")
 
+    def test_allocation_is_not_allowed_to_backof_nodes(self):
+        self.backend.update_node('sync-1.0', 'https://phx12', backoff=True)
+        with self.assertRaises(BackendError):
+            self.backend.allocate_user("sync-1.0", "test1@mozilla.com")
+
     def test_update_generation_number(self):
         user = self.backend.allocate_user("sync-1.0", "tarek@mozilla.com")
         self.assertEqual(user['generation'], 0)

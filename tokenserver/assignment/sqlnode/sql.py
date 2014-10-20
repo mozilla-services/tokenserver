@@ -552,7 +552,8 @@ class SQLNodeAssignment(object):
         where = [nodes.c.service == service,
                  nodes.c.available > 0,
                  nodes.c.capacity > nodes.c.current_load,
-                 nodes.c.downed == 0]
+                 nodes.c.downed == 0,
+                 nodes.c.backoff == 0]
 
         query = select([nodes]).where(and_(*where))
 
