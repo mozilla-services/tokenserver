@@ -9,6 +9,7 @@ associated uid, node-assignment and metadata.  We also have a list of nodes
 with their load, capacity etc
 """
 import time
+import math
 import traceback
 from mozsvc.exceptions import BackendError
 
@@ -168,7 +169,8 @@ class SQLNodeAssignment(object):
 
     def __init__(self, sqluri, create_tables=False, pool_size=100,
                  pool_recycle=60, pool_timeout=30, max_overflow=10,
-                 pool_reset_on_return='rollback', **kw):
+                 pool_reset_on_return='rollback', capacity_release_rate=0.1,
+                 **kw):
         self._cached_service_ids = {}
         self.sqluri = sqluri
         if pool_reset_on_return.lower() in ('', 'none'):
@@ -188,6 +190,7 @@ class SQLNodeAssignment(object):
             self._engine = create_engine(sqluri, poolclass=NullPool)
 
         self._engine.echo = kw.get('echo', False)
+        self.capacity_release_rate = capacity_release_rate
 
         self._is_sqlite = (self._engine.driver == 'pysqlite')
         if self._is_sqlite:
@@ -464,6 +467,10 @@ class SQLNodeAssignment(object):
 
     def add_node(self, service, node, capacity, **kwds):
         """Add definition for a new node."""
+        available = kwds.get('available')
+        # We release only a fraction of the node's capacity to start.
+        if available is None:
+            available = math.ceil(capacity * self.capacity_release_rate)
         res = self._safe_execute(sqltext(
             """
             insert into nodes (service, node, available, capacity,
@@ -549,6 +556,7 @@ class SQLNodeAssignment(object):
         nodes = self._get_nodes_table(service)
         service = self._get_service_id(service)
 
+        # Pick the least-loaded node that has available slots.
         where = [nodes.c.service == service,
                  nodes.c.available > 0,
                  nodes.c.capacity > nodes.c.current_load,
@@ -568,18 +576,40 @@ class SQLNodeAssignment(object):
             query = query.order_by(sqlfunc.log(nodes.c.current_load) /
                                    sqlfunc.log(nodes.c.capacity))
         query = query.limit(1)
-        res = self._safe_execute(query)
-        one = res.fetchone()
-        if one is None:
-            # unable to get a node
+
+        # We may have to re-try the query if we need to release more capacity.
+        # This loop allows a maximum of five retries before bailing out.
+        for _ in xrange(5):
+            res = self._safe_execute(query)
+            row = res.fetchone()
             res.close()
+            if row is None:
+                # Try to release additional capacity from any nodes
+                # that are not fully occupied.
+                where = and_(nodes.c.service == service,
+                             nodes.c.available <= 0,
+                             nodes.c.capacity > nodes.c.current_load,
+                             nodes.c.downed == 0)
+                fields = {
+                    'available': sqlfunc.min(
+                        nodes.c.capacity * self.capacity_release_rate,
+                        nodes.c.capacity - nodes.c.current_load
+                    ),
+                }
+                res = self._safe_execute(update(nodes, where, fields))
+                res.close()
+                if res.rowcount == 0:
+                    break
+
+        # Did we succeed in finding a node?
+        if row is None:
             raise BackendError('unable to get a node')
 
-        nodeid = one.id
-        node = str(one.node)
-        res.close()
+        nodeid = row.id
+        node = str(row.node)
 
-        # updating the table
+        # Update the node to reflect the new assignment.
+        # This is a little racy with concurrent assignments, but no big deal.
         where = [nodes.c.service == service, nodes.c.node == node]
         where = and_(*where)
         fields = {'available': nodes.c.available - 1,

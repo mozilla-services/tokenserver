@@ -357,6 +357,34 @@ class NodeAssignmentTests(object):
         user = self.backend.allocate_user(service, "test2@mozilla.com")
         self.assertEqual(user["node"], node)
 
+    def test_gradual_release_of_node_capacity(self):
+        service = "sync-1.0"
+        node1 = "https://phx12"
+        self.backend.update_node(service, node1, capacity=8, available=1,
+                                 current_load=4)
+        node2 = "https://phx13"
+        self.backend.add_node(service, node2, capacity=6, available=1,
+                              current_load=4)
+        # Two allocations should succeed without update, one on each node.
+        user = self.backend.allocate_user(service, "test1@mozilla.com")
+        self.assertEqual(user["node"], node1)
+        user = self.backend.allocate_user(service, "test2@mozilla.com")
+        self.assertEqual(user["node"], node2)
+        # The next allocation attempt will release 10% more capacity,
+        # which is one more slot for each node.
+        user = self.backend.allocate_user(service, "test3@mozilla.com")
+        self.assertEqual(user["node"], node1)
+        user = self.backend.allocate_user(service, "test4@mozilla.com")
+        self.assertEqual(user["node"], node2)
+        # Now node2 is full, so further allocations all go to node1.
+        user = self.backend.allocate_user(service, "test5@mozilla.com")
+        self.assertEqual(user["node"], node1)
+        user = self.backend.allocate_user(service, "test6@mozilla.com")
+        self.assertEqual(user["node"], node1)
+        # Until it finally reaches capacity.
+        with self.assertRaises(BackendError):
+            self.backend.allocate_user(service, "test7@mozilla.com")
+
 
 class TestSQLDB(NodeAssignmentTests, TestCase):
 

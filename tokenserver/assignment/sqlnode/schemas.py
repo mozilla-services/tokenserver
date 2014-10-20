@@ -94,9 +94,13 @@ class _NodesBase(object):
                 nullable=False)
     service = Column(Integer(), nullable=False)
     node = Column(String(64), nullable=False)
+    # The number of free slots currently available on this node.
     available = Column(Integer, default=0, nullable=False)
+    # The number of users current assigned to this node.
     current_load = Column(Integer, default=0, nullable=False)
+    # The maximum number of users that can be assigned to this node.
     capacity = Column(Integer, default=0, nullable=False)
+    # Whether the node is currently in service.
     downed = Column(Integer, default=0, nullable=False)
     backoff = Column(Integer, default=0, nullable=False)
 
