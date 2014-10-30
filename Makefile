@@ -20,7 +20,7 @@ all:	build
 
 build:
 	$(VIRTUALENV) --no-site-packages --distribute ./local
-	$(INSTALL) --upgrade Distribute
+	$(INSTALL) --upgrade Distribute pip
 	$(INSTALL) -r requirements.txt
 	$(PYTHON) ./setup.py develop
 
