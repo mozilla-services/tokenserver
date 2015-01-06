@@ -6,6 +6,7 @@ from unittest2 import TestCase
 import os
 import uuid
 import time
+import math
 from collections import defaultdict
 from mozsvc.exceptions import BackendError
 from tokenserver.assignment.sqlnode.sql import (SQLNodeAssignment,
@@ -404,6 +405,16 @@ class TestSQLDB(NodeAssignmentTests, TestCase):
             self.backend._safe_execute('drop table services;')
             self.backend._safe_execute('drop table nodes;')
             self.backend._safe_execute('drop table users;')
+
+    def test_default_node_available_capacity(self):
+        node = "https://phx13"
+        self.backend.add_node("sync-1.0", node, capacity=100)
+        available = int(math.ceil(self.backend.capacity_release_rate * 100))
+        query = "SELECT * FROM nodes WHERE node=:node"
+        res = self.backend._safe_execute(query, node=node)
+        row = res.fetchone()
+        res.close()
+        self.assertEqual(row["available"], available)
 
 
 if os.environ.get('WIMMS_MYSQLURI', None) is not None:

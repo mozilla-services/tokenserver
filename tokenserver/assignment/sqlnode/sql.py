@@ -478,8 +478,7 @@ class SQLNodeAssignment(object):
             values (:service, :node, :available, :capacity,
                     :current_load, :downed, :backoff)
             """),
-            service=service, node=node, capacity=capacity,
-            available=kwds.get('available', capacity),
+            service=service, node=node, capacity=capacity, available=available,
             current_load=kwds.get('current_load', 0),
             downed=kwds.get('downed', 0),
             backoff=kwds.get('backoff', 0),
