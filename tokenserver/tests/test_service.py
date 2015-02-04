@@ -245,6 +245,8 @@ class TestService(unittest.TestCase):
         with self.mock_verifier(response=mock_response):
             res = self.app.get('/1.0/sync/1.1', headers=headers, status=401)
         self.assertEqual(res.json['status'], 'invalid-client-state')
+        desc = res.json['errors'][0]['description']
+        self.assertTrue(desc.endswith('new value with no generation change'))
         # Change the client-state header, get a new uid.
         headers['X-Client-State'] = 'aaaa'
         mock_response["idpClaims"]["fxa-generation"] += 1
@@ -273,6 +275,8 @@ class TestService(unittest.TestCase):
         with self.mock_verifier(response=mock_response):
             res = self.app.get('/1.0/sync/1.1', headers=headers, status=401)
         self.assertEqual(res.json['status'], 'invalid-client-state')
+        desc = res.json['errors'][0]['description']
+        self.assertTrue(desc.endswith('stale value'))
         del headers['X-Client-State']
         with self.mock_verifier(response=mock_response):
             res = self.app.get('/1.0/sync/1.1', headers=headers, status=401)
@@ -295,9 +299,13 @@ class TestService(unittest.TestCase):
         del headers['X-Client-State']
         res = self.app.get('/1.0/sync/1.1', headers=headers, status=401)
         self.assertEqual(res.json['status'], 'invalid-client-state')
+        desc = res.json['errors'][0]['description']
+        self.assertTrue(desc.endswith('empty string'))
         headers['X-Client-State'] = ''
         res = self.app.get('/1.0/sync/1.1', headers=headers, status=401)
         self.assertEqual(res.json['status'], 'invalid-client-state')
+        desc = res.json['errors'][0]['description']
+        self.assertTrue(desc.endswith('empty string'))
         # And the uid will be unchanged.
         headers['X-Client-State'] = 'aaa'
         res = self.app.get('/1.0/sync/1.1', headers=headers)

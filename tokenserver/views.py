@@ -46,6 +46,14 @@ def _unauthorized(status_message='error', **kw):
     return json_error(401, status_message, **kw)
 
 
+def _invalid_client_state(reason, **kw):
+    kw.setdefault('location', 'header')
+    kw.setdefault('name', 'X-Client-State')
+    description = 'Unacceptable client-state value %s' % (reason,)
+    kw.setdefault('description', description)
+    return _unauthorized('invalid-client-state', **kw)
+
+
 # validators
 def valid_assertion(request):
     """Validate that the assertion given in the request is correct.
@@ -200,14 +208,14 @@ def return_token(request):
     if client_state != user['client_state']:
         # Don't revert from some-client-state to no-client-state.
         if not client_state:
-            raise _unauthorized('invalid-client-state')
+            raise _invalid_client_state('empty string')
         # Don't revert to a previous client-state.
         if client_state in user['old_client_states']:
-            raise _unauthorized('invalid-client-state')
+            raise _invalid_client_state('stale value')
         # If the IdP has been sending generation numbers, then
         # don't update client-state without a change in generation number.
         if user['generation'] > 0 and 'generation' not in updates:
-            raise _unauthorized('invalid-client-state')
+            raise _invalid_client_state('new value with no generation change')
         updates['client_state'] = client_state
     if updates:
         with metrics_timer('tokenserver.backend.update_user', request):
