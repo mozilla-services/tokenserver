@@ -232,7 +232,8 @@ class NodeAssignmentTests(object):
         user1 = self.backend.allocate_user("sync-1.0", "test@mozilla.com",
                                            generation=1, timestamp=timestamp)
         user2 = self.backend.allocate_user("sync-1.0", "test@mozilla.com",
-                                           generation=2, timestamp=timestamp-1)
+                                           generation=2,
+                                           timestamp=timestamp - 1)
         self.assertNotEqual(user1["uid"], user2["uid"])
         # Reading current details should promote the higher-generation one.
         user = self.backend.get_user("sync-1.0", "test@mozilla.com")
@@ -291,7 +292,8 @@ class NodeAssignmentTests(object):
         user1 = self.backend.allocate_user("sync-1.0", "test@mozilla.com",
                                            generation=1, timestamp=timestamp)
         user2 = self.backend.allocate_user("sync-1.0", "test@mozilla.com",
-                                           generation=2, timestamp=timestamp-1)
+                                           generation=2,
+                                           timestamp=timestamp - 1)
         self.assertNotEqual(user1["uid"], user2["uid"])
         # Force node re-assignment by marking all records as replaced.
         self.backend.replace_user_records("sync-1.0", "test@mozilla.com",

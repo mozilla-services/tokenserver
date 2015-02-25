@@ -31,7 +31,7 @@ class IBrowserIdVerifier(Interface):
 class LocalVerifier(LocalVerifier_):
     implements(IBrowserIdVerifier)
 
-    def __init__(self,  **kwargs):
+    def __init__(self, **kwargs):
         """LocalVerifier constructor, with the following extra config options:
 
         :param ssl_certificate: The path to an optional ssl certificate to

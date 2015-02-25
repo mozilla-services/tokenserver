@@ -2,7 +2,7 @@ VIRTUALENV = virtualenv
 NOSE = local/bin/nosetests
 PYTHON = local/bin/python
 PIP = local/bin/pip
-FLAKE8 = local/bin/flake8
+FLAKE8 = local/bin/flake8 --ignore=E402
 PIP_CACHE = /tmp/pip-cache.${USER}
 BUILD_TMP = /tmp/syncstorage-build.${USER}
 PYPI = https://pypi.python.org/simple
