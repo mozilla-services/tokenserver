@@ -163,6 +163,17 @@ where
 """)
 
 
+_COUNT_USER_RECORDS = sqltext("""\
+select
+    count(email)
+from
+    users
+where
+    replaced_at is null
+    and created_at <= :timestamp
+""")
+
+
 class SQLNodeAssignment(object):
 
     implements(INodeAssignment)
@@ -367,6 +378,14 @@ class SQLNodeAssignment(object):
         # since we can't shard by service name here.
         res = self._safe_execute(_RETIRE_USER_RECORDS, engine=engine, **params)
         res.close()
+
+    def count_users(self, timestamp=None):
+        if timestamp is None:
+            timestamp = get_timestamp()
+        res = self._safe_execute(_COUNT_USER_RECORDS, timestamp=timestamp)
+        row = res.fetchone()
+        res.close()
+        return row[0]
 
     #
     # Methods for low-level user record management.

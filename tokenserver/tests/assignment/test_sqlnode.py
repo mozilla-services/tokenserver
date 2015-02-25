@@ -388,6 +388,23 @@ class NodeAssignmentTests(object):
         with self.assertRaises(BackendError):
             self.backend.allocate_user(service, "test7@mozilla.com")
 
+    def test_count_users(self):
+        user = self.backend.allocate_user("sync-1.0", "tarek@mozilla.com")
+        self.assertEqual(self.backend.count_users(), 1)
+        old_timestamp = get_timestamp()
+        time.sleep(0.01)
+        # Adding users increases the count.
+        user = self.backend.allocate_user("sync-1.0", "rfkelly@mozilla.com")
+        self.assertEqual(self.backend.count_users(), 2)
+        # Updating a user doesn't change the count.
+        self.backend.update_user("sync-1.0", user, client_state="aaa")
+        self.assertEqual(self.backend.count_users(), 2)
+        # Looking back in time doesn't count newer users.
+        self.assertEqual(self.backend.count_users(old_timestamp), 1)
+        # Retiring a user decreases the count.
+        self.backend.retire_user("tarek@mozilla.com")
+        self.assertEqual(self.backend.count_users(), 1)
+
 
 class TestSQLDB(NodeAssignmentTests, TestCase):
 
