@@ -26,6 +26,7 @@ logger = logging.getLogger("tokenserver.scripts.count_users")
 
 ZERO = timedelta(0)
 
+
 class UTC(tzinfo):
 
     def utcoffset(self, dt):
@@ -97,11 +98,10 @@ def main(args=None):
         count_users(config_file, sys.stdout, opts.timestamp)
     else:
         with open(opts.output, "a") as outfile:
-             count_users(config_file, outfile, opts.timestamp)
+            count_users(config_file, outfile, opts.timestamp)
 
     return 0
 
 
 if __name__ == "__main__":
     tokenserver.scripts.run_script(main)
-
