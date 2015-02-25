@@ -10,7 +10,7 @@ from mozsvc.metrics import metrics_timer
 
 import tokenlib
 
-from tokenserver.util import json_error
+from tokenserver.util import json_error, fxa_metrics_uid
 from tokenserver.verifiers import get_verifier
 from tokenserver.assignment import INodeAssignment
 
@@ -100,6 +100,13 @@ def valid_assertion(request):
     # and continue
     request.metrics['token.assertion.verify_success'] = 1
     request.validated['assertion'] = assertion
+
+    # Include a unique FxA identifier in the logs, but obfuscate
+    # it for privacy purposes.
+    id_key = request.registry.settings.get("fxa.metrics_uid_secret_key")
+    if id_key:
+        email = request.validated['assertion']['email']
+        request.metrics['uid'] = fxa_metrics_uid(email, id_key)
 
 
 def valid_app(request):

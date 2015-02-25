@@ -3,8 +3,9 @@
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 import os
 from base64 import b32encode
-from hashlib import sha1
+from hashlib import sha1, sha256
 import json
+import hmac
 
 from pyramid.response import Response
 from pyramid import httpexceptions as exc
@@ -50,6 +51,17 @@ def monkey_patch_gevent():
 def hash_email(email):
     digest = sha1(email.lower()).digest()
     return b32encode(digest).lower()
+
+
+def fxa_metrics_uid(email, hmac_key):
+    """Derive FxA metrics id from user's FxA email address.
+
+    This is used to obfuscate the FxA id before logging it with the metrics
+    data, as a simple privacy measure.
+    """
+    hasher = hmac.new(hmac_key, '', sha256)
+    hasher.update(email.split("@", 1)[0])
+    return hasher.hexdigest()
 
 
 class _JSONError(exc.HTTPError):
