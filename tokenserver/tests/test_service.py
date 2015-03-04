@@ -352,8 +352,7 @@ class TestService(unittest.TestCase):
         self.app.get('/1.0/sync/1.1', headers=headers, status=200)
 
     def test_metrics_uid_logging(self):
-        settings = self.config.registry.settings
-        settings['fxa.metrics_uid_secret_key'] = 'super-sekrit'
+        assert "fxa.metrics_uid_secret_key" in self.config.registry.settings
         assertion = self._getassertion(email="newuser2@test.com")
         headers = {'Authorization': 'BrowserID %s' % assertion}
         self.app.get('/1.0/sync/1.1', headers=headers, status=200)
