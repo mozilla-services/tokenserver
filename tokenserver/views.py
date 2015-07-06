@@ -101,11 +101,14 @@ def valid_assertion(request):
     request.metrics['token.assertion.verify_success'] = 1
     request.validated['assertion'] = assertion
 
+    # log the email with the request
+    email = request.validated['assertion']['email']
+    request.metrics['email'] = email
+
     # Include a unique FxA identifier in the logs, but obfuscate
     # it for privacy purposes.
     id_key = request.registry.settings.get("fxa.metrics_uid_secret_key")
     if id_key:
-        email = request.validated['assertion']['email']
         request.metrics['uid'] = fxa_metrics_uid(email, id_key)
 
 
