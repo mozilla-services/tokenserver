@@ -5,7 +5,7 @@ chardet==2.3
 cornice==0.17
 coverage==3.7.1
 docutils==0.12
-gevent==1.0.1
+gevent==1.0.2
 greenlet==0.4.5
 hawkauthlib==0.1.1
 Jinja2==2.7.3
