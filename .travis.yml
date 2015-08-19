@@ -16,4 +16,4 @@ before_install:
     - docker build -t mozilla-services/tokenserver .
     
 script:
-    - docker run mozilla-services/tokenserver /bin/sh -c "cd /app; nosetests tokenserver/tests"
+    - docker run mozilla-services/tokenserver /bin/sh -c "flake8 --ignore=E402 tokenserver && nosetests tokenserver/tests"
