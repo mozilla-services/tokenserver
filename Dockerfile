@@ -1,9 +1,9 @@
 FROM python:2.7
 
-COPY . /app
 WORKDIR /app
+COPY . /app
 
 # install tokenserver dependencies
-RUN pip install --upgrade -r requirements.txt && \
-    pip install gunicorn nose flake8 && \
+RUN pip install --upgrade --no-cache-dir -r requirements.txt \
+        gunicorn nose flake8 && \
     python ./setup.py develop
