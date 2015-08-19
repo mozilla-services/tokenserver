@@ -1,8 +1,9 @@
+sudo: required
+
 language: python
 
-python:
- - "2.6"
- - "2.7"
+services:
+    - docker
 
 notifications:
   email:
@@ -13,8 +14,8 @@ notifications:
     use_notice: false
     skip_join: false
 
-install:
-  - make build
-
+before_install:
+    - docker build -t mozilla-services/tokenserver .
+    
 script:
-  - make test
+    - docker run mozilla-services/tokenserver /bin/sh -c "cd /app; nosetests tokenserver/tests"
