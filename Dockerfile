@@ -1,15 +1,9 @@
-FROM centos:6
+FROM python:2.7
 
 COPY . /app
 WORKDIR /app
 
-# install pip
-RUN yum install -y epel-release && \
-    yum install -y python-pip
-
 # install tokenserver dependencies
-RUN yum install -y gcc-c++ python-devel && \
-    pip install -r requirements.txt && \
+RUN pip install --upgrade -r requirements.txt && \
     pip install gunicorn nose flake8 && \
-    python ./setup.py develop && \
-    yum clean all
+    python ./setup.py develop
