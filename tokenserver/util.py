@@ -6,6 +6,7 @@ from base64 import b32encode
 from hashlib import sha1, sha256
 import json
 import hmac
+import time
 
 from pyramid.response import Response
 from pyramid import httpexceptions as exc
@@ -95,3 +96,8 @@ def find_config_file(*paths):
             if os.path.exists(ini_file):
                 return ini_file
     raise RuntimeError("Could not locate tokenserver ini file")
+
+
+def get_timestamp():
+    """Get current timestamp in milliseconds."""
+    return int(time.time() * 1000)

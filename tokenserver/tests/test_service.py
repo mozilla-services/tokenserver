@@ -357,3 +357,4 @@ class TestService(unittest.TestCase):
         headers = {'Authorization': 'BrowserID %s' % assertion}
         self.app.get('/1.0/sync/1.1', headers=headers, status=200)
         self.assertMetricWasLogged('uid')
+        self.assertMetricWasLogged('uid.first_seen_at')

@@ -405,6 +405,25 @@ class NodeAssignmentTests(object):
         self.backend.retire_user("tarek@mozilla.com")
         self.assertEqual(self.backend.count_users(), 1)
 
+    def test_first_seen_at(self):
+        SERVICE = "sync-1.0"
+        EMAIL = "tarek@mozilla.com"
+        user0 = self.backend.allocate_user(SERVICE, EMAIL)
+        user1 = self.backend.get_user(SERVICE, EMAIL)
+        self.assertEqual(user1["uid"], user0["uid"])
+        self.assertEqual(user1["first_seen_at"], user0["first_seen_at"])
+        # It should stay consistent if we re-allocate the user's node.
+        time.sleep(0.1)
+        self.backend.update_user(SERVICE, user1, client_state="aaa")
+        user2 = self.backend.get_user(SERVICE, EMAIL)
+        self.assertNotEqual(user2["uid"], user0["uid"])
+        self.assertEqual(user2["first_seen_at"], user0["first_seen_at"])
+        # Until we purge their old node-assignment records.
+        self.backend.delete_user_record(SERVICE, user0["uid"])
+        user3 = self.backend.get_user(SERVICE, EMAIL)
+        self.assertEqual(user3["uid"], user2["uid"])
+        self.assertNotEqual(user3["first_seen_at"], user2["first_seen_at"])
+
 
 class TestSQLDB(NodeAssignmentTests, TestCase):
 

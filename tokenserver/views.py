@@ -10,9 +10,9 @@ from mozsvc.metrics import metrics_timer
 
 import tokenlib
 
-from tokenserver.util import json_error, fxa_metrics_uid
 from tokenserver.verifiers import get_verifier
 from tokenserver.assignment import INodeAssignment
+from tokenserver.util import json_error, fxa_metrics_uid
 
 import browserid.errors
 
@@ -240,6 +240,8 @@ def return_token(request):
         raise Exception("The specified node does not have any shared secret")
     secret = node_secrets[-1]  # the last one is the most recent one
 
+    # Clients can request a smaller token duration via an undocumented
+    # query parameter, for testing purposes.
     token_duration = settings.get(
         'tokenserver.token_duration', DEFAULT_TOKEN_DURATION
     )
@@ -264,6 +266,10 @@ def return_token(request):
         service=service,
         node=user['node']
     )
+
+    # To help measure user retention, include the timestamp at which we
+    # first saw this user as part of the logs.
+    request.metrics['uid.first_seen_at'] = user['first_seen_at']
 
     return {'id': token, 'key': secret, 'uid': user['uid'],
             'api_endpoint': endpoint, 'duration': token_duration,

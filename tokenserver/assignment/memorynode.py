@@ -1,7 +1,9 @@
 
 from pyramid.threadlocal import get_current_registry
 from zope.interface import implements
+
 from tokenserver.assignment import INodeAssignment
+from tokenserver.util import get_timestamp
 
 from mozsvc.exceptions import BackendError
 
@@ -46,7 +48,8 @@ class MemoryNodeAssignmentBackend(object):
             'node': self.service_entry,
             'generation': generation,
             'client_state': client_state,
-            'old_client_states': {}
+            'old_client_states': {},
+            'first_seen_at': get_timestamp()
         }
         self._users[(service, email)] = user
         self._next_uid += 1

@@ -8,7 +8,6 @@ For each available service, we maintain a list of user accounts and their
 associated uid, node-assignment and metadata.  We also have a list of nodes
 with their load, capacity etc
 """
-import time
 import math
 import traceback
 from mozsvc.exceptions import BackendError
@@ -22,6 +21,7 @@ from sqlalchemy.exc import OperationalError, TimeoutError
 
 from zope.interface import implements
 from tokenserver.assignment import INodeAssignment
+from tokenserver.util import get_timestamp
 
 
 import logging
@@ -34,11 +34,6 @@ MAX_GENERATION = 9223372036854775807
 
 
 NODE_FIELDS = ("capacity", "available", "current_load", "downed", "backoff")
-
-
-def get_timestamp():
-    """Get current timestamp in milliseconds."""
-    return int(time.time() * 1000)
 
 
 _Base = declarative_base()
@@ -266,7 +261,8 @@ class SQLNodeAssignment(object):
                 'node': cur_row.node,
                 'generation': cur_row.generation,
                 'client_state': cur_row.client_state,
-                'old_client_states': {}
+                'old_client_states': {},
+                'first_seen_at': cur_row.created_at
             }
             # If the current row is marked as replaced or is missing a node,
             # and they haven't been retired, then assign them a new node.
@@ -284,6 +280,8 @@ class SQLNodeAssignment(object):
                 if old_row.replaced_at is None:
                     timestamp = cur_row.created_at
                     self.replace_user_record(service, old_row.uid, timestamp)
+                # Track backwards to the oldest timestamp at which we saw them.
+                user['first_seen_at'] = old_row.created_at
             return user
         finally:
             res.close()
@@ -309,7 +307,8 @@ class SQLNodeAssignment(object):
             'node': node,
             'generation': generation,
             'client_state': client_state,
-            'old_client_states': {}
+            'old_client_states': {},
+            'first_seen_at': timestamp
         }
 
     def update_user(self, service, user, generation=None, client_state=None,
