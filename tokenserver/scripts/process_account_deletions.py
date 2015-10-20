@@ -79,7 +79,6 @@ def process_account_deletions(config_file, queue_name, aws_region=None,
                     logger.info("Processing account deletion for %r", email)
                     backend.retire_user(email)
             queue.delete_message(msg)
-            msg = queue.read(wait_time_seconds=queue_wait_time)
     except Exception:
         logger.exception("Error while processing account deletion events")
         raise
