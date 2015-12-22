@@ -63,21 +63,30 @@ def process_account_deletions(config_file, queue_name, aws_region=None,
             if msg is None:
                 continue
             email = None
+            event_type = None
+            generation = None
             # Try very hard not to error out if there's junk in the queue.
             try:
                 body = json.loads(msg.get_body())
                 event = json.loads(body['Message'])
-                # The queue may contain other event types; ignore them.
-                if event["event"] == "delete":
-                    email = event["uid"]
+                event_type = event["event"]
+                email = event["uid"]
+                if event_type == "reset":
+                    generation = event["generation"]
             except (ValueError, KeyError), e:
-                logger.exception("Invalid account-delete message: %s", e)
+                logger.exception("Invalid account message: %s", e)
             else:
-                # Mark the user as retired.
-                # Actual cleanup is done by a separate process.
                 if email is not None:
-                    logger.info("Processing account deletion for %r", email)
-                    backend.retire_user(email)
+                    if event_type == "delete":
+                        # Mark the user as retired.
+                        # Actual cleanup is done by a separate process.
+                        logger.info("Processing account deletion for %r", email)
+                        backend.retire_user(email)
+                    elif event_type == "reset":
+                        logger.info("Processing account reset for %r", email)
+                        user = backend.get_user("sync-1.5", email)
+                        backend.update_user("sync-1.5", user, generation)
+                    # The queue may contain other event types; ignore them.
             queue.delete_message(msg)
     except Exception:
         logger.exception("Error while processing account deletion events")
