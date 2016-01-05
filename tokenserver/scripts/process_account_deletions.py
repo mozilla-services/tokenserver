@@ -80,7 +80,7 @@ def process_account_deletions(config_file, queue_name, aws_region=None,
                     if event_type == "delete":
                         # Mark the user as retired.
                         # Actual cleanup is done by a separate process.
-                        logger.info("Processing account deletion for %r", email)
+                        logger.info("Processing account delete for %r", email)
                         backend.retire_user(email)
                     elif event_type == "reset":
                         logger.info("Processing account reset for %r", email)
