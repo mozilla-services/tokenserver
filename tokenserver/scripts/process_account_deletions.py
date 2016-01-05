@@ -85,7 +85,10 @@ def process_account_deletions(config_file, queue_name, aws_region=None,
                     elif event_type == "reset":
                         logger.info("Processing account reset for %r", email)
                         user = backend.get_user("sync-1.5", email)
-                        backend.update_user("sync-1.5", user, generation)
+                        if generation > user['generation']:
+                            backend.update_user("sync-1.5",
+                                                user,
+                                                generation - 1)
                     # The queue may contain other event types; ignore them.
             queue.delete_message(msg)
     except Exception:
