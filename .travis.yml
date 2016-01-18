@@ -19,7 +19,7 @@ env:
     - secure: "0/UyfsioMSXC1VGU6JGygK/2sJACueXuyvb8KX6vQl+OeFvVUHvonjkkOojRaLvxdSNGhJSrfWQjj3e+mU8QJDVR/3CaVudBWQeDpJoOxqdjZX1G+NvTYMGL97YksKV8Rwat0KqecKaPe3CzwPt8ANVy41a/WhYiFSCUdOWFcuA="
 
 before_install:
-    - docker login -e="$DOCKER_EMAIL" -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD" hub.docker.io
+    - docker login -e="$DOCKER_EMAIL" -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
 
 install:
     - docker build -t tokenserver:build .
