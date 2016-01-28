@@ -1,34 +1,21 @@
-sudo: required
-
 language: python
-services:
-    - docker
+
+python:
+ - "2.6"
+ - "2.7"
 
 notifications:
   email:
     - rfkelly@mozilla.com
-    - bwong@mozilla.com
   irc:
     channels:
       - "irc.mozilla.org#services-dev"
     use_notice: false
     skip_join: false
 
-env:
-  global:
-    - secure: "0/UyfsioMSXC1VGU6JGygK/2sJACueXuyvb8KX6vQl+OeFvVUHvonjkkOojRaLvxdSNGhJSrfWQjj3e+mU8QJDVR/3CaVudBWQeDpJoOxqdjZX1G+NvTYMGL97YksKV8Rwat0KqecKaPe3CzwPt8ANVy41a/WhYiFSCUdOWFcuA="
-
-before_install:
-    - docker login -e="$DOCKER_EMAIL" -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
-
 install:
-    - docker build -t tokenserver:build .
-    
-script:
-    - docker run tokenserver:build /bin/sh -c "flake8 --ignore=E402 tokenserver && nosetests tokenserver/tests"
+  - make build
 
-after_success:
-    # push containers into docker hub
-    - "if [[ $TRAVIS_BRANCH == master ]]; then DBRANCH=latest; else DBRANCH=$TRAVIS_BRANCH; fi; docker tag tokenserver:build mozilla/tokenserver:$DBRANCH; docker push mozilla/tokenserver:$DBRANCH"
-    - "if [ ! -z $TRAVIS_TAG ]; then docker tag tokenserver:build mozilla/tokenserver:$TRAVIS_TAG; docker push mozilla/tokenserver:$TRAVIS_TAG"
+script:
+  - make test
 
