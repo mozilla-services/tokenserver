@@ -31,6 +31,9 @@ from tokenserver.assignment import INodeAssignment
 
 logger = logging.getLogger("tokenserver.scripts.process_account_deletions")
 
+# Yeah, we only really have one service in production.
+SERVICE = "sync-1.5"
+
 
 def process_account_deletions(config_file, queue_name, aws_region=None,
                               queue_wait_time=20):
@@ -83,12 +86,13 @@ def process_account_deletions(config_file, queue_name, aws_region=None,
                         logger.info("Processing account delete for %r", email)
                         backend.retire_user(email)
                     elif event_type == "reset":
+                        # Update the generation to one less than its new value.
+                        # This locks out devices with younger generations
+                        # while ensuring we dont error out when a device with
+                        # the new generation shows up for the first time.
                         logger.info("Processing account reset for %r", email)
-                        user = backend.get_user("sync-1.5", email)
-                        if generation > user['generation']:
-                            backend.update_user("sync-1.5",
-                                                user,
-                                                generation - 1)
+                        user = backend.get_user(SERVICE, email)
+                        backend.update_user(SERVICE, user, generation - 1)
                     # The queue may contain other event types; ignore them.
             queue.delete_message(msg)
     except Exception:
