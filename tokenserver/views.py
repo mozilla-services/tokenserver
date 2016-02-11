@@ -12,7 +12,7 @@ import tokenlib
 
 from tokenserver.verifiers import get_verifier
 from tokenserver.assignment import INodeAssignment
-from tokenserver.util import json_error, fxa_metrics_uid
+from tokenserver.util import json_error, fxa_metrics_hash
 
 import browserid.errors
 
@@ -101,15 +101,29 @@ def valid_assertion(request):
     request.metrics['token.assertion.verify_success'] = 1
     request.validated['assertion'] = assertion
 
-    # log the email with the request
-    email = request.validated['assertion']['email']
+    id_key = request.registry.settings.get("fxa.metrics_uid_secret_key")
+    if id_key is None:
+        id_key = 'insecure'
+    email = assertion['email']
+    fxa_uid_full = fxa_metrics_hash(email, id_key)
+    # "legacy" key used by heka active_counts.lua
+    request.metrics['uid'] = fxa_uid_full
     request.metrics['email'] = email
 
-    # Include a unique FxA identifier in the logs, but obfuscate
-    # it for privacy purposes.
-    id_key = request.registry.settings.get("fxa.metrics_uid_secret_key")
-    if id_key:
-        request.metrics['uid'] = fxa_metrics_uid(email, id_key)
+    # "new" keys use shorter values
+    fxa_uid = fxa_uid_full[:32]
+    request.validated['fxa_uid'] = fxa_uid
+    request.metrics['fxa_uid'] = fxa_uid
+
+    try:
+        device = assertion['idpClaims']['fxa-deviceId']
+        if device is None:
+            device = 'none'
+    except KeyError:
+        device = 'none'
+    device_id = fxa_metrics_hash(fxa_uid + device, id_key)[:32]
+    request.validated['device_id'] = device_id
+    request.metrics['device_id'] = device_id
 
 
 def valid_app(request):
@@ -260,6 +274,8 @@ def return_token(request):
         'uid': user['uid'],
         'node': user['node'],
         'expires': int(time.time()) + token_duration,
+        'fxa_uid': request.validated['fxa_uid'],
+        'device_id': request.validated['device_id']
     }
     token = tokenlib.make_token(token_data, secret=secret)
     secret = tokenlib.get_derived_secret(token, secret=secret)
