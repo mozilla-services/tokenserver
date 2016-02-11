@@ -3,11 +3,16 @@
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 """
 
-Script to process account-deletion events from an SQS queue.
+Script to process account-related events from an SQS queue.
 
-This script polls an SQS queue for events indicating that an upstream account
-has been deleted.  Any user records for such an account are marked as "retired"
-so that they'll be cleaned up by our standard garbage-collection process.
+This script polls an SQS queue for events indicating activity on an upstream
+account.  The following event types are currently supported:
+
+  * "delete":  the account was deleted; we mark their records as retired
+               so they'll be cleaned up by our garbage-collection process.
+
+  * "reset":   the account password was reset; we update our copy of their
+               generation number to disconnect other devices.
 
 Note that this is a purely optional administrative task, highly specific to
 Mozilla's internal Firefox-Accounts-supported deployment.
@@ -35,15 +40,15 @@ logger = logging.getLogger("tokenserver.scripts.process_account_deletions")
 SERVICE = "sync-1.5"
 
 
-def process_account_deletions(config_file, queue_name, aws_region=None,
-                              queue_wait_time=20):
-    """Process account-deletion events from an SQS queue.
+def process_account_events(config_file, queue_name, aws_region=None,
+                           queue_wait_time=20):
+    """Process account events from an SQS queue.
 
-    This function polls the specified SQS queue for account-deletion events,
+    This function polls the specified SQS queue for account-realted events,
     processing each as it is found.  It polls indefinitely and does not return;
     to interrupt execution you'll need to e.g. SIGINT the process.
     """
-    logger.info("Processing account deletion events from %s", queue_name)
+    logger.info("Processing account events from %s", queue_name)
     logger.debug("Using config file %r", config_file)
     config = tokenserver.scripts.load_configurator(config_file)
     config.begin()
@@ -93,7 +98,11 @@ def process_account_deletions(config_file, queue_name, aws_region=None,
                         logger.info("Processing account reset for %r", email)
                         user = backend.get_user(SERVICE, email)
                         backend.update_user(SERVICE, user, generation - 1)
-                    # The queue may contain other event types; ignore them.
+                    else:
+                        logger.warning("Dropping unknown event type %r",
+                                       event_type)
+            # This intentionally deletes the event even if it was some
+            # unrecognized type.  Not point leaving a backlog.
             queue.delete_message(msg)
     except Exception:
         logger.exception("Error while processing account deletion events")
@@ -106,7 +115,7 @@ def main(args=None):
     """Main entry-point for running this script.
 
     This function parses command-line arguments and passes them on
-    to the process_account_deletions() function.
+    to the process_account_events() function.
     """
     usage = "usage: %prog [options] config_file queue_name"
     parser = optparse.OptionParser(usage=usage)
@@ -127,8 +136,8 @@ def main(args=None):
     config_file = os.path.abspath(args[0])
     queue_name = args[1]
 
-    process_account_deletions(config_file, queue_name,
-                              opts.aws_region, opts.queue_wait_time)
+    process_account_events(config_file, queue_name,
+                           opts.aws_region, opts.queue_wait_time)
     return 0
 
 
