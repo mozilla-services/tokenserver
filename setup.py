@@ -8,7 +8,7 @@ requires = ['cornice', 'mozsvc>=0.8', 'PyBrowserID', 'testfixtures']
             
 
 setup(name='tokenserver',
-        version='1.2.17',
+        version='1.2.18',
       packages=find_packages(),
       include_package_data=True,
       zip_safe=False,
