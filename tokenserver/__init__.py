@@ -70,7 +70,11 @@ def includeme(config):
 
     # ensure the metrics_id_secret_key is an ascii string.
     id_key = settings.get('fxa.metrics_uid_secret_key')
-    if id_key is not None and isinstance(id_key, unicode):
+    if id_key is None:
+        logger.warning(
+            'fxa.metrics_uid_secret_key is not set. '
+            'This will allow PII to be more easily identified')
+    elif isinstance(id_key, unicode):
         settings['fxa.metrics_uid_secret_key'] = id_key.encode('ascii')
 
     read_endpoints(config)

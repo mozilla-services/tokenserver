@@ -54,14 +54,15 @@ def hash_email(email):
     return b32encode(digest).lower()
 
 
-def fxa_metrics_uid(email, hmac_key):
-    """Derive FxA metrics id from user's FxA email address.
+def fxa_metrics_hash(value, hmac_key):
+    """Derive FxA metrics id from user's FxA email address or whatever.
 
-    This is used to obfuscate the FxA id before logging it with the metrics
+    This is used to obfuscate the id before logging it with the metrics
     data, as a simple privacy measure.
     """
     hasher = hmac.new(hmac_key, '', sha256)
-    hasher.update(email.split("@", 1)[0])
+    # value may be an email address, in which case we only want the first part
+    hasher.update(value.split("@", 1)[0])
     return hasher.hexdigest()
 
 
