@@ -97,7 +97,8 @@ def process_account_events(config_file, queue_name, aws_region=None,
                         # the new generation shows up for the first time.
                         logger.info("Processing account reset for %r", email)
                         user = backend.get_user(SERVICE, email)
-                        backend.update_user(SERVICE, user, generation - 1)
+                        if user is not None:
+                            backend.update_user(SERVICE, user, generation - 1)
                     else:
                         logger.warning("Dropping unknown event type %r",
                                        event_type)
