@@ -36,9 +36,6 @@ from tokenserver.assignment import INodeAssignment
 
 logger = logging.getLogger("tokenserver.scripts.process_account_deletions")
 
-# Yeah, we only really have one service in production.
-SERVICE = "sync-1.5"
-
 
 def process_account_events(config_file, queue_name, aws_region=None,
                            queue_wait_time=20):
@@ -53,7 +50,6 @@ def process_account_events(config_file, queue_name, aws_region=None,
     config = tokenserver.scripts.load_configurator(config_file)
     config.begin()
     try:
-        backend = config.registry.getUtility(INodeAssignment)
         # Connect to the SQS queue.
         # If no region is given, infer it from the instance metadata.
         if aws_region is None:
@@ -70,45 +66,56 @@ def process_account_events(config_file, queue_name, aws_region=None,
             msg = queue.read(wait_time_seconds=queue_wait_time)
             if msg is None:
                 continue
-            email = None
-            event_type = None
-            generation = None
-            # Try very hard not to error out if there's junk in the queue.
-            try:
-                body = json.loads(msg.get_body())
-                event = json.loads(body['Message'])
-                event_type = event["event"]
-                email = event["uid"]
-                if event_type == "reset":
-                    generation = event["generation"]
-            except (ValueError, KeyError), e:
-                logger.exception("Invalid account message: %s", e)
-            else:
-                if email is not None:
-                    if event_type == "delete":
-                        # Mark the user as retired.
-                        # Actual cleanup is done by a separate process.
-                        logger.info("Processing account delete for %r", email)
-                        backend.retire_user(email)
-                    elif event_type == "reset":
-                        # Update the generation to one less than its new value.
-                        # This locks out devices with younger generations
-                        # while ensuring we dont error out when a device with
-                        # the new generation shows up for the first time.
-                        logger.info("Processing account reset for %r", email)
-                        user = backend.get_user(SERVICE, email)
-                        backend.update_user(SERVICE, user, generation - 1)
-                    else:
-                        logger.warning("Dropping unknown event type %r",
-                                       event_type)
+            process_account_event(config, msg.get_body())
             # This intentionally deletes the event even if it was some
             # unrecognized type.  Not point leaving a backlog.
             queue.delete_message(msg)
     except Exception:
-        logger.exception("Error while processing account deletion events")
+        logger.exception("Error while processing account events")
         raise
     finally:
         config.end()
+
+
+def process_account_event(config, body):
+    """Parse and process a single account event."""
+    backend = config.registry.getUtility(INodeAssignment)
+    # Try very hard not to error out if there's junk in the queue.
+    email = None
+    event_type = None
+    generation = None
+    try:
+        body = json.loads(body)
+        event = json.loads(body['Message'])
+        event_type = event["event"]
+        email = event["uid"]
+        if event_type == "reset":
+            generation = event["generation"]
+    except (ValueError, KeyError), e:
+        logger.exception("Invalid account message: %s", e)
+    else:
+        if email is not None:
+            if event_type == "delete":
+                # Mark the user as retired.
+                # Actual cleanup is done by a separate process.
+                logger.info("Processing account delete for %r", email)
+                backend.retire_user(email)
+            elif event_type == "reset":
+                # Update the generation to one less than its new value.
+                # This locks out devices with younger generations
+                # while ensuring we dont error out when a device with
+                # the new generation shows up for the first time.
+                logger.info("Processing account reset for %r", email)
+                patterns = config.registry['endpoints_patterns']
+                for service in patterns:
+                    logger.debug("Processing account reset for service: %s",
+                                 service)
+                    user = backend.get_user(service, email)
+                    if user is not None:
+                        backend.update_user(service, user, generation - 1)
+            else:
+                logger.warning("Dropping unknown event type %r",
+                               event_type)
 
 
 def main(args=None):
