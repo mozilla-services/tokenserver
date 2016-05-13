@@ -163,6 +163,26 @@ class TestService(unittest.TestCase):
             with self.assertRaises(ValueError):
                 res = self.app.get('/1.0/sync/1.1', headers=headers)
 
+    def test_unverified_token(self):
+        headers = {'Authorization': 'BrowserID %s' % self._getassertion()}
+        # Assertion should not be rejected if fxa-tokenVerified is unset
+        mock_response = {
+            "status": "okay",
+            "email": "test@mozilla.com",
+            "idpClaims": {}
+        }
+        with self.mock_verifier(response=mock_response):
+            self.app.get("/1.0/sync/1.1", headers=headers, status=200)
+        # Assertion should not be rejected if fxa-tokenVerified is True
+        mock_response['idpClaims']['fxa-tokenVerified'] = True
+        with self.mock_verifier(response=mock_response):
+            self.app.get("/1.0/sync/1.1", headers=headers, status=200)
+        # Assertion should be rejected if fxa-tokenVerified is False
+        mock_response['idpClaims']['fxa-tokenVerified'] = False
+        with self.mock_verifier(response=mock_response):
+            res = self.app.get("/1.0/sync/1.1", headers=headers, status=401)
+        self.assertEqual(res.json['status'], 'invalid-credentials')
+
     def test_generation_number_change(self):
         headers = {"Authorization": "BrowserID %s" % self._getassertion()}
         # Start with no generation number.
