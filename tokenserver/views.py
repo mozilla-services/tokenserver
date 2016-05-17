@@ -96,6 +96,15 @@ def valid_assertion(request):
             raise _unauthorized("invalid-timestamp")
         raise _unauthorized("invalid-credentials")
 
+    # FxA sign-in confirmation introduced the notion of unverified tokens.
+    # The default value is True to preserve backwards compatibility.
+    try:
+        tokenVerified = assertion['idpClaims']['fxa-tokenVerified']
+    except KeyError:
+        tokenVerified = True
+    if not tokenVerified:
+        raise _unauthorized("invalid-credentials")
+
     # everything sounds good, add the assertion to the list of validated fields
     # and continue
     request.metrics['token.assertion.verify_success'] = 1
