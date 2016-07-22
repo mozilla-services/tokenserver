@@ -299,6 +299,12 @@ def return_token(request):
     # first saw this user as part of the logs.
     request.metrics['uid.first_seen_at'] = user['first_seen_at']
 
-    return {'id': token, 'key': secret, 'uid': user['uid'],
-            'api_endpoint': endpoint, 'duration': token_duration,
-            'hashalg': tokenlib.DEFAULT_HASHMOD}
+    return {
+        'id': token,
+        'key': secret,
+        'uid': user['uid'],
+        'hashed_fxa_uid': request.validated['fxa_uid'],
+        'api_endpoint': endpoint,
+        'duration': token_duration,
+        'hashalg': tokenlib.DEFAULT_HASHMOD
+    }

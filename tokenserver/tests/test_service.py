@@ -378,3 +378,10 @@ class TestService(unittest.TestCase):
         self.app.get('/1.0/sync/1.1', headers=headers, status=200)
         self.assertMetricWasLogged('uid')
         self.assertMetricWasLogged('uid.first_seen_at')
+
+    def test_metrics_uid_is_returned_in_response(self):
+        assert "fxa.metrics_uid_secret_key" in self.config.registry.settings
+        assertion = self._getassertion(email="newuser2@test.com")
+        headers = {'Authorization': 'BrowserID %s' % assertion}
+        res = self.app.get('/1.0/sync/1.1', headers=headers, status=200)
+        self.assertTrue('hashed_fxa_uid' in res.json)
