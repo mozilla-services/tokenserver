@@ -63,6 +63,7 @@ class _UsersBase(object):
             {'mysql_engine': 'InnoDB', 'mysql_charset': 'utf8'}
         )
 
+
 _add('users', _UsersBase)
 
 
@@ -80,6 +81,7 @@ class _ServicesBase(object):
                 nullable=False)
     service = Column(String(30), unique=True)
     pattern = Column(String(128))
+
 
 _add('services', _ServicesBase)
 
@@ -110,5 +112,6 @@ class _NodesBase(object):
             Index('unique_idx', 'service', 'node', unique=True),
             {'mysql_engine': 'InnoDB', 'mysql_charset': 'utf8'}
         )
+
 
 _add('nodes', _NodesBase)

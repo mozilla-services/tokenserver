@@ -1,3 +1,4 @@
+# flake8: noqa
 """drop clientstate_idx
 
 Revision ID: 3d5af3924466

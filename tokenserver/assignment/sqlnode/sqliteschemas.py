@@ -14,12 +14,16 @@ from tokenserver.assignment.sqlnode.schemas import (_UsersBase,
 from tokenserver.assignment.sqlnode.schemas import get_cls   # NOQA
 
 
+__all__ = (get_cls,)
+
+
 class _SQLITENodesBase(_NodesBase):
     id = Column(Integer, primary_key=True)
 
     @declared_attr
     def __table_args__(cls):
         return ()
+
 
 _add('nodes', _SQLITENodesBase)
 
@@ -30,5 +34,6 @@ class _SQLITEUsersBase(_UsersBase):
     @declared_attr
     def __table_args__(cls):
         return ()
+
 
 _add('users', _SQLITEUsersBase)
