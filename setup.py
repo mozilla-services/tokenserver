@@ -6,9 +6,9 @@ from setuptools import setup, find_packages
 
 requires = [
     'boto',
-    'cornice < 2',
+    'cornice',
     'hawkauthlib',
-    'mozsvc >= 0.8',
+    'mozsvc',
     'PyBrowserID',
     'pyramid < 1.8',  # To keep Py26 support.
     'SQLAlchemy',
@@ -21,7 +21,7 @@ tests_require = [
     'mock',
     'nose',
     'unittest2',
-    'webtest'
+    'webtest < 2.0.23',  # To keep Py26 support.
 ]
 
 
