@@ -24,7 +24,9 @@ build:
 	$(INSTALL) -r requirements.txt
 	$(INSTALL) -e .
 
-test:
+$(NOSE): build
+
+test: $(NOSE)
 	$(INSTALL) -q nose flake8
 	$(FLAKE8) tokenserver
 	$(NOSE) tokenserver/tests
