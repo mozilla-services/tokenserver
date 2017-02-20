@@ -4,7 +4,17 @@
 from setuptools import setup, find_packages
 
 
-requires = ['cornice', 'mozsvc>=0.8', 'PyBrowserID', 'testfixtures']
+requires = [
+    'cornice < 2',
+    'mozsvc >= 0.8',
+    'PyBrowserID',
+    'SQLAlchemy',
+    'boto',
+    'hawkauthlib',
+    'testfixtures',
+    'tokenlib',
+    'umemcache',
+]
 
 
 setup(name='tokenserver',
