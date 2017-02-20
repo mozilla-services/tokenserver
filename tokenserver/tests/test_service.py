@@ -122,13 +122,14 @@ class TestService(unittest.TestCase):
         })
 
     def test_version_returns_404_by_default(self):
-        self.app.get('/__version__', status=404)
+        with mock.patch('os.path.exists', return_value=False):
+            self.app.get('/__version__', status=404)
 
     def test_version_returns_file_in_current_folder_if_present(self):
         content = {'version': '0.8.1'}
         fake_file = mock.mock_open(read_data=json.dumps(content))
         with mock.patch('os.path.exists'):
-            with mock.patch('tokenserver.views.open', fake_file, create=True):
+            with mock.patch('tokenserver.views.open', fake_file):
                 response = self.app.get('/__version__')
                 self.assertEquals(response.json, content)
 
