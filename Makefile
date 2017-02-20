@@ -48,7 +48,7 @@ build-requirements:
 	$(VIRTUALENV) $(TEMPDIR)
 	$(TEMPDIR)/bin/pip install -U pip
 	ARCHFLAGS=$(ARCHFLAGS) $(TEMPDIR)/bin/pip install -Ue .
-	$(TEMPDIR)/bin/pip freeze > requirements.txt
+	$(TEMPDIR)/bin/pip freeze | grep -v -- '-e' > requirements.txt
 
 tests-once: install-dev version-file
 	$(VENV)/bin/nosetests tokenserver/tests
