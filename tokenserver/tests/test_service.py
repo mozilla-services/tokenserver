@@ -1,8 +1,10 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
-import os
 import contextlib
+import json
+import os
+import mock
 
 from webtest import TestApp
 from pyramid import testing
@@ -118,6 +120,17 @@ class TestService(unittest.TestCase):
                 'sync': ['1.1', '1.5'],
             }
         })
+
+    def test_version_returns_404_by_default(self):
+        self.app.get('/__version__', status=404)
+
+    def test_version_returns_file_in_current_folder_if_present(self):
+        content = {'version': '0.8.1'}
+        fake_file = mock.mock_open(read_data=json.dumps(content))
+        with mock.patch('os.path.exists'):
+            with mock.patch('tokenserver.views.open', fake_file, create=True):
+                response = self.app.get('/__version__')
+                self.assertEquals(response.json, content)
 
     def test_unauthorized_error_status(self):
         assertion = self._getassertion()

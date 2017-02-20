@@ -1,12 +1,16 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
+import json
+import os
 import re
 import time
 import logging
 
 from cornice import Service
 from mozsvc.metrics import metrics_timer
+from pyramid import httpexceptions
+
 
 import tokenlib
 
@@ -308,3 +312,30 @@ def return_token(request):
         'duration': token_duration,
         'hashalg': tokenlib.DEFAULT_HASHMOD
     }
+
+
+version = Service(name="version", path='/__version__', description="Version")
+HERE = os.path.dirname(os.path.abspath(__file__))
+ORIGIN = os.path.dirname(os.path.dirname(HERE))
+
+
+@version.get()
+def version_view(request):
+    try:
+        return version_view.__json__
+    except AttributeError:
+        pass
+
+    files = [
+        './version.json',  # Default is current working dir.
+        os.path.join(ORIGIN, 'version.json'),  # Relative to the package root.
+        os.path.join(HERE, 'version.json')  # Relative to this file.
+    ]
+    for version_file in files:
+        file_path = os.path.abspath(version_file)
+        if os.path.exists(file_path):
+            with open(file_path) as f:
+                version_view.__json__ = json.load(f)
+                return version_view.__json__  # First one wins.
+
+    raise httpexceptions.HTTPNotFound()
