@@ -12,6 +12,7 @@ Jinja2==2.7.3
 konfig==0.9
 Mako==1.0
 MarkupSafe==0.23
+mock==2.0.0
 mozsvc==0.8
 ordereddict==1.1
 Paste==1.7.5.1
