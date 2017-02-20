@@ -132,6 +132,10 @@ class TestService(unittest.TestCase):
                 response = self.app.get('/__version__')
                 self.assertEquals(response.json, content)
 
+    def test_lbheartbeat(self):
+        res = self.app.get('/__lbheartbeat__')
+        self.assertEqual(res.json, {})
+
     def test_unauthorized_error_status(self):
         assertion = self._getassertion()
         # Totally busted auth -> generic error.

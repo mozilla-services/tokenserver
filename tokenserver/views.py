@@ -314,6 +314,22 @@ def return_token(request):
     }
 
 
+# Heartbeat
+
+lbheartbeat = Service(name="lbheartbeat", path='/__lbheartbeat__',
+                      description="Web head health")
+
+
+@lbheartbeat.get()
+def get_lbheartbeat(request):
+    """Return successful healthy response.
+
+    If the load-balancer tries to access this URL and fails, this means the
+    Web head is not operational and should be dropped.
+    """
+    return {}
+
+
 version = Service(name="version", path='/__version__', description="Version")
 HERE = os.path.dirname(os.path.abspath(__file__))
 ORIGIN = os.path.dirname(os.path.dirname(HERE))
