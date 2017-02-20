@@ -19,11 +19,10 @@ INSTALL = ARCHFLAGS=$(ARCHFLAGS) $(PIP) install -U -i $(PYPI)
 all:	build
 
 build:
-	$(VIRTUALENV) --no-site-packages --distribute ./local
+	$(VIRTUALENV) ./local
 	$(INSTALL) --upgrade Distribute pip
 	$(INSTALL) -r requirements.txt
-	$(PYTHON) ./setup.py develop
-
+	$(INSTALL) -e .
 
 test:
 	$(INSTALL) -q nose flake8
