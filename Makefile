@@ -20,7 +20,7 @@ all:	build
 
 build:
 	$(VIRTUALENV) ./local
-	$(INSTALL) --upgrade Distribute pip
+	$(INSTALL) --upgrade pip
 	$(INSTALL) -r requirements.txt
 	$(INSTALL) -e .
 
