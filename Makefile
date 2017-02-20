@@ -22,12 +22,12 @@ build:
 	$(VIRTUALENV) ./local
 	$(INSTALL) --upgrade pip
 	$(INSTALL) -r requirements.txt
-	$(INSTALL) -e .
+	$(PYTHON) setup.py develop
 
-$(NOSE): build
+$(PIP): build
 
-test: $(NOSE)
-	$(INSTALL) -q nose flake8
+test: $(PIP)
+	$(PIP) install nose flake8
 	$(FLAKE8) tokenserver
 	$(NOSE) tokenserver/tests
 
