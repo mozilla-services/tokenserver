@@ -2,6 +2,9 @@ import os
 
 from browserid.verifiers.local import LocalVerifier
 from browserid.tests.support import (make_assertion, get_keypair)
+from webob import exc
+from webob.dec import wsgify
+from pyramid.httpexceptions import HTTPException
 
 # if unittest2 isn't available, assume that we are python 2.7
 try:
@@ -48,3 +51,17 @@ def get_assertion(email, audience="*", issuer='browserid.org',
 
     assertion = make_assertion(email, audience, issuer=issuer, **kwargs)
     return assertion.encode('ascii')
+
+
+class CatchErrors(object):
+    def __init__(self, app):
+        self.app = app
+        if hasattr(app, 'registry'):
+            self.registry = app.registry
+
+    @wsgify
+    def __call__(self, request):
+        try:
+            return request.get_response(self.app)
+        except (exc.HTTPException, HTTPException) as e:
+            return e

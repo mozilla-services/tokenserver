@@ -10,7 +10,7 @@ from webtest import TestApp
 from pyramid import testing
 from testfixtures import LogCapture
 
-from cornice.tests.support import CatchErrors
+from .support import CatchErrors
 from mozsvc.config import load_into_settings
 from mozsvc.plugin import load_and_register
 
