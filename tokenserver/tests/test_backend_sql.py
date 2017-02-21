@@ -1,4 +1,5 @@
 import os
+import unittest
 
 from pyramid import testing
 from pyramid.threadlocal import get_current_registry
@@ -7,7 +8,6 @@ from mozsvc.plugin import load_and_register
 
 from tokenserver.assignment import INodeAssignment
 from tokenserver import load_endpoints
-from tokenserver.tests.support import unittest
 
 
 class TestSQLBackend(unittest.TestCase):

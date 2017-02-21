@@ -10,7 +10,6 @@ requires = [
     'hawkauthlib',
     'mozsvc',
     'PyBrowserID',
-    'pyramid < 1.8',  # To keep Py26 support.
     'SQLAlchemy',
     'testfixtures',
     'tokenlib',
@@ -21,7 +20,7 @@ tests_require = [
     'mock',
     'nose',
     'unittest2',
-    'webtest < 2.0.23',  # To keep Py26 support.
+    'webtest',
 ]
 
 

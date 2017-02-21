@@ -2,12 +2,12 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 import os
+import unittest
 
 from pyramid import testing
 
 from tokenserver.assignment import INodeAssignment
 from mozsvc.config import load_into_settings
-from tokenserver.tests.support import unittest
 
 DEFAULT_EMAIL = "alexis@mozilla.com"
 DEFAULT_NODE = "https://example.com"

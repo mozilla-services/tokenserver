@@ -4,14 +4,13 @@
 
 import json
 import contextlib
+import unittest
 
 from pyramid.config import Configurator
 
 from tokenserver.verifiers import RemoteVerifier, IBrowserIdVerifier
 from browserid.tests.support import make_assertion
 import browserid.errors
-
-from .support import unittest
 
 
 class mockobj(object):

@@ -3,12 +3,6 @@ import os
 from browserid.verifiers.local import LocalVerifier
 from browserid.tests.support import (make_assertion, get_keypair)
 
-# if unittest2 isn't available, assume that we are python 2.7
-try:
-    import unittest2 as unittest
-except:
-    import unittest  # NOQA
-
 
 # very dummy verifier
 class DummyVerifier(LocalVerifier):
