@@ -2,7 +2,6 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this file,
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 
-from unittest2 import TestCase
 import os
 import uuid
 import time
@@ -12,6 +11,7 @@ from mozsvc.exceptions import BackendError
 from tokenserver.assignment.sqlnode.sql import (SQLNodeAssignment,
                                                 MAX_GENERATION,
                                                 get_timestamp)
+from ..support import unittest
 
 
 TEMP_ID = uuid.uuid4().hex
@@ -425,7 +425,7 @@ class NodeAssignmentTests(object):
         self.assertNotEqual(user3["first_seen_at"], user2["first_seen_at"])
 
 
-class TestSQLDB(NodeAssignmentTests, TestCase):
+class TestSQLDB(NodeAssignmentTests, unittest.TestCase):
 
     _SQLURI = os.environ.get('WIMMS_SQLURI', 'sqlite:////tmp/wimms.' + TEMP_ID)
 

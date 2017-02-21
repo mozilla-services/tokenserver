@@ -55,7 +55,7 @@ tests-once: install-dev
 	$(VENV)/bin/nosetests tokenserver/tests
 
 flake8: install-dev
-	$(VENV)/bin/flake8 --ignore=E402 tokenserver
+	$(VENV)/bin/flake8 tokenserver
 
 clean:
 	find . -name '*.pyc' -delete
