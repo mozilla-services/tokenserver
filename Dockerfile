@@ -10,7 +10,7 @@ COPY ./requirements.txt /app/requirements.txt
 RUN apt-get -q update \
     && apt-get -q --yes install g++ \
     && pip install --upgrade --no-cache-dir -r requirements.txt \
-         gunicorn nose flake8 \
+         gunicorn nose flake8 mock webtest unittest2 \
     && apt-get -q --yes remove g++ \
     && apt-get -q --yes autoremove \
     && apt-get clean

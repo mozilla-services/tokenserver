@@ -50,7 +50,7 @@ build-requirements:
 	ARCHFLAGS=$(ARCHFLAGS) $(TEMPDIR)/bin/pip install -Ue .
 	$(TEMPDIR)/bin/pip freeze | grep -v -- '-e' > requirements.txt
 
-tests-once: install-dev version-file
+tests-once: install-dev
 	$(VENV)/bin/nosetests tokenserver/tests
 
 flake8: install-dev

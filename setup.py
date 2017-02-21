@@ -16,6 +16,13 @@ requires = [
     'umemcache',
 ]
 
+tests_require = [
+    'mock',
+    'nose',
+    'unittest2',
+    'webtest'
+]
+
 
 setup(name='tokenserver',
       version='1.2.23',
@@ -27,5 +34,5 @@ setup(name='tokenserver',
       main = tokenserver:main
       """,
       install_requires=requires,
-      tests_require=requires,
+      tests_require=tests_require,
       test_suite='tokenserver.tests')
