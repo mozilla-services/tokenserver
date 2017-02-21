@@ -1,3 +1,4 @@
+# flake8: noqa
 """make users.node column nullable
 
 Revision ID: 9fb109457bd

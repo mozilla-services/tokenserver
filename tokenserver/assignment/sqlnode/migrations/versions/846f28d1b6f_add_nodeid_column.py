@@ -1,3 +1,4 @@
+# flake8: noqa
 """add nodeid column
 
 Revision ID: 846f28d1b6f
