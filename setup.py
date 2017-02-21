@@ -5,12 +5,13 @@ from setuptools import setup, find_packages
 
 
 requires = [
+    'boto',
     'cornice < 2',
+    'hawkauthlib',
     'mozsvc >= 0.8',
     'PyBrowserID',
+    'pyramid < 1.8',  # To keep Py26 support.
     'SQLAlchemy',
-    'boto',
-    'hawkauthlib',
     'testfixtures',
     'tokenlib',
     'umemcache',

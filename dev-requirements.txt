@@ -2,4 +2,4 @@ flake8
 mock
 nose
 unittest2
-webtest
+webtest < 2.0.23
