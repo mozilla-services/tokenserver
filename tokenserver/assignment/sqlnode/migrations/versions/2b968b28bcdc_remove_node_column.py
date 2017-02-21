@@ -1,3 +1,4 @@
+# flake8: noqa
 """remove node column
 
 Revision ID: 2b968b28bcdc

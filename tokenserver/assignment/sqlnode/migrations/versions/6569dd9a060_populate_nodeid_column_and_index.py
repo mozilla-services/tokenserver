@@ -1,3 +1,4 @@
+# flake8: noqa
 """populate nodeid column and index
 
 Revision ID: 6569dd9a060

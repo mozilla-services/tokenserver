@@ -19,14 +19,15 @@ INSTALL = ARCHFLAGS=$(ARCHFLAGS) $(PIP) install -U -i $(PYPI)
 all:	build
 
 build:
-	$(VIRTUALENV) --no-site-packages --distribute ./local
-	$(INSTALL) --upgrade Distribute pip
+	$(VIRTUALENV) ./local
+	$(INSTALL) --upgrade pip
 	$(INSTALL) -r requirements.txt
-	$(PYTHON) ./setup.py develop
+	$(PYTHON) setup.py develop
 
+$(PIP): build
 
-test:
-	$(INSTALL) -q nose flake8
+test: $(PIP)
+	$(PIP) install nose flake8
 	$(FLAKE8) tokenserver
 	$(NOSE) tokenserver/tests
 
