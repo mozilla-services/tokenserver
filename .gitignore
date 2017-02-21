@@ -9,3 +9,4 @@ tokenserver.egg-info
 build
 dist
 local
+version.json

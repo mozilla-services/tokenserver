@@ -14,8 +14,7 @@ notifications:
     skip_join: false
 
 install:
-  - make build
+  - make install-dev
 
 script:
-  - make test
-
+  - make tests-once

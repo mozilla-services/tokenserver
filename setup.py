@@ -4,7 +4,25 @@
 from setuptools import setup, find_packages
 
 
-requires = ['cornice', 'mozsvc>=0.8', 'PyBrowserID', 'testfixtures']
+requires = [
+    'boto',
+    'cornice < 2',
+    'hawkauthlib',
+    'mozsvc >= 0.8',
+    'PyBrowserID',
+    'pyramid < 1.8',  # To keep Py26 support.
+    'SQLAlchemy',
+    'testfixtures',
+    'tokenlib',
+    'umemcache',
+]
+
+tests_require = [
+    'mock',
+    'nose',
+    'unittest2',
+    'webtest'
+]
 
 
 setup(name='tokenserver',
@@ -17,5 +35,5 @@ setup(name='tokenserver',
       main = tokenserver:main
       """,
       install_requires=requires,
-      tests_require=requires,
+      tests_require=tests_require,
       test_suite='tokenserver.tests')
