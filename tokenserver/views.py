@@ -345,7 +345,6 @@ def version_view(request):
     files = [
         './version.json',  # Default is current working dir.
         os.path.join(ORIGIN, 'version.json'),  # Relative to the package root.
-        os.path.join(HERE, 'version.json')  # Relative to this file.
     ]
     for version_file in files:
         file_path = os.path.abspath(version_file)
