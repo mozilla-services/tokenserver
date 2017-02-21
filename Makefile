@@ -9,8 +9,9 @@ TEMPDIR := $(shell mktemp -d)
 # Hackety-hack around OSX system python bustage.
 # The need for this should go away with a future osx/xcode update.
 ARCHFLAGS = -Wno-error=unused-command-line-argument-hard-error-in-future
+CFLAGS = -Wno-error=write-strings
 
-INSTALL = ARCHFLAGS=$(ARCHFLAGS) $(VENV)/bin/pip install
+INSTALL = ARCHFLAGS=$(ARCHFLAGS) CFLAGS=$(CFLAGS) $(VENV)/bin/pip install
 
 .IGNORE: clean distclean maintainer-clean
 .PHONY: all install install-dev virtualenv tests-once
