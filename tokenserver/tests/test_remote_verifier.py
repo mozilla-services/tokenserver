@@ -4,11 +4,7 @@
 
 import json
 import contextlib
-
-try:
-    import unittest2 as unittest
-except ImportError:
-    import unittest
+import unittest
 
 from pyramid.config import Configurator
 

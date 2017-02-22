@@ -45,7 +45,7 @@ dependencies:
 
 test:
   override:
-    - docker run app:build /bin/sh -c "flake8 --ignore=E402 tokenserver && nosetests tokenserver/tests"
+    - docker run app:build /bin/sh -c "flake8 tokenserver && nosetests tokenserver/tests"
 
 # appropriately tag and push the container to dockerhub
 deployment:

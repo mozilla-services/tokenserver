@@ -5,18 +5,17 @@ import contextlib
 import json
 import os
 import mock
+import unittest
 
 from webtest import TestApp
 from pyramid import testing
 from testfixtures import LogCapture
 
-from cornice.tests.support import CatchErrors
 from mozsvc.config import load_into_settings
 from mozsvc.plugin import load_and_register
 
 from tokenserver.assignment import INodeAssignment
 from tokenserver.verifiers import get_verifier
-from tokenserver.tests.support import unittest
 
 import browserid.errors
 from browserid.tests.support import make_assertion
@@ -41,7 +40,6 @@ class TestService(unittest.TestCase):
         load_and_register("tokenserver", self.config)
         self.backend = self.config.registry.getUtility(INodeAssignment)
         wsgiapp = self.config.make_wsgi_app()
-        wsgiapp = CatchErrors(wsgiapp)
         self.app = TestApp(wsgiapp)
         # Mock out the verifier to return successfully by default.
         self.mock_verifier_context = self.mock_verifier()
