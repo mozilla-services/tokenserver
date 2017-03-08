@@ -56,9 +56,11 @@ limit
 _CREATE_USER_RECORD = sqltext("""\
 insert into
     users
-    (service, email, nodeid, generation, client_state, created_at, replaced_at)
+    (service, email, nodeid, node, generation,
+     client_state, created_at, replaced_at)
 values
-    (:service, :email, :nodeid, :generation, :client_state, :timestamp, NULL)
+    (:service, :email, :nodeid, :node, :generation,
+     :client_state, :timestamp, NULL)
 """)
 
 
@@ -295,7 +297,8 @@ class SQLNodeAssignment(object):
         else:
             nodeid = self.get_node_id(service, node)
         params = {
-            'service': service, 'email': email, 'nodeid': nodeid,
+            'service': service, 'email': email,
+            'nodeid': nodeid, 'node': node,
             'generation': generation, 'client_state': client_state,
             'timestamp': timestamp
         }
@@ -353,7 +356,7 @@ class SQLNodeAssignment(object):
             now = get_timestamp()
             params = {
                 'service': service, 'email': user['email'],
-                'nodeid': nodeid, 'generation': generation,
+                'nodeid': nodeid, 'node': node, 'generation': generation,
                 'client_state': client_state, 'timestamp': now,
             }
             res = self._safe_execute(_CREATE_USER_RECORD, **params)
