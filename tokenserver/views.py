@@ -233,7 +233,7 @@ def return_token(request):
     if not user:
         allowed = settings.get('tokenserver.allow_new_users', True)
         if not allowed:
-            raise _unauthorized('invalid-credentials')
+            raise _unauthorized('new-users-disabled')
         with metrics_timer('tokenserver.backend.allocate_user', request):
             user = backend.allocate_user(service, email, generation,
                                          client_state)

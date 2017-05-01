@@ -378,7 +378,7 @@ class TestService(unittest.TestCase):
         assertion = self._getassertion(email="newuser3@test.com")
         headers = {'Authorization': 'BrowserID %s' % assertion}
         res = self.app.get('/1.0/sync/1.1', headers=headers, status=401)
-        self.assertEqual(res.json['status'], 'invalid-credentials')
+        self.assertEqual(res.json['status'], 'new-users-disabled')
         # But existing users are still allowed.
         assertion = self._getassertion(email="newuser1@test.com")
         headers = {'Authorization': 'BrowserID %s' % assertion}
