@@ -88,7 +88,17 @@ def process_account_event(config, body):
         body = json.loads(body)
         event = json.loads(body['Message'])
         event_type = event["event"]
-        email = event["uid"]
+        uid = event["uid"]
+        # Older versions of the fxa-auth-server would send an email-like
+        # identifier the "uid" field, but that doesn't make sense for any
+        # relier other than tokenserver.  Newer versions send just the raw uid
+        # in the "uid" field, and include the domain in a separate "iss" field.
+        if "iss" in event:
+            email = "%s@%s" % (uid, event["iss"])
+        else:
+            if "@" not in uid:
+                raise ValueError("uid field does not contain issuer info")
+            email = uid
         if event_type == "reset":
             generation = event["generation"]
     except (ValueError, KeyError), e:
