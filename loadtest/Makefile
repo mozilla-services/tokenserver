@@ -11,6 +11,7 @@ INSTALL = ARCHFLAGS=$(ARCHFLAGS) ../local/bin/pip install
 build:
 	$(INSTALL) pexpect
 	$(INSTALL) https://github.com/mozilla-services/loads/archive/master.zip
+	$(INSTALL) -U 'requests<2.13'
 
 # Run a single test from the local machine, for sanity-checking.
 test:
