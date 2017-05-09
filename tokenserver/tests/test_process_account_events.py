@@ -16,6 +16,9 @@ from tokenserver.assignment import INodeAssignment
 
 
 SERVICE = "sync-1.0"
+EMAIL = "test@example.com"
+UID = "test"
+ISS = "example.com"
 
 
 def message_body(**kwds):
@@ -66,7 +69,25 @@ class TestProcessAccountEvents(unittest.TestCase):
         del self.logs.records[:]
 
     def test_delete_user(self):
-        EMAIL = "test@example.com"
+        self.backend.allocate_user(SERVICE, EMAIL)
+        user = self.backend.get_user(SERVICE, EMAIL)
+        self.backend.update_user(SERVICE, user, client_state="abcdef")
+        records = list(self.backend.get_user_records(SERVICE, EMAIL))
+        self.assertEquals(len(records), 2)
+        self.assertTrue(records[0]["replaced_at"] is not None)
+
+        process_account_event(self.config, message_body(
+            event="delete",
+            uid=UID,
+            iss=ISS,
+        ))
+
+        records = list(self.backend.get_user_records(SERVICE, EMAIL))
+        self.assertEquals(len(records), 2)
+        for row in records:
+            self.assertTrue(row["replaced_at"] is not None)
+
+    def test_delete_user_by_legacy_uid_format(self):
         self.backend.allocate_user(SERVICE, EMAIL)
         user = self.backend.get_user(SERVICE, EMAIL)
         self.backend.update_user(SERVICE, user, client_state="abcdef")
@@ -85,20 +106,32 @@ class TestProcessAccountEvents(unittest.TestCase):
             self.assertTrue(row["replaced_at"] is not None)
 
     def test_delete_user_who_is_not_in_the_db(self):
-        EMAIL = "test@example.com"
         records = list(self.backend.get_user_records(SERVICE, EMAIL))
         self.assertEquals(len(records), 0)
 
         process_account_event(self.config, message_body(
             event="delete",
-            uid=EMAIL,
+            uid=UID,
+            iss=ISS
         ))
 
         records = list(self.backend.get_user_records(SERVICE, EMAIL))
         self.assertEquals(len(records), 0)
 
     def test_reset_user(self):
-        EMAIL = "test@example.com"
+        self.backend.allocate_user(SERVICE, EMAIL, generation=12)
+
+        process_account_event(self.config, message_body(
+            event="reset",
+            uid=UID,
+            iss=ISS,
+            generation=43,
+        ))
+
+        user = self.backend.get_user(SERVICE, EMAIL)
+        self.assertEquals(user["generation"], 42)
+
+    def test_reset_user_by_legacy_uid_format(self):
         self.backend.allocate_user(SERVICE, EMAIL, generation=12)
 
         process_account_event(self.config, message_body(
@@ -111,13 +144,13 @@ class TestProcessAccountEvents(unittest.TestCase):
         self.assertEquals(user["generation"], 42)
 
     def test_reset_user_who_is_not_in_the_db(self):
-        EMAIL = "test@example.com"
         records = list(self.backend.get_user_records(SERVICE, EMAIL))
         self.assertEquals(len(records), 0)
 
         process_account_event(self.config, message_body(
             event="reset",
-            uid=EMAIL,
+            uid=UID,
+            iss=ISS,
             generation=43,
         ))
 
@@ -125,12 +158,12 @@ class TestProcessAccountEvents(unittest.TestCase):
         self.assertEquals(len(records), 0)
 
     def test_malformed_events(self):
-        EMAIL = "test@example.com"
 
         # Unknown event type.
         process_account_event(self.config, message_body(
             event="party",
-            uid=EMAIL,
+            uid=UID,
+            iss=ISS,
             generation=43,
         ))
         self.assertMessageWasLogged("Dropping unknown event type")
@@ -138,7 +171,8 @@ class TestProcessAccountEvents(unittest.TestCase):
 
         # Missing event type.
         process_account_event(self.config, message_body(
-            uid=EMAIL,
+            uid=UID,
+            iss=ISS,
             generation=43,
         ))
         self.assertMessageWasLogged("Invalid account message")
@@ -147,6 +181,7 @@ class TestProcessAccountEvents(unittest.TestCase):
         # Missing uid.
         process_account_event(self.config, message_body(
             event="delete",
+            iss=ISS,
         ))
         self.assertMessageWasLogged("Invalid account message")
         self.clearLogs()
@@ -154,7 +189,16 @@ class TestProcessAccountEvents(unittest.TestCase):
         # Missing generation for reset events.
         process_account_event(self.config, message_body(
             event="reset",
-            uid=EMAIL,
+            uid=UID,
+            iss=ISS,
+        ))
+        self.assertMessageWasLogged("Invalid account message")
+        self.clearLogs()
+
+        # Missing issuer with nonemail uid
+        process_account_event(self.config, message_body(
+            event="delete",
+            uid=UID,
         ))
         self.assertMessageWasLogged("Invalid account message")
         self.clearLogs()
