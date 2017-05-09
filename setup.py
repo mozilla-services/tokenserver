@@ -25,7 +25,7 @@ tests_require = [
 
 
 setup(name='tokenserver',
-      version='1.2.24',
+      version='1.2.25',
       packages=find_packages(),
       include_package_data=True,
       zip_safe=False,
