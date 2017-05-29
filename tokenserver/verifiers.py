@@ -31,7 +31,7 @@ class IBrowserIdVerifier(Interface):
 class LocalVerifier(LocalVerifier_):
     implements(IBrowserIdVerifier)
 
-    def __init__(self, **kwargs):
+    def __init__(self, trusted_issuers=None, allowed_issuers=None, **kwargs):
         """LocalVerifier constructor, with the following extra config options:
 
         :param ssl_certificate: The path to an optional ssl certificate to
@@ -39,6 +39,14 @@ class LocalVerifier(LocalVerifier_):
             Set to True (the default) to use default certificate authorities.
             Set to False to disable SSL verification.
         """
+        if isinstance(trusted_issuers, basestring):
+            trusted_issuers = trusted_issuers.split()
+        self.trusted_issuers = trusted_issuers
+        if trusted_issuers is not None:
+            kwargs["trusted_secondaries"] = trusted_issuers
+        if isinstance(allowed_issuers, basestring):
+            allowed_issuers = allowed_issuers.split()
+        self.allowed_issuers = allowed_issuers
         if "ssl_certificate" in kwargs:
             verify = kwargs["ssl_certificate"]
             kwargs.pop("ssl_certificate")
@@ -46,7 +54,9 @@ class LocalVerifier(LocalVerifier_):
                 self._emit_warning()
         else:
             verify = None
-        kwargs['supportdocs'] = SupportDocumentManager(verify=verify)
+        kwargs["supportdocs"] = SupportDocumentManager(verify=verify)
+        # Disable warning about evolving data formats, it's out of date.
+        kwargs.setdefault("warning", False)
         super(LocalVerifier, self).__init__(**kwargs)
 
     def _emit_warning():
@@ -58,6 +68,14 @@ class LocalVerifier(LocalVerifier_):
               "http://docs.python-requests.org/en/latest/user/advanced/"\
               "#ssl-cert-verification"
         warnings.warn(msg, RuntimeWarning, stacklevel=2)
+
+    def verify(self, assertion, audience=None):
+        data = super(LocalVerifier, self).verify(assertion, audience)
+        if self.allowed_issuers is not None:
+            issuer = data.get('issuer')
+            if issuer not in self.allowed_issuers:
+                raise InvalidIssuerError("Issuer not allowed: %s" % (issuer,))
+        return data
 
 
 # A verifier that posts to a remote verifier service.
