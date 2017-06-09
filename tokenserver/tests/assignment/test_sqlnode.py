@@ -8,6 +8,7 @@ import time
 import unittest
 import uuid
 from collections import defaultdict
+from sqlalchemy.sql import text as sqltext
 from mozsvc.exceptions import BackendError
 from tokenserver.assignment.sqlnode.sql import (SQLNodeAssignment,
                                                 MAX_GENERATION,
@@ -15,6 +16,7 @@ from tokenserver.assignment.sqlnode.sql import (SQLNodeAssignment,
 
 
 TEMP_ID = uuid.uuid4().hex
+DEFAULT_SQLURI = 'sqlite:////tmp/tokenserver.' + TEMP_ID
 
 
 class NodeAssignmentTests(object):
@@ -427,7 +429,7 @@ class NodeAssignmentTests(object):
 
 class TestSQLDB(NodeAssignmentTests, unittest.TestCase):
 
-    _SQLURI = os.environ.get('WIMMS_SQLURI', 'sqlite:////tmp/wimms.' + TEMP_ID)
+    _SQLURI = os.environ.get('MOZSVC_SQLURI', DEFAULT_SQLURI)
 
     def setUp(self):
         self.backend = SQLNodeAssignment(self._SQLURI, create_tables=True)
@@ -448,13 +450,13 @@ class TestSQLDB(NodeAssignmentTests, unittest.TestCase):
         node = "https://phx13"
         self.backend.add_node("sync-1.0", node, capacity=100)
         available = int(math.ceil(self.backend.capacity_release_rate * 100))
-        query = "SELECT * FROM nodes WHERE node=:node"
+        query = sqltext("SELECT * FROM nodes WHERE node=:node")
         res = self.backend._safe_execute(query, node=node)
         row = res.fetchone()
         res.close()
         self.assertEqual(row["available"], available)
 
 
-if os.environ.get('WIMMS_MYSQLURI', None) is not None:
+if os.environ.get('MOZSVC_MYSQLURI', None) is not None:
     class TestMySQLDB(TestSQLDB):
-        _SQLURI = os.environ.get('WIMMS_MYSQLURI')
+        _SQLURI = os.environ.get('MOZSVC_MYSQLURI')

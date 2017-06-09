@@ -182,6 +182,9 @@ class SQLNodeAssignment(object):
         if pool_reset_on_return.lower() in ('', 'none'):
             pool_reset_on_return = None
 
+        # Use production-ready pool settings for the MySQL backend.
+        # We also need to work around mysql using "LEAST(a,b)" and
+        # sqlite using "MIN(a,b)" in expressions.
         if sqluri.startswith('mysql') or sqluri.startswith('pymysql'):
             self._engine = create_engine(
                 sqluri,
@@ -192,8 +195,10 @@ class SQLNodeAssignment(object):
                 max_overflow=max_overflow,
                 logging_name='tokenserver.assignment.sqlnode'
             )
+            self._sqlfunc_min = sqlfunc.least
         else:
             self._engine = create_engine(sqluri, poolclass=NullPool)
+            self._sqlfunc_min = sqlfunc.min
 
         self._engine.echo = kw.get('echo', False)
         self.capacity_release_rate = capacity_release_rate
@@ -608,7 +613,7 @@ class SQLNodeAssignment(object):
                              nodes.c.capacity > nodes.c.current_load,
                              nodes.c.downed == 0)
                 fields = {
-                    'available': sqlfunc.min(
+                    'available': self._sqlfunc_min(
                         nodes.c.capacity * self.capacity_release_rate,
                         nodes.c.capacity - nodes.c.current_load
                     ),
