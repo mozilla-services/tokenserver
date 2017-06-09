@@ -62,6 +62,14 @@ deployment:
       - "docker tag app:build ${DOCKERHUB_REPO}:latest"
       - "docker push ${DOCKERHUB_REPO}:latest"
 
+  hub_branches:
+    branch: /^dockerpush.*$/
+    commands:
+      - "[ ! -z $DOCKERHUB_REPO ]"
+      - docker login -e $DOCKER_EMAIL -u $DOCKER_USER -p $DOCKER_PASS
+      - docker tag app:build ${DOCKERHUB_REPO}:${CIRCLE_BRANCH}
+      - docker push ${DOCKERHUB_REPO}:${CIRCLE_BRANCH}
+
   hub_releases:
     # push all tags
     tag: /.*/
