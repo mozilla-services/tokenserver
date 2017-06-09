@@ -10,6 +10,7 @@ requires = [
     'cornice',
     'hawkauthlib',
     'mozsvc',
+    'Paste',
     'PyBrowserID',
     'PyMySQL',
     'pymysql_sa',
