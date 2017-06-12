@@ -11,11 +11,12 @@ konfig==1.1
 Mako==1.0.6
 MarkupSafe==1.0
 mozsvc==0.10
+Paste==2.0.3
 PasteDeploy==1.5.2
 PyBrowserID==0.12.0
 PyMySQL==0.7.11
 pymysql-sa==1.0
-pyramid==1.8.3
+pyramid==1.8.4
 python-dateutil==2.6.0
 python-editor==1.0.3
 repoze.lru==0.6
