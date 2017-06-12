@@ -3,6 +3,9 @@ language: python
 python:
  - "2.7"
 
+services:
+ - mysql
+
 notifications:
   email:
     - rfkelly@mozilla.com
@@ -15,6 +18,10 @@ notifications:
 install:
   - make install-dev
 
+before_script:
+  - mysql -e 'create database tokenserver_test;'
+
 script:
-  - make tests-once
   - make flake8
+  - MOZSVC_SQLURI=pymysql://root@localhost/tokenserver_test make tests-once
+  - make tests-once

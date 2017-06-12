@@ -5,11 +5,15 @@ from setuptools import setup, find_packages
 
 
 requires = [
+    'alembic',
     'boto',
     'cornice',
     'hawkauthlib',
     'mozsvc',
+    'Paste',
     'PyBrowserID',
+    'PyMySQL',
+    'pymysql_sa',
     'SQLAlchemy',
     'testfixtures',
     'tokenlib',

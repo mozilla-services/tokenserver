@@ -1,8 +1,8 @@
 
-Database migrations for WIMMS.
+Database migrations for tokenserver.
 
 This directory contains alembic migrations tracking the database schema
-changes made in WIMMS:
+changes made in tokenserver:
 
   https://alembic.readthedocs.io/
 

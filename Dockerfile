@@ -10,7 +10,7 @@ COPY ./dev-requirements.txt /app/dev-requirements.txt
 # install tokenserver dependencies
 RUN apt-get -q update \
     && apt-get -q --yes install g++ \
-    && pip install --upgrade --no-cache-dir -r requirements.txt gunicorn \
+    && pip install --upgrade --no-cache-dir -r requirements.txt gunicorn gevent \
     && pip install --upgrade --no-cache-dir -r dev-requirements.txt \
     && apt-get -q --yes remove g++ \
     && apt-get -q --yes autoremove \
