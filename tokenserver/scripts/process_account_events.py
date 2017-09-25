@@ -28,6 +28,7 @@ Mozilla's internal Firefox-Accounts-supported deployment.
 
 import os
 import json
+import time
 import logging
 import optparse
 
@@ -37,6 +38,8 @@ import boto.sqs
 import boto.sqs.message
 import boto.utils
 
+from mozsvc.exceptions import BackendError
+
 import tokenserver.scripts
 from tokenserver.assignment import INodeAssignment
 
@@ -45,7 +48,7 @@ logger = logging.getLogger("tokenserver.scripts.process_account_deletions")
 
 
 def process_account_events(config_file, queue_name, aws_region=None,
-                           queue_wait_time=20):
+                           queue_wait_time=20, max_retries=5):
     """Process account events from an SQS queue.
 
     This function polls the specified SQS queue for account-realted events,
@@ -73,7 +76,18 @@ def process_account_events(config_file, queue_name, aws_region=None,
             msg = queue.read(wait_time_seconds=queue_wait_time)
             if msg is None:
                 continue
-            process_account_event(config, msg.get_body())
+            msg_body = msg.get_body()
+            # If there's a backend error, retry a few times before giving up.
+            num_retries = 0
+            while num_retries < max_retries:
+                try:
+                    process_account_event(config, msg_body)
+                except BackendError:
+                    num_retries += 1
+                    # Exponential backoff, up to five seconds max.
+                    time.sleep(min(5, 0.1 * 2**num_retries))
+                else:
+                    break
             # This intentionally deletes the event even if it was some
             # unrecognized type.  Not point leaving a backlog.
             queue.delete_message(msg)
@@ -170,6 +184,8 @@ def main(args=None):
                       help="aws region in which the queue can be found")
     parser.add_option("", "--queue-wait-time", type="int", default=20,
                       help="Number of seconds to wait for jobs on the queue")
+    parser.add_option("", "--max-retries", type="int", default=5,
+                      help="Number of times to retry after a backend errror")
     parser.add_option("-v", "--verbose", action="count", dest="verbosity",
                       help="Control verbosity of log messages")
 
@@ -184,7 +200,8 @@ def main(args=None):
     queue_name = args[1]
 
     process_account_events(config_file, queue_name,
-                           opts.aws_region, opts.queue_wait_time)
+                           opts.aws_region, opts.queue_wait_time,
+                           opts.max_retries)
     return 0
 
 

@@ -24,6 +24,9 @@ install:
 
 before_script:
   - mysql -e 'create database tokenserver_test;'
+  # This prevents boto from trying to load things based
+  # on config files sitting around in the travis test image.
+  - export BOTO_CONFIG=/dev/null
 
 script:
   - make flake8
