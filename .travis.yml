@@ -23,5 +23,5 @@ before_script:
 
 script:
   - make flake8
-  - MOZSVC_SQLURI=pymysql://root@localhost/tokenserver_test make tests-once
-  - make tests-once
+  - MOZSVC_SQLURI=pymysql://root@localhost/tokenserver_test make tests
+  - make tests

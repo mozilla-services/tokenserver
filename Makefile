@@ -14,7 +14,7 @@ CFLAGS = -Wno-error=write-strings
 INSTALL = ARCHFLAGS=$(ARCHFLAGS) CFLAGS=$(CFLAGS) $(VENV)/bin/pip install
 
 .IGNORE: clean distclean maintainer-clean
-.PHONY: all install install-dev virtualenv tests-once
+.PHONY: all install install-dev virtualenv tests
 
 help:
 	@echo "Please use 'make <target>' where <target> is one of"
@@ -51,7 +51,7 @@ build-requirements:
 	ARCHFLAGS=$(ARCHFLAGS) $(TEMPDIR)/bin/pip install -Ue .
 	$(TEMPDIR)/bin/pip freeze | grep -v -- '^-e' > requirements.txt
 
-tests-once: install-dev
+tests: install-dev
 	$(VENV)/bin/nosetests tokenserver/tests
 
 flake8: install-dev

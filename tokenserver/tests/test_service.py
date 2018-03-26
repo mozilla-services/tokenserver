@@ -93,6 +93,16 @@ class TestService(unittest.TestCase):
         resp = self.app.get('/1.0/xXx/token', headers=headers, status=404)
         self.assertTrue('errors' in resp.json)
 
+    def test_invalid_client_state(self):
+        headers = {'X-Client-State': 'state!'}
+        resp = self.app.get('/1.0/sync/1.5', headers=headers, status=400)
+        self.assertEquals(resp.json['errors'][0]['location'], 'header')
+        self.assertEquals(resp.json['errors'][0]['name'], 'X-Client-State')
+        headers = {'X-Client-State': 'foobar\n\r\t'}
+        resp = self.app.get('/1.0/sync/1.5', headers=headers, status=400)
+        self.assertEquals(resp.json['errors'][0]['location'], 'header')
+        self.assertEquals(resp.json['errors'][0]['name'], 'X-Client-State')
+
     def test_no_auth(self):
         self.app.get('/1.0/sync/1.5', status=401)
 
