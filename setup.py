@@ -12,6 +12,7 @@ requires = [
     'mozsvc',
     'Paste',
     'PyBrowserID',
+    'PyFxA',
     'PyMySQL',
     'pymysql_sa',
     'SQLAlchemy',

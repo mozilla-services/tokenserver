@@ -6,7 +6,7 @@ import unittest
 
 from pyramid.config import Configurator
 
-from tokenserver.verifiers import LocalVerifier, IBrowserIdVerifier
+from tokenserver.verifiers import LocalBrowserIdVerifier, IBrowserIdVerifier
 from browserid.tests.support import (make_assertion,
                                      patched_supportdoc_fetching)
 import browserid.errors
@@ -16,13 +16,13 @@ class mockobj(object):
     pass
 
 
-class TestLocalVerifier(unittest.TestCase):
+class TestLocalBrowserIdVerifier(unittest.TestCase):
 
     DEFAULT_SETTINGS = {  # noqa; identation below is non-standard
         "tokenserver.backend":
             "tokenserver.assignment.memorynode.MemoryNodeAssignmentBackend",
         "browserid.backend":
-            "tokenserver.verifiers.LocalVerifier",
+            "tokenserver.verifiers.LocalBrowserIdVerifier",
         "tokenserver.secrets.backend":
             "mozsvc.secrets.FixedSecrets",
         "tokenserver.secrets.secrets":
@@ -40,7 +40,7 @@ class TestLocalVerifier(unittest.TestCase):
     def test_verifier_config_loading_defaults(self):
         config = self._make_config()
         verifier = config.registry.getUtility(IBrowserIdVerifier)
-        self.assertTrue(isinstance(verifier, LocalVerifier))
+        self.assertTrue(isinstance(verifier, LocalBrowserIdVerifier))
         self.assertEquals(verifier.audiences, None)
         self.assertEquals(verifier.trusted_issuers, None)
         self.assertEquals(verifier.allowed_issuers, None)
@@ -55,7 +55,7 @@ class TestLocalVerifier(unittest.TestCase):
                 "example.com trustyidp.org\nmockmyid.com",
         })
         verifier = config.registry.getUtility(IBrowserIdVerifier)
-        self.assertTrue(isinstance(verifier, LocalVerifier))
+        self.assertTrue(isinstance(verifier, LocalBrowserIdVerifier))
         self.assertEquals(verifier.audiences, "https://testmytoken.com")
         self.assertEquals(verifier.trusted_issuers,
                           ["example.com", "trustyidp.org"])
