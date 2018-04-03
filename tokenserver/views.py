@@ -167,7 +167,7 @@ def valid_client_state(request, **kwargs):
     """Checks for and validates the X-Client-State header."""
     client_state = request.headers.get('X-Client-State', '')
     if client_state:
-        if not re.match("[a-zA-Z0-9._-]{1,32}", client_state):
+        if not re.match("^[a-zA-Z0-9._-]{1,32}$", client_state):
             raise json_error(400, location='header', name='X-Client-State',
                              description='Invalid client state value')
     request.validated['client-state'] = client_state

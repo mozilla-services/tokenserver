@@ -23,5 +23,6 @@ before_script:
 
 script:
   - make flake8
-  - MOZSVC_SQLURI=pymysql://root@localhost/tokenserver_test make tests-once
-  - make tests-once
+  - export BOTO_CONFIG=/dev/null # https://github.com/travis-ci/travis-ci/issues/7940
+  - MOZSVC_SQLURI=pymysql://root@localhost/tokenserver_test make tests
+  - make tests
