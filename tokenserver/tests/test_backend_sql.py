@@ -48,15 +48,15 @@ class TestSQLBackend(unittest.TestCase):
             self.backend._safe_execute('delete from users')
 
     def test_get_node(self):
-        user = self.backend.get_user("sync-1.0", "tarek@mozilla.com")
+        user = self.backend.get_user("sync-1.0", "test1@example.com")
         self.assertEquals(user, None)
 
-        user = self.backend.allocate_user("sync-1.0", "tarek@mozilla.com")
-        self.assertEqual(user['email'], "tarek@mozilla.com")
+        user = self.backend.allocate_user("sync-1.0", "test1@example.com")
+        self.assertEqual(user['email'], "test1@example.com")
         self.assertEqual(user['node'], "https://phx12")
 
-        user = self.backend.get_user("sync-1.0", "tarek@mozilla.com")
-        self.assertEqual(user['email'], "tarek@mozilla.com")
+        user = self.backend.get_user("sync-1.0", "test1@example.com")
+        self.assertEqual(user['email'], "test1@example.com")
         self.assertEqual(user['node'], "https://phx12")
 
     def test_get_patterns(self):

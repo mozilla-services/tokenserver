@@ -31,14 +31,14 @@ class NodeAssignmentTests(object):
         self.backend.add_node('sync-1.0', 'https://phx12', 100)
 
     def test_node_allocation(self):
-        user = self.backend.get_user("sync-1.0", "tarek@mozilla.com")
+        user = self.backend.get_user("sync-1.0", "test1@example.com")
         self.assertEquals(user, None)
 
-        user = self.backend.allocate_user("sync-1.0", "tarek@mozilla.com")
+        user = self.backend.allocate_user("sync-1.0", "test1@example.com")
         wanted = 'https://phx12'
         self.assertEqual(user['node'], wanted)
 
-        user = self.backend.get_user("sync-1.0", "tarek@mozilla.com")
+        user = self.backend.get_user("sync-1.0", "test1@example.com")
         self.assertEqual(user['node'], wanted)
 
     def test_allocation_to_least_loaded_node(self):
@@ -58,7 +58,7 @@ class NodeAssignmentTests(object):
             self.backend.allocate_user("sync-1.0", "test1@mozilla.com")
 
     def test_update_generation_number(self):
-        user = self.backend.allocate_user("sync-1.0", "tarek@mozilla.com")
+        user = self.backend.allocate_user("sync-1.0", "test1@example.com")
         self.assertEqual(user['generation'], 0)
         self.assertEqual(user['client_state'], '')
         orig_uid = user['uid']
@@ -71,7 +71,7 @@ class NodeAssignmentTests(object):
         self.assertEqual(user['generation'], 42)
         self.assertEqual(user['client_state'], '')
 
-        user = self.backend.get_user("sync-1.0", "tarek@mozilla.com")
+        user = self.backend.get_user("sync-1.0", "test1@example.com")
         self.assertEqual(user['uid'], orig_uid)
         self.assertEqual(user['node'], orig_node)
         self.assertEqual(user['generation'], 42)
@@ -84,14 +84,14 @@ class NodeAssignmentTests(object):
         self.assertEqual(user['generation'], 42)
         self.assertEqual(user['client_state'], '')
 
-        user = self.backend.get_user("sync-1.0", "tarek@mozilla.com")
+        user = self.backend.get_user("sync-1.0", "test1@example.com")
         self.assertEqual(user['uid'], orig_uid)
         self.assertEqual(user['node'], orig_node)
         self.assertEqual(user['generation'], 42)
         self.assertEqual(user['client_state'], '')
 
     def test_update_client_state(self):
-        user = self.backend.allocate_user("sync-1.0", "tarek@mozilla.com")
+        user = self.backend.allocate_user("sync-1.0", "test1@example.com")
         self.assertEqual(user['generation'], 0)
         self.assertEqual(user['client_state'], '')
         self.assertEqual(set(user['old_client_states']), set(()))
@@ -106,7 +106,7 @@ class NodeAssignmentTests(object):
         self.assertEqual(user['client_state'], 'aaa')
         self.assertEqual(set(user['old_client_states']), set(("",)))
 
-        user = self.backend.get_user("sync-1.0", "tarek@mozilla.com")
+        user = self.backend.get_user("sync-1.0", "test1@example.com")
         self.assertTrue(user['uid'] not in seen_uids)
         self.assertEqual(user['node'], orig_node)
         self.assertEqual(user['generation'], 0)
@@ -124,7 +124,7 @@ class NodeAssignmentTests(object):
         self.assertEqual(user['client_state'], 'bbb')
         self.assertEqual(set(user['old_client_states']), set(("", "aaa")))
 
-        user = self.backend.get_user("sync-1.0", "tarek@mozilla.com")
+        user = self.backend.get_user("sync-1.0", "test1@example.com")
         self.assertTrue(user['uid'] not in seen_uids)
         self.assertEqual(user['node'], orig_node)
         self.assertEqual(user['generation'], 12)
@@ -136,7 +136,7 @@ class NodeAssignmentTests(object):
         with self.assertRaises(BackendError):
             self.backend.update_user("sync-1.0", user, client_state="aaa")
 
-        user = self.backend.get_user("sync-1.0", "tarek@mozilla.com")
+        user = self.backend.get_user("sync-1.0", "test1@example.com")
         self.assertEqual(user['uid'], orig_uid)
         self.assertEqual(user['node'], orig_node)
         self.assertEqual(user['generation'], 12)
@@ -391,7 +391,7 @@ class NodeAssignmentTests(object):
             self.backend.allocate_user(service, "test7@mozilla.com")
 
     def test_count_users(self):
-        user = self.backend.allocate_user("sync-1.0", "tarek@mozilla.com")
+        user = self.backend.allocate_user("sync-1.0", "test1@example.com")
         self.assertEqual(self.backend.count_users(), 1)
         old_timestamp = get_timestamp()
         time.sleep(0.01)
@@ -404,12 +404,12 @@ class NodeAssignmentTests(object):
         # Looking back in time doesn't count newer users.
         self.assertEqual(self.backend.count_users(old_timestamp), 1)
         # Retiring a user decreases the count.
-        self.backend.retire_user("tarek@mozilla.com")
+        self.backend.retire_user("test1@example.com")
         self.assertEqual(self.backend.count_users(), 1)
 
     def test_first_seen_at(self):
         SERVICE = "sync-1.0"
-        EMAIL = "tarek@mozilla.com"
+        EMAIL = "test1@example.com"
         user0 = self.backend.allocate_user(SERVICE, EMAIL)
         user1 = self.backend.get_user(SERVICE, EMAIL)
         self.assertEqual(user1["uid"], user0["uid"])

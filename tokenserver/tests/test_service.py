@@ -84,7 +84,7 @@ class TestService(unittest.TestCase):
                 verifier.__dict__["verify"] = orig_verify_method
 
     def _getassertion(self, **kw):
-        kw.setdefault('email', 'tarek@mozilla.com')
+        kw.setdefault('email', 'test1@example.com')
         kw.setdefault('audience', 'http://tokenserver.services.mozilla.com')
         return make_assertion(**kw).encode('ascii')
 
