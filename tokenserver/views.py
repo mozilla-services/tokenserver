@@ -14,11 +14,17 @@ from pyramid import httpexceptions
 
 import tokenlib
 
-from tokenserver.verifiers import get_verifier
+from tokenserver.verifiers import (
+    ConnectionError,
+    get_browserid_verifier,
+    get_oauth_verifier
+)
 from tokenserver.assignment import INodeAssignment
 from tokenserver.util import json_error, fxa_metrics_hash
 
+import fxa.errors
 import browserid.errors
+import browserid.utils
 
 
 logger = logging.getLogger("tokenserver")
@@ -42,6 +48,17 @@ def _discovery(request):
     discovery = {}
     discovery["services"] = services
     discovery["auth"] = request.url.rstrip("/")
+    verifier = get_browserid_verifier(request.registry)
+    discovery["browserid"] = {
+      "allowed_issuers": verifier.allowed_issuers,
+      "trusted_issuers": verifier.trusted_issuers,
+    }
+    verifier = get_oauth_verifier(request.registry)
+    discovery["oauth"] = {
+      "default_issuer": verifier.default_issuer,
+      "scope": verifier.scope,
+      "server_url": verifier.server_url,
+    }
     return discovery
 
 
@@ -59,28 +76,36 @@ def _invalid_client_state(reason, **kw):
 
 
 # validators
-def valid_assertion(request, **kwargs):
-    """Validate that the assertion given in the request is correct.
+
+def valid_authorization(request, **kwargs):
+    """Validate that the Authorization on the request is correct.
 
     If not, add errors in the response so that the client can know what
     happened.
     """
-    token = request.headers.get('Authorization')
-    if token is None:
+    authz = request.headers.get('Authorization')
+    if authz is None:
         raise _unauthorized()
 
-    token = token.split()
-    if len(token) != 2:
+    authz = authz.split(None, 1)
+    if len(authz) != 2:
         raise _unauthorized()
+    name, token = authz
 
-    name, assertion = token
-    if name.lower() != 'browserid':
-        resp = _unauthorized(description='Unsupported')
-        resp.www_authenticate = ('BrowserID', {})
-        raise resp
+    if name.lower() == 'browserid':
+        return _valid_browserid_assertion(request, token)
 
+    if name.lower() == 'bearer':
+        return _valid_oauth_token(request, token)
+
+    resp = _unauthorized(description='Unsupported')
+    resp.www_authenticate = ('BrowserID', {})
+    raise resp
+
+
+def _valid_browserid_assertion(request, assertion):
     try:
-        verifier = get_verifier()
+        verifier = get_browserid_verifier(request.registry)
         with metrics_timer('tokenserver.assertion.verify', request):
             assertion = verifier.verify(assertion)
     except browserid.errors.Error as e:
@@ -112,7 +137,7 @@ def valid_assertion(request, **kwargs):
     # everything sounds good, add the assertion to the list of validated fields
     # and continue
     request.metrics['token.assertion.verify_success'] = 1
-    request.validated['assertion'] = assertion
+    request.validated['authorization'] = assertion
 
     id_key = request.registry.settings.get("fxa.metrics_uid_secret_key")
     if id_key is None:
@@ -134,6 +159,78 @@ def valid_assertion(request, **kwargs):
             device = 'none'
     except KeyError:
         device = 'none'
+    device_id = fxa_metrics_hash(fxa_uid + device, id_key)[:32]
+    request.validated['device_id'] = device_id
+    request.metrics['device_id'] = device_id
+
+
+def _valid_oauth_token(request, token):
+    try:
+        verifier = get_oauth_verifier(request.registry)
+        with metrics_timer('tokenserver.oauth.verify', request):
+            token = verifier.verify(token)
+    except (fxa.errors.Error, ConnectionError) as e:
+        request.metrics['token.oauth.verify_failure'] = 1
+        if isinstance(e, fxa.errors.InProtocolError):
+            request.metrics['token.oauth.errno.%s' % e.errno] = 1
+        # Log a full traceback for errors that are not a simple
+        # "your token was bad and we dont trust it".
+        if not isinstance(e, fxa.errors.TrustError):
+            logger.exception("Unexpected verification error")
+        # Report an appropriate error code.
+        if isinstance(e, ConnectionError):
+            request.metrics['token.oauth.connection_error'] = 1
+            raise json_error(503, description="Resource is not available")
+        raise _unauthorized("invalid-credentials")
+
+    request.metrics['token.oauth.verify_success'] = 1
+    request.validated['authorization'] = token
+
+    # OAuth clients should send the scoped-key kid in lieu of X-Client-State.
+    # A future enhancement might allow us to learn this from the OAuth
+    # verification response rather than requiring a separate header.
+    kid = request.headers.get('X-KeyID')
+    if kid:
+        try:
+            # The kid combines a timestamp and a hash of the key material,
+            # so we can decode it into equivalent information to what we
+            # get out of a BrowserID assertion.
+            generation, client_state = kid.split("-", 1)
+            generation = int(generation)
+            idpClaims = request.validated['authorization']['idpClaims']
+            idpClaims['fxa-generation'] = generation
+            client_state = browserid.utils.decode_bytes(client_state)
+            client_state = client_state.encode('hex')
+            if not 1 <= len(client_state) <= 32:
+                raise json_error(400, location='header', name='X-Client-State',
+                                 description='Invalid client state value')
+            # Sanity-check in case the client sent *both* headers.
+            # If they don't match, the client is definitely confused.
+            if 'X-Client-State' in request.headers:
+                if request.headers['X-Client-State'] != client_state:
+                    raise _unauthorized("invalid-client-state")
+            request.validated['client-state'] = client_state
+        except (IndexError, ValueError):
+            raise _unauthorized("invalid-credentials")
+
+    id_key = request.registry.settings.get("fxa.metrics_uid_secret_key")
+    if id_key is None:
+        id_key = 'insecure'
+    email = token['email']
+    fxa_uid_full = fxa_metrics_hash(email, id_key)
+    # "legacy" key used by heka active_counts.lua
+    request.metrics['uid'] = fxa_uid_full
+    request.metrics['email'] = email
+
+    # "new" keys use shorter values
+    fxa_uid = fxa_uid_full[:32]
+    request.validated['fxa_uid'] = fxa_uid
+    request.metrics['fxa_uid'] = fxa_uid
+
+    # There's currently no notion of a "device id" in OAuth.
+    # In future we might be able to use e.g. the refresh token
+    # or some derivative of it here.
+    device = 'none'
     device_id = fxa_metrics_hash(fxa_uid + device, id_key)[:32]
     request.validated['device_id'] = device_id
     request.metrics['device_id'] = device_id
@@ -192,7 +289,12 @@ def pattern_exists(request, **kwargs):
     request.validated['pattern'] = pattern
 
 
-VALIDATORS = (valid_app, valid_client_state, valid_assertion, pattern_exists)
+VALIDATORS = (
+    valid_app,
+    valid_client_state,
+    valid_authorization,
+    pattern_exists
+)
 
 
 @token.get(validators=VALIDATORS)
@@ -214,9 +316,9 @@ def return_token(request):
     # number were valid, so let's build the authentication token and return it.
     backend = request.registry.getUtility(INodeAssignment)
     settings = request.registry.settings
-    email = request.validated['assertion']['email']
+    email = request.validated['authorization']['email']
     try:
-        idp_claims = request.validated['assertion']['idpClaims']
+        idp_claims = request.validated['authorization']['idpClaims']
         generation = idp_claims['fxa-generation']
         if not isinstance(generation, (int, long)):
             raise _unauthorized("invalid-generation")

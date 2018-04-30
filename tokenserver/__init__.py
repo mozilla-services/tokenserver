@@ -37,9 +37,13 @@ def includeme(config):
     # initializes the assignment backend
     load_and_register("tokenserver", config)
 
-    # initialize the and browserid backend if it exists
+    # initialize the browserid backend if it exists
     if "browserid.backend" in settings:
         load_and_register("browserid", config)
+
+    # initialize the auth backend if it exists
+    if "oauth.backend" in settings:
+        load_and_register("oauth", config)
 
     # load apps and set them up back in the setting
     key = 'tokenserver.applications'

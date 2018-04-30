@@ -15,8 +15,12 @@ from mozsvc.config import load_into_settings
 from mozsvc.plugin import load_and_register
 
 from tokenserver.assignment import INodeAssignment
-from tokenserver.verifiers import get_verifier
+from tokenserver.verifiers import (
+    get_browserid_verifier,
+    get_oauth_verifier
+)
 
+import fxa.errors
 import browserid.errors
 from browserid.tests.support import make_assertion
 from browserid.utils import get_assertion_info
@@ -42,13 +46,16 @@ class TestService(unittest.TestCase):
         wsgiapp = self.config.make_wsgi_app()
         self.app = TestApp(wsgiapp)
         # Mock out the verifier to return successfully by default.
-        self.mock_verifier_context = self.mock_verifier()
-        self.mock_verifier_context.__enter__()
+        self.mock_browserid_verifier_context = self.mock_browserid_verifier()
+        self.mock_browserid_verifier_context.__enter__()
+        self.mock_oauth_verifier_context = self.mock_oauth_verifier()
+        self.mock_oauth_verifier_context.__enter__()
         self.logs = LogCapture()
 
     def tearDown(self):
         self.logs.uninstall()
-        self.mock_verifier_context.__exit__(None, None, None)
+        self.mock_oauth_verifier_context.__exit__(None, None, None)
+        self.mock_browserid_verifier_context.__exit__(None, None, None)
 
     def assertMetricWasLogged(self, key):
         """Check that a metric was logged during the request."""
@@ -62,7 +69,7 @@ class TestService(unittest.TestCase):
         del self.logs.records[:]
 
     @contextlib.contextmanager
-    def mock_verifier(self, response=None, exc=None):
+    def mock_browserid_verifier(self, response=None, exc=None):
         def mock_verify_method(assertion):
             if exc is not None:
                 raise exc
@@ -72,7 +79,29 @@ class TestService(unittest.TestCase):
                 "status": "okay",
                 "email": get_assertion_info(assertion)["principal"]["email"],
             }
-        verifier = get_verifier(self.config.registry)
+        verifier = get_browserid_verifier(self.config.registry)
+        orig_verify_method = verifier.__dict__.get("verify", None)
+        verifier.__dict__["verify"] = mock_verify_method
+        try:
+            yield None
+        finally:
+            if orig_verify_method is None:
+                del verifier.__dict__["verify"]
+            else:
+                verifier.__dict__["verify"] = orig_verify_method
+
+    @contextlib.contextmanager
+    def mock_oauth_verifier(self, response=None, exc=None):
+        def mock_verify_method(token):
+            if exc is not None:
+                raise exc
+            if response is not None:
+                return response
+            return {
+                "email": token.decode("hex"),
+                "idpClaims": {},
+            }
+        verifier = get_oauth_verifier(self.config.registry)
         orig_verify_method = verifier.__dict__.get("verify", None)
         verifier.__dict__["verify"] = mock_verify_method
         try:
@@ -84,9 +113,12 @@ class TestService(unittest.TestCase):
                 verifier.__dict__["verify"] = orig_verify_method
 
     def _getassertion(self, **kw):
-        kw.setdefault('email', 'tarek@mozilla.com')
+        kw.setdefault('email', 'test1@example.com')
         kw.setdefault('audience', 'http://tokenserver.services.mozilla.com')
         return make_assertion(**kw).encode('ascii')
+
+    def _gettoken(self, email='test1@example.com'):
+        return email.encode('hex')
 
     def test_unknown_app(self):
         headers = {'Authorization': 'BrowserID %s' % self._getassertion()}
@@ -126,6 +158,15 @@ class TestService(unittest.TestCase):
             'auth': 'http://localhost',
             'services': {
                 'sync': ['1.1', '1.5'],
+            },
+            'browserid': {
+                'allowed_issuers': None,
+                'trusted_issuers': None,
+            },
+            'oauth': {
+                'default_issuer': 'api.accounts.firefox.com',
+                'scope': 'https://identity.mozilla.com/apps/oldsync',
+                'server_url': 'https://oauth.accounts.firefox.com/v1',
             }
         })
 
@@ -146,25 +187,28 @@ class TestService(unittest.TestCase):
         self.assertEqual(res.json, {})
 
     def test_unauthorized_error_status(self):
-        assertion = self._getassertion()
         # Totally busted auth -> generic error.
         headers = {'Authorization': 'Unsupported-Auth-Scheme IHACKYOU'}
         res = self.app.get('/1.0/sync/1.1', headers=headers, status=401)
         self.assertEqual(res.json['status'], 'error')
-        # Bad signature -> "invalid-credentials"
+
+        # BrowserID verifier errors
+        assertion = self._getassertion()
         headers = {'Authorization': 'BrowserID %s' % assertion}
-        with self.mock_verifier(exc=browserid.errors.InvalidSignatureError):
+        # Bad signature -> "invalid-credentials"
+        errs = browserid.errors
+        with self.mock_browserid_verifier(exc=errs.InvalidSignatureError):
             res = self.app.get('/1.0/sync/1.1', headers=headers, status=401)
         self.assertEqual(res.json['status'], 'invalid-credentials')
         # Bad audience -> "invalid-credentials"
-        with self.mock_verifier(exc=browserid.errors.AudienceMismatchError):
+        with self.mock_browserid_verifier(exc=errs.AudienceMismatchError):
             res = self.app.get('/1.0/sync/1.1', headers=headers, status=401)
         self.assertEqual(res.json['status'], 'invalid-credentials')
         self.assertMetricWasLogged('token.assertion.verify_failure')
         self.assertMetricWasLogged('token.assertion.audience_mismatch_error')
         self.clearLogs()
         # Expired timestamp -> "invalid-timestamp"
-        with self.mock_verifier(exc=browserid.errors.ExpiredSignatureError):
+        with self.mock_browserid_verifier(exc=errs.ExpiredSignatureError):
             res = self.app.get('/1.0/sync/1.1', headers=headers, status=401)
         self.assertEqual(res.json['status'], 'invalid-timestamp')
         self.assertTrue('X-Timestamp' in res.headers)
@@ -172,7 +216,7 @@ class TestService(unittest.TestCase):
         self.assertMetricWasLogged('token.assertion.expired_signature_error')
         self.clearLogs()
         # Connection error -> 503
-        with self.mock_verifier(exc=browserid.errors.ConnectionError):
+        with self.mock_browserid_verifier(exc=errs.ConnectionError):
             res = self.app.get('/1.0/sync/1.1', headers=headers, status=503)
         self.assertMetricWasLogged('token.assertion.verify_failure')
         self.assertMetricWasLogged('token.assertion.connection_error')
@@ -185,7 +229,33 @@ class TestService(unittest.TestCase):
             assert False, "failed to log a traceback for ConnectionError"
         self.clearLogs()
         # Some other wacky error -> not captured
-        with self.mock_verifier(exc=ValueError):
+        with self.mock_browserid_verifier(exc=ValueError):
+            with self.assertRaises(ValueError):
+                res = self.app.get('/1.0/sync/1.1', headers=headers)
+
+        # OAuth verifier errors
+        token = self._gettoken()
+        headers = {'Authorization': 'Bearer %s' % token}
+        # Bad token -> "invalid-credentials"
+        err = fxa.errors.TrustError({"code": 400, "errno": 123})
+        with self.mock_oauth_verifier(exc=err):
+            res = self.app.get('/1.0/sync/1.1', headers=headers, status=401)
+        self.assertEqual(res.json['status'], 'invalid-credentials')
+        # Connection error -> 503
+        with self.mock_oauth_verifier(exc=errs.ConnectionError):
+            res = self.app.get('/1.0/sync/1.1', headers=headers, status=503)
+        self.assertMetricWasLogged('token.oauth.verify_failure')
+        self.assertMetricWasLogged('token.oauth.connection_error')
+        # It should also log a full traceback of the error.
+        for r in self.logs.records:
+            if r.msg == "Unexpected verification error":
+                assert r.exc_info is not None
+                break
+        else:
+            assert False, "failed to log a traceback for ConnectionError"
+        self.clearLogs()
+        # Some other wacky error -> not captured
+        with self.mock_oauth_verifier(exc=ValueError):
             with self.assertRaises(ValueError):
                 res = self.app.get('/1.0/sync/1.1', headers=headers)
 
@@ -197,15 +267,15 @@ class TestService(unittest.TestCase):
             "email": "test@mozilla.com",
             "idpClaims": {}
         }
-        with self.mock_verifier(response=mock_response):
+        with self.mock_browserid_verifier(response=mock_response):
             self.app.get("/1.0/sync/1.1", headers=headers, status=200)
         # Assertion should not be rejected if fxa-tokenVerified is True
         mock_response['idpClaims']['fxa-tokenVerified'] = True
-        with self.mock_verifier(response=mock_response):
+        with self.mock_browserid_verifier(response=mock_response):
             self.app.get("/1.0/sync/1.1", headers=headers, status=200)
         # Assertion should be rejected if fxa-tokenVerified is False
         mock_response['idpClaims']['fxa-tokenVerified'] = False
-        with self.mock_verifier(response=mock_response):
+        with self.mock_browserid_verifier(response=mock_response):
             res = self.app.get("/1.0/sync/1.1", headers=headers, status=401)
         self.assertEqual(res.json['status'], 'invalid-credentials')
 
@@ -213,61 +283,61 @@ class TestService(unittest.TestCase):
         headers = {"Authorization": "BrowserID %s" % self._getassertion()}
         # Start with no generation number.
         mock_response = {"status": "okay", "email": "test@mozilla.com"}
-        with self.mock_verifier(response=mock_response):
+        with self.mock_browserid_verifier(response=mock_response):
             res1 = self.app.get("/1.0/sync/1.1", headers=headers)
         # Now send an explicit generation number.
         # The node assignment should not change.
         mock_response["idpClaims"] = {"fxa-generation": 12}
-        with self.mock_verifier(response=mock_response):
+        with self.mock_browserid_verifier(response=mock_response):
             res2 = self.app.get("/1.0/sync/1.1", headers=headers)
         self.assertEqual(res1.json["uid"], res2.json["uid"])
         self.assertEqual(res1.json["api_endpoint"], res2.json["api_endpoint"])
         # Previous generation numbers get an invalid-generation response.
         del mock_response["idpClaims"]
-        with self.mock_verifier(response=mock_response):
+        with self.mock_browserid_verifier(response=mock_response):
             res = self.app.get("/1.0/sync/1.1", headers=headers, status=401)
         self.assertEqual(res.json["status"], "invalid-generation")
         mock_response["idpClaims"] = {"some-nonsense": "lolwut"}
-        with self.mock_verifier(response=mock_response):
+        with self.mock_browserid_verifier(response=mock_response):
             res = self.app.get("/1.0/sync/1.1", headers=headers, status=401)
         self.assertEqual(res.json["status"], "invalid-generation")
         mock_response["idpClaims"] = {"fxa-generation": 10}
-        with self.mock_verifier(response=mock_response):
+        with self.mock_browserid_verifier(response=mock_response):
             res = self.app.get("/1.0/sync/1.1", headers=headers, status=401)
         self.assertEqual(res.json["status"], "invalid-generation")
         # Equal generation numbers are accepted.
         mock_response["idpClaims"] = {"fxa-generation": 12}
-        with self.mock_verifier(response=mock_response):
+        with self.mock_browserid_verifier(response=mock_response):
             res2 = self.app.get("/1.0/sync/1.1", headers=headers)
         self.assertEqual(res1.json["uid"], res2.json["uid"])
         self.assertEqual(res1.json["api_endpoint"], res2.json["api_endpoint"])
         # Later generation numbers are accepted.
         # Again, the node assignment should not change.
         mock_response["idpClaims"] = {"fxa-generation": 13}
-        with self.mock_verifier(response=mock_response):
+        with self.mock_browserid_verifier(response=mock_response):
             res2 = self.app.get("/1.0/sync/1.1", headers=headers)
         self.assertEqual(res1.json["uid"], res2.json["uid"])
         self.assertEqual(res1.json["api_endpoint"], res2.json["api_endpoint"])
         # And that should lock out the previous generation number
         mock_response["idpClaims"] = {"fxa-generation": 12}
-        with self.mock_verifier(response=mock_response):
+        with self.mock_browserid_verifier(response=mock_response):
             res = self.app.get("/1.0/sync/1.1", headers=headers, status=401)
         self.assertEqual(res.json["status"], "invalid-generation")
         # Various nonsense generation numbers should give errors.
         mock_response["idpClaims"] = {"fxa-generation": "whatswrongwithyour"}
-        with self.mock_verifier(response=mock_response):
+        with self.mock_browserid_verifier(response=mock_response):
             res = self.app.get("/1.0/sync/1.1", headers=headers, status=401)
         self.assertEqual(res.json["status"], "invalid-generation")
         mock_response["idpClaims"] = {"fxa-generation": None}
-        with self.mock_verifier(response=mock_response):
+        with self.mock_browserid_verifier(response=mock_response):
             res = self.app.get("/1.0/sync/1.1", headers=headers, status=401)
         self.assertEqual(res.json["status"], "invalid-generation")
         mock_response["idpClaims"] = {"fxa-generation": "42"}
-        with self.mock_verifier(response=mock_response):
+        with self.mock_browserid_verifier(response=mock_response):
             res = self.app.get("/1.0/sync/1.1", headers=headers, status=401)
         self.assertEqual(res.json["status"], "invalid-generation")
         mock_response["idpClaims"] = {"fxa-generation": ["I", "HACK", "YOU"]}
-        with self.mock_verifier(response=mock_response):
+        with self.mock_browserid_verifier(response=mock_response):
             res = self.app.get("/1.0/sync/1.1", headers=headers, status=401)
         self.assertEqual(res.json["status"], "invalid-generation")
 
@@ -279,16 +349,16 @@ class TestService(unittest.TestCase):
         }
         # Start with no client-state header.
         headers = {'Authorization': 'BrowserID %s' % self._getassertion()}
-        with self.mock_verifier(response=mock_response):
+        with self.mock_browserid_verifier(response=mock_response):
             res = self.app.get('/1.0/sync/1.1', headers=headers)
         uid0 = res.json['uid']
         # No change == same uid.
-        with self.mock_verifier(response=mock_response):
+        with self.mock_browserid_verifier(response=mock_response):
             res = self.app.get('/1.0/sync/1.1', headers=headers)
         self.assertEqual(res.json['uid'], uid0)
         # Changing client-state header requires changing generation number.
         headers['X-Client-State'] = 'aaaa'
-        with self.mock_verifier(response=mock_response):
+        with self.mock_browserid_verifier(response=mock_response):
             res = self.app.get('/1.0/sync/1.1', headers=headers, status=401)
         self.assertEqual(res.json['status'], 'invalid-client-state')
         desc = res.json['errors'][0]['description']
@@ -296,40 +366,40 @@ class TestService(unittest.TestCase):
         # Change the client-state header, get a new uid.
         headers['X-Client-State'] = 'aaaa'
         mock_response["idpClaims"]["fxa-generation"] += 1
-        with self.mock_verifier(response=mock_response):
+        with self.mock_browserid_verifier(response=mock_response):
             res = self.app.get('/1.0/sync/1.1', headers=headers)
         uid1 = res.json['uid']
         self.assertNotEqual(uid1, uid0)
         # No change == same uid.
-        with self.mock_verifier(response=mock_response):
+        with self.mock_browserid_verifier(response=mock_response):
             res = self.app.get('/1.0/sync/1.1', headers=headers)
         self.assertEqual(res.json['uid'], uid1)
         # Send a client-state header, get a new uid.
         headers['X-Client-State'] = 'bbbb'
         mock_response["idpClaims"]["fxa-generation"] += 1
-        with self.mock_verifier(response=mock_response):
+        with self.mock_browserid_verifier(response=mock_response):
             res = self.app.get('/1.0/sync/1.1', headers=headers)
         uid2 = res.json['uid']
         self.assertNotEqual(uid2, uid0)
         self.assertNotEqual(uid2, uid1)
         # No change == same uid.
-        with self.mock_verifier(response=mock_response):
+        with self.mock_browserid_verifier(response=mock_response):
             res = self.app.get('/1.0/sync/1.1', headers=headers)
         self.assertEqual(res.json['uid'], uid2)
         # Use a previous client-state, get an auth error.
         headers['X-Client-State'] = 'aaaa'
-        with self.mock_verifier(response=mock_response):
+        with self.mock_browserid_verifier(response=mock_response):
             res = self.app.get('/1.0/sync/1.1', headers=headers, status=401)
         self.assertEqual(res.json['status'], 'invalid-client-state')
         desc = res.json['errors'][0]['description']
         self.assertTrue(desc.endswith('stale value'))
         del headers['X-Client-State']
-        with self.mock_verifier(response=mock_response):
+        with self.mock_browserid_verifier(response=mock_response):
             res = self.app.get('/1.0/sync/1.1', headers=headers, status=401)
         self.assertEqual(res.json['status'], 'invalid-client-state')
         headers['X-Client-State'] = 'aaaa'
         mock_response["idpClaims"]["fxa-generation"] += 1
-        with self.mock_verifier(response=mock_response):
+        with self.mock_browserid_verifier(response=mock_response):
             res = self.app.get('/1.0/sync/1.1', headers=headers, status=401)
         self.assertEqual(res.json['status'], 'invalid-client-state')
 
@@ -356,6 +426,57 @@ class TestService(unittest.TestCase):
         headers['X-Client-State'] = 'aaa'
         res = self.app.get('/1.0/sync/1.1', headers=headers)
         self.assertEqual(res.json['uid'], uid0)
+
+    def test_credentials_from_oauth_and_browserid(self):
+        # Send initial credentials via oauth.
+        headers_oauth = {
+            "Authorization": "Bearer %s" % self._gettoken(),
+            "X-KeyID": "12-YWFh",
+        }
+        res1 = self.app.get("/1.0/sync/1.1", headers=headers_oauth)
+        # Send the same credentials via BrowserID
+        headers_browserid = {
+            "Authorization": "BrowserID %s" % self._getassertion(),
+            "X-Client-State": "616161",
+        }
+        mock_response = {
+            "status": "okay",
+            "email": "test1@example.com",
+            "idpClaims": {"fxa-generation": 12},
+        }
+        with self.mock_browserid_verifier(response=mock_response):
+            res2 = self.app.get("/1.0/sync/1.1", headers=headers_browserid)
+        # They should get the same node assignment.
+        self.assertEqual(res1.json["uid"], res2.json["uid"])
+        self.assertEqual(res1.json["api_endpoint"], res2.json["api_endpoint"])
+        # Earlier generation number via BrowserID -> invalid-generation
+        mock_response["idpClaims"]['fxa-generation'] = 11
+        with self.mock_browserid_verifier(response=mock_response):
+            res = self.app.get("/1.0/sync/1.1", headers=headers_browserid,
+                               status=401)
+        self.assertEqual(res.json["status"], "invalid-generation")
+        # Earlier generation number via OAuth -> invalid-generation
+        headers_oauth['X-KeyID'] = '11-YWFh'
+        res = self.app.get("/1.0/sync/1.1", headers=headers_oauth, status=401)
+        self.assertEqual(res.json["status"], "invalid-generation")
+        # Change client-state via BrowserID.
+        headers_browserid['X-Client-State'] = '626262'
+        mock_response["idpClaims"]['fxa-generation'] = 42
+        with self.mock_browserid_verifier(response=mock_response):
+            res1 = self.app.get("/1.0/sync/1.1", headers=headers_browserid)
+        # Old OAuth credentials are rejected.
+        headers_oauth['X-KeyID'] = '12-YWFh'
+        res = self.app.get("/1.0/sync/1.1", headers=headers_oauth, status=401)
+        self.assertEqual(res.json["status"], "invalid-client-state")
+        headers_oauth['X-KeyID'] = '12-YmJi'
+        res = self.app.get("/1.0/sync/1.1", headers=headers_oauth, status=401)
+        self.assertEqual(res.json["status"], "invalid-generation")
+        # Updated OAuth credentials are accepted.
+        headers_oauth['X-KeyID'] = '42-YmJi'
+        res2 = self.app.get("/1.0/sync/1.1", headers=headers_oauth)
+        # They should again get the same node assignment.
+        self.assertEqual(res1.json["uid"], res2.json["uid"])
+        self.assertEqual(res1.json["api_endpoint"], res2.json["api_endpoint"])
 
     def test_client_specified_duration(self):
         headers = {'Authorization': 'BrowserID %s' % self._getassertion()}

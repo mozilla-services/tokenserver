@@ -15,6 +15,10 @@ notifications:
     use_notice: false
     skip_join: false
 
+before_install:
+  # https://github.com/travis-ci/travis-ci/issues/7940
+  - sudo rm -f /etc/boto.cfg
+
 install:
   - make install-dev
 

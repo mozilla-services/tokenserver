@@ -5,7 +5,7 @@ from browserid.tests.support import (make_assertion, get_keypair)
 
 
 # very dummy verifier
-class DummyVerifier(LocalVerifier):
+class DummyBrowserIdVerifier(LocalVerifier):
     def verify_certificate_chain(self, certs, *args, **kw):
         return certs[0]
 

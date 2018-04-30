@@ -8,7 +8,7 @@ import unittest
 
 from pyramid.config import Configurator
 
-from tokenserver.verifiers import RemoteVerifier, IBrowserIdVerifier
+from tokenserver.verifiers import RemoteBrowserIdVerifier, IBrowserIdVerifier
 from browserid.tests.support import make_assertion
 import browserid.errors
 
@@ -17,19 +17,19 @@ class mockobj(object):
     pass
 
 
-class TestRemoteVerifier(unittest.TestCase):
+class TestRemoteBrowserIdVerifier(unittest.TestCase):
 
     DEFAULT_SETTINGS = {  # noqa; identation below is non-standard
         "tokenserver.backend":
             "tokenserver.assignment.memorynode.MemoryNodeAssignmentBackend",
         "browserid.backend":
-            "tokenserver.verifiers.RemoteVerifier",
+            "tokenserver.verifiers.RemoteBrowserIdVerifier",
         "tokenserver.secrets.backend":
             "mozsvc.secrets.FixedSecrets",
         "tokenserver.secrets.secrets":
             "steve-let-the-dogs-out",
         "browserid.backend":
-            "tokenserver.verifiers.RemoteVerifier",
+            "tokenserver.verifiers.RemoteBrowserIdVerifier",
     }
 
     def _make_config(self, settings={}):
@@ -60,7 +60,7 @@ class TestRemoteVerifier(unittest.TestCase):
     def test_verifier_config_loading_defaults(self):
         config = self._make_config()
         verifier = config.registry.getUtility(IBrowserIdVerifier)
-        self.assertTrue(isinstance(verifier, RemoteVerifier))
+        self.assertTrue(isinstance(verifier, RemoteBrowserIdVerifier))
         self.assertEquals(verifier.verifier_url,
                           "https://verifier.accounts.firefox.com/v2")
         self.assertEquals(verifier.audiences, None)
@@ -79,7 +79,7 @@ class TestRemoteVerifier(unittest.TestCase):
                 "example.com trustyidp.org\nmockmyid.com",
         })
         verifier = config.registry.getUtility(IBrowserIdVerifier)
-        self.assertTrue(isinstance(verifier, RemoteVerifier))
+        self.assertTrue(isinstance(verifier, RemoteBrowserIdVerifier))
         self.assertEquals(verifier.verifier_url,
                           "https://trustyverifier.notascam.com/endpoint/path")
         self.assertEquals(verifier.audiences, "https://testmytoken.com")

@@ -11,6 +11,22 @@ To run them, you will need the following dependencies:
   * ZeroMQ development files (e.g. libzmq-dev package)
   * (for megabench) ssh access to the mozilla loads cluster
 
+You'll also need to configure the server under test to talk to a mock
+FxA OAuth verifier.  You can use this preconfigured one, which proxies
+valid tokens through to the FxA stage environment:
+
+  https://mock-oauth-stage.dev.lcip.org
+
+Or you can deploy one for your own use using the `mock-oauth-cfn.yml`
+CloudFormation template, like this:
+
+  $> aws cloudformation deploy \
+        --template-file=mock-oauth-cfn.yml \
+        --stack-name my-mock-oauth-stack \
+        --capabilities CAPABILITY_IAM \
+        --parameter-overrides \
+            DomainName=my-mock-oauth.dev.lcip.org
+
 Then do the following:
 
   $> make build       # installs local environment with all dependencies

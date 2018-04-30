@@ -13,6 +13,14 @@ build:
 	$(INSTALL) https://github.com/mozilla-services/loads/archive/master.zip
 	$(INSTALL) -U 'requests<2.13'
 
+# Update https://mock-oauth-stage.dev.lcip.org with latest config.
+mock-oauth-stage:
+	aws cloudformation deploy --template-file ./mock-oauth-cfn.yml --stack-name mock-oauth-stage --capabilities CAPABILITY_IAM
+
+# Run a quick sanity-check on the server's advertised config.
+config-check:
+	../local/bin/loads-runner --config=./config/test.ini --server-url=$(SERVER_URL) loadtest.NodeAssignmentTest.test_server_config
+
 # Run a single test from the local machine, for sanity-checking.
 test:
 	../local/bin/loads-runner --config=./config/test.ini --server-url=$(SERVER_URL) loadtest.NodeAssignmentTest.test_realistic
