@@ -157,6 +157,33 @@ class TestProcessAccountEvents(unittest.TestCase):
         records = list(self.backend.get_user_records(SERVICE, EMAIL))
         self.assertEquals(len(records), 0)
 
+    def test_password_change(self):
+        self.backend.allocate_user(SERVICE, EMAIL, generation=12)
+
+        process_account_event(self.config, message_body(
+            event="passwordChange",
+            uid=UID,
+            iss=ISS,
+            generation=43,
+        ))
+
+        user = self.backend.get_user(SERVICE, EMAIL)
+        self.assertEquals(user["generation"], 42)
+
+    def test_password_change_user_not_in_db(self):
+        records = list(self.backend.get_user_records(SERVICE, EMAIL))
+        self.assertEquals(len(records), 0)
+
+        process_account_event(self.config, message_body(
+            event="passwordChange",
+            uid=UID,
+            iss=ISS,
+            generation=43,
+        ))
+
+        records = list(self.backend.get_user_records(SERVICE, EMAIL))
+        self.assertEquals(len(records), 0)
+
     def test_malformed_events(self):
 
         # Unknown event type.
@@ -189,6 +216,15 @@ class TestProcessAccountEvents(unittest.TestCase):
         # Missing generation for reset events.
         process_account_event(self.config, message_body(
             event="reset",
+            uid=UID,
+            iss=ISS,
+        ))
+        self.assertMessageWasLogged("Invalid account message")
+        self.clearLogs()
+
+        # Missing generation for passwordChange events.
+        process_account_event(self.config, message_body(
+            event="passwordChange",
             uid=UID,
             iss=ISS,
         ))

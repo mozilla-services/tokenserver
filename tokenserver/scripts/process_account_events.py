@@ -6,13 +6,20 @@
 Script to process account-related events from an SQS queue.
 
 This script polls an SQS queue for events indicating activity on an upstream
-account.  The following event types are currently supported:
+account, as documented here:
+
+  https://github.com/mozilla/fxa-auth-server/blob/master/docs/service_notifications.md
+
+The following event types are currently supported:
 
   * "delete":  the account was deleted; we mark their records as retired
                so they'll be cleaned up by our garbage-collection process.
 
   * "reset":   the account password was reset; we update our copy of their
                generation number to disconnect other devices.
+
+  * "passwordChange":  the account password was changed; we update our copy
+                       of their generation number to disconnect other devices.
 
 Note that this is a purely optional administrative task, highly specific to
 Mozilla's internal Firefox-Accounts-supported deployment.
@@ -99,7 +106,7 @@ def process_account_event(config, body):
             if "@" not in uid:
                 raise ValueError("uid field does not contain issuer info")
             email = uid
-        if event_type == "reset":
+        if event_type in ("reset", "passwordChange",):
             generation = event["generation"]
     except (ValueError, KeyError), e:
         logger.exception("Invalid account message: %s", e)
@@ -111,21 +118,44 @@ def process_account_event(config, body):
                 logger.info("Processing account delete for %r", email)
                 backend.retire_user(email)
             elif event_type == "reset":
-                # Update the generation to one less than its new value.
-                # This locks out devices with younger generations
-                # while ensuring we dont error out when a device with
-                # the new generation shows up for the first time.
                 logger.info("Processing account reset for %r", email)
-                patterns = config.registry['endpoints_patterns']
-                for service in patterns:
-                    logger.debug("Processing account reset for service: %s",
-                                 service)
-                    user = backend.get_user(service, email)
-                    if user is not None:
-                        backend.update_user(service, user, generation - 1)
+                update_generation_number(config, backend, email, generation)
+            elif event_type == "passwordChange":
+                logger.info("Processing password change for %r", email)
+                update_generation_number(config, backend, email, generation)
             else:
                 logger.warning("Dropping unknown event type %r",
                                event_type)
+
+
+def update_generation_number(config, backend, email, generation):
+    """Update the maximum recorded generation number for the given user.
+
+    When the FxA server sends us an update to the user's generation
+    number, we want to update our high-water-mark in the DB in order to
+    immediately lock out disconnected devices.  However, since we don't
+    know the new value of X-Client-State that goes with it, we can't just
+    record the new generation number in the DB.  If we did, the first
+    device that tried to sync with the new generation number would appear
+    to have an incorrect X-Client-State value, and would be rejected.
+
+    Instead, we take advantage of the fact that it's a timestamp, and write
+    it into the DB at one millisecond less than its current value.  This
+    ensures that we lock out any devices with an older generation number
+    while avoiding errors with X-Client-State handling.
+
+    This does leave a tiny edge-case where we can fail to lock out older
+    devices, if the generation number changes twice in less than a
+    millisecond.  This is acceptably unlikely in practice, and we'll recover
+    as soon as we see an updated generation number as part of a sync.
+    """
+    patterns = config.registry['endpoints_patterns']
+    for service in patterns:
+        logger.debug("Recording generation change for service: %s",
+                     service)
+        user = backend.get_user(service, email)
+        if user is not None:
+            backend.update_user(service, user, generation - 1)
 
 
 def main(args=None):
