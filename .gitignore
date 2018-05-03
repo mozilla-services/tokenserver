@@ -1,10 +1,5 @@
 *.pyc
 *.swp
-lib
-lib64
-bin
-include
-man
 tokenserver.egg-info
 build
 dist
