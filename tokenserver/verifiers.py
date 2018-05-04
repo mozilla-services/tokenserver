@@ -3,6 +3,7 @@ import warnings
 
 from pyramid.threadlocal import get_current_registry
 from zope.interface import implements, Interface
+from zope.interface.interfaces import ComponentLookupError
 
 import socket
 import requests
@@ -23,14 +24,20 @@ DEFAULT_OAUTH_SCOPE = 'https://identity.mozilla.com/apps/oldsync'
 
 
 def get_browserid_verifier(registry=None):
-    """returns the registered browserid verifier."""
+    """Returns the registered browserid verifier.
+
+    If no browserid verifier is registered, raises ComponentLookupError.
+    """
     if registry is None:
         registry = get_current_registry()
     return registry.getUtility(IBrowserIdVerifier)
 
 
 def get_oauth_verifier(registry=None):
-    """returns the registered oauth verifier."""
+    """Returns the registered oauth verifier.
+
+    If no oauth verifier is registered, raises ComponentLookupError.
+    """
     if registry is None:
         registry = get_current_registry()
     return registry.getUtility(IOAuthVerifier)

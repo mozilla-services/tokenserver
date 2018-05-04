@@ -193,10 +193,18 @@ class TestService(unittest.TestCase):
         self.assertEqual(res.json['status'], 'error')
 
         # BrowserID verifier errors
+        errs = browserid.errors
         assertion = self._getassertion()
         headers = {'Authorization': 'BrowserID %s' % assertion}
+        # Unparseable assertion -> "invalid-credentials"
+        try:
+            '\xFF'.decode('utf8')
+        except UnicodeDecodeError as exc:
+            pass
+        with self.mock_browserid_verifier(exc=exc):
+            res = self.app.get('/1.0/sync/1.1', headers=headers, status=401)
+        self.assertEqual(res.json['status'], 'invalid-credentials')
         # Bad signature -> "invalid-credentials"
-        errs = browserid.errors
         with self.mock_browserid_verifier(exc=errs.InvalidSignatureError):
             res = self.app.get('/1.0/sync/1.1', headers=headers, status=401)
         self.assertEqual(res.json['status'], 'invalid-credentials')

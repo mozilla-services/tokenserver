@@ -15,6 +15,7 @@ from pyramid import httpexceptions
 import tokenlib
 
 from tokenserver.verifiers import (
+    ComponentLookupError,
     ConnectionError,
     get_browserid_verifier,
     get_oauth_verifier
@@ -48,17 +49,25 @@ def _discovery(request):
     discovery = {}
     discovery["services"] = services
     discovery["auth"] = request.url.rstrip("/")
-    verifier = get_browserid_verifier(request.registry)
-    discovery["browserid"] = {
-      "allowed_issuers": verifier.allowed_issuers,
-      "trusted_issuers": verifier.trusted_issuers,
-    }
-    verifier = get_oauth_verifier(request.registry)
-    discovery["oauth"] = {
-      "default_issuer": verifier.default_issuer,
-      "scope": verifier.scope,
-      "server_url": verifier.server_url,
-    }
+    try:
+        verifier = get_browserid_verifier(request.registry)
+    except ComponentLookupError:
+        pass
+    else:
+        discovery["browserid"] = {
+          "allowed_issuers": verifier.allowed_issuers,
+          "trusted_issuers": verifier.trusted_issuers,
+        }
+    try:
+        verifier = get_oauth_verifier(request.registry)
+    except ComponentLookupError:
+        pass
+    else:
+        discovery["oauth"] = {
+          "default_issuer": verifier.default_issuer,
+           "scope": verifier.scope,
+          "server_url": verifier.server_url,
+        }
     return discovery
 
 
@@ -106,6 +115,9 @@ def valid_authorization(request, **kwargs):
 def _valid_browserid_assertion(request, assertion):
     try:
         verifier = get_browserid_verifier(request.registry)
+    except ComponentLookupError:
+        raise _unauthorized(description='Unsupported')
+    try:
         with metrics_timer('tokenserver.assertion.verify', request):
             assertion = verifier.verify(assertion)
     except browserid.errors.Error as e:
@@ -167,6 +179,9 @@ def _valid_browserid_assertion(request, assertion):
 def _valid_oauth_token(request, token):
     try:
         verifier = get_oauth_verifier(request.registry)
+    except ComponentLookupError:
+        raise _unauthorized(description='Unsupported')
+    try:
         with metrics_timer('tokenserver.oauth.verify', request):
             token = verifier.verify(token)
     except (fxa.errors.Error, ConnectionError) as e:
