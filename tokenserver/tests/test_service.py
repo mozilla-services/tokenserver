@@ -532,3 +532,144 @@ class TestService(unittest.TestCase):
         headers = {'Authorization': 'BrowserID %s' % assertion}
         res = self.app.get('/1.0/sync/1.1', headers=headers, status=200)
         self.assertTrue('hashed_fxa_uid' in res.json)
+
+
+class TestServiceWithNoBackends(unittest.TestCase):
+
+    def setUp(self):
+        self.config = testing.setUp()
+        self.config.add_settings({ # noqa; identation below is non-standard
+            "tokenserver.backend":
+              "tokenserver.assignment.memorynode.MemoryNodeAssignmentBackend",
+            "tokenserver.secrets.backend":
+              "mozsvc.secrets.FixedSecrets",
+            "tokenserver.secrets.secrets":
+              "ssshh-its-a-secret",
+            "tokenserver.applications":
+              "sync-1.1",
+        })
+        self.config.include("tokenserver")
+        self.config.commit()
+        wsgiapp = self.config.make_wsgi_app()
+        self.app = TestApp(wsgiapp)
+
+    def test_discovery(self):
+        res = self.app.get('/')
+        self.assertEqual(res.json, {
+            'auth': 'http://localhost',
+            'services': {
+                'sync': ['1.1'],
+            },
+        })
+
+    def test_browserid_is_unsupported(self):
+        res = self.app.get('/1.0/sync/1.1', headers={
+            'Authorization': 'BrowserID xxxxxxxx'
+        }, status=401)
+        self.assertEqual(res.json['status'], 'error')
+        self.assertEqual(res.json['errors'][0]['description'], 'Unsupported')
+
+    def test_oauth_is_unsupported(self):
+        res = self.app.get('/1.0/sync/1.1', headers={
+            'Authorization': 'Bearer xxxxxxxx'
+        }, status=401)
+        self.assertEqual(res.json['status'], 'error')
+        self.assertEqual(res.json['errors'][0]['description'], 'Unsupported')
+
+
+class TestServiceWithNoBrowserID(unittest.TestCase):
+
+    def setUp(self):
+        self.config = testing.setUp()
+        self.config.add_settings({ # noqa; identation below is non-standard
+            "tokenserver.backend":
+              "tokenserver.assignment.memorynode.MemoryNodeAssignmentBackend",
+            "tokenserver.secrets.backend":
+              "mozsvc.secrets.FixedSecrets",
+            "tokenserver.secrets.secrets":
+              "ssshh-its-a-secret",
+            "tokenserver.applications":
+              "sync-1.1",
+            "oauth.backend":
+              "tokenserver.verifiers.RemoteOAuthVerifier",
+        })
+        self.config.include("tokenserver")
+        self.config.commit()
+        wsgiapp = self.config.make_wsgi_app()
+        self.app = TestApp(wsgiapp)
+
+    def test_discovery(self):
+        res = self.app.get('/')
+        self.assertEqual(res.json, {
+            'auth': 'http://localhost',
+            'services': {
+                'sync': ['1.1'],
+            },
+            'oauth': {
+                'default_issuer': 'api.accounts.firefox.com',
+                'scope': 'https://identity.mozilla.com/apps/oldsync',
+                'server_url': 'https://oauth.accounts.firefox.com/v1',
+            },
+        })
+
+    def test_browserid_is_unsupported(self):
+        res = self.app.get('/1.0/sync/1.1', headers={
+            'Authorization': 'BrowserID xxxxxxxx'
+        }, status=401)
+        self.assertEqual(res.json['status'], 'error')
+        self.assertEqual(res.json['errors'][0]['description'], 'Unsupported')
+
+    def test_oauth_is_supported(self):
+        res = self.app.get('/1.0/sync/1.1', headers={
+            'Authorization': 'Bearer xxxxxxxx'
+        }, status=401)
+        self.assertEqual(res.json['status'], 'invalid-credentials')
+
+
+class TestServiceWithNoOAuth(unittest.TestCase):
+
+    def setUp(self):
+        self.config = testing.setUp()
+        self.config.add_settings({ # noqa; identation below is non-standard
+            "tokenserver.backend":
+              "tokenserver.assignment.memorynode.MemoryNodeAssignmentBackend",
+            "tokenserver.secrets.backend":
+              "mozsvc.secrets.FixedSecrets",
+            "tokenserver.secrets.secrets":
+              "ssshh-its-a-secret",
+            "tokenserver.applications":
+              "sync-1.1",
+            "browserid.backend":
+              "tokenserver.verifiers.LocalBrowserIdVerifier",
+        })
+        self.config.include("tokenserver")
+        self.config.commit()
+        wsgiapp = self.config.make_wsgi_app()
+        self.app = TestApp(wsgiapp)
+
+    def test_discovery(self):
+        res = self.app.get('/')
+        self.assertEqual(res.json, {
+            'auth': 'http://localhost',
+            'services': {
+                'sync': ['1.1'],
+            },
+            'browserid': {
+                'allowed_issuers': None,
+                'trusted_issuers': None,
+            },
+        })
+
+    def test_browserid_is_supported(self):
+        assertion = make_assertion('x', 'y').encode('ascii')
+        res = self.app.get('/1.0/sync/1.1', headers={
+            'Authorization': 'BrowserID ' + assertion
+        }, status=401)
+        self.assertEqual(res.json['status'], 'invalid-credentials')
+
+    def test_oauth_is_unsupported(self):
+        res = self.app.get('/1.0/sync/1.1', headers={
+            'Authorization': 'Bearer xxxxxxxx'
+        }, status=401)
+        self.assertEqual(res.json['status'], 'error')
+        self.assertEqual(res.json['errors'][0]['description'], 'Unsupported')
