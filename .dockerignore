@@ -1,7 +1,7 @@
-.git
-docs
-bin
-include
-lib
+*.pyc
 local
-man
+*.egg-info
+*.swp
+\.coverage
+*~
+nosetests.xml
