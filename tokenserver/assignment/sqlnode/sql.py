@@ -100,7 +100,7 @@ where
 
 _GET_OLD_USER_RECORDS_FOR_SERVICE = sqltext("""\
 select
-    uid, nodes.node, created_at, replaced_at
+    uid, email, client_state, nodes.node, created_at, replaced_at
 from
     users left outer join nodes on users.nodeid = nodes.id
 where

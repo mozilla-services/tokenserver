@@ -99,7 +99,8 @@ class TestPurgeOldRecordsScript(unittest.TestCase):
         # Check that the proper delete requests were made to the service.
         secrets = self.config.registry.settings["tokenserver.secrets"]
         node_secret = secrets.get(self.service_node)[-1]
-        for environ in self.service_requests:
+        expected_kids = ["b", "a"]
+        for i, environ in enumerate(self.service_requests):
             # They must be to the correct path.
             self.assertEquals(environ["REQUEST_METHOD"], "DELETE")
             self.assertTrue(re.match("/1.0/[0-9]+", environ["PATH_INFO"]))
@@ -107,6 +108,11 @@ class TestPurgeOldRecordsScript(unittest.TestCase):
             token = hawkauthlib.get_id(environ)
             secret = tokenlib.get_derived_secret(token, secret=node_secret)
             self.assertTrue(hawkauthlib.check_signature(environ, secret))
+            userdata = tokenlib.parse_token(token, secret=node_secret)
+            self.assertTrue("uid" in userdata)
+            self.assertTrue("node" in userdata)
+            self.assertEqual(userdata["fxa_uid"], "test")
+            self.assertEqual(userdata["fxa_kid"], expected_kids[i])
 
         # Check that the user's current state is unaffected
         user = self.backend.get_user(service, email)

@@ -60,7 +60,7 @@ def purge_old_records(config_file, grace_period=-1, max_per_loop=10,
                 for row in rows:
                     logger.info("Purging uid %s on %s", row.uid, row.node)
                     if row.node is not None:
-                        delete_service_data(config, service, row.uid, row.node,
+                        delete_service_data(config, service, row,
                                             timeout=request_timeout)
                     backend.delete_user_record(service, row.uid)
                 if len(rows) < max_per_loop:
@@ -75,7 +75,7 @@ def purge_old_records(config_file, grace_period=-1, max_per_loop=10,
         config.end()
 
 
-def delete_service_data(config, service, uid, node, timeout=60):
+def delete_service_data(config, service, user, timeout=60):
     """Send a data-deletion request to the user's service node.
 
     This is a little bit of hackery to cause the user's service node to
@@ -84,14 +84,18 @@ def delete_service_data(config, service, uid, node, timeout=60):
     """
     secrets = config.registry.settings['tokenserver.secrets']
     pattern = config.registry['endpoints_patterns'][service]
-    node_secrets = secrets.get(node)
+    node_secrets = secrets.get(user.node)
     if not node_secrets:
-        msg = "The node %r does not have any shared secret" % (node,)
+        msg = "The node %r does not have any shared secret" % (user.node,)
         raise ValueError(msg)
-    user = {"uid": uid, "node": node}
-    token = tokenlib.make_token(user, secret=node_secrets[-1])
+    token = tokenlib.make_token({
+        "uid": user.uid,
+        "node": user.node,
+        "fxa_uid": user.email.split("@", 1)[0],
+        "fxa_kid": user.client_state
+    }, secret=node_secrets[-1])
     secret = tokenlib.get_derived_secret(token, secret=node_secrets[-1])
-    endpoint = pattern.format(uid=uid, service=service, node=node)
+    endpoint = pattern.format(uid=user.uid, service=service, node=user.node)
     auth = HawkAuth(token, secret)
     resp = requests.delete(endpoint, auth=auth, timeout=timeout)
     if resp.status_code >= 400 and resp.status_code != 404:
