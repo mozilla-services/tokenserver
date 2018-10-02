@@ -18,7 +18,6 @@ requires = [
     'SQLAlchemy',
     'testfixtures',
     'tokenlib',
-    'umemcache',
 ]
 
 tests_require = [
