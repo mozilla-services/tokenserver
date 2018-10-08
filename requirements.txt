@@ -28,7 +28,6 @@ SQLAlchemy==1.1.10
 testfixtures==5.1.1
 tokenlib==0.3.1
 translationstring==1.3
-umemcache==1.6.3
 urllib3==1.21.1
 venusian==1.1.0
 WebOb==1.7.2
