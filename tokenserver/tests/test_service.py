@@ -25,6 +25,7 @@ import browserid.errors
 from browserid.tests.support import make_assertion
 from browserid.utils import get_assertion_info
 
+from tokenlib.utils import decode_token_bytes
 
 here = os.path.dirname(__file__)
 
@@ -67,6 +68,11 @@ class TestService(unittest.TestCase):
 
     def clearLogs(self):
         del self.logs.records[:]
+
+    def unsafelyParseToken(self, token):
+        # For testing purposes, don't check HMAC or anything...
+        token = token.encode("utf8")
+        return json.loads(decode_token_bytes(token)[:-32].decode("utf8"))
 
     @contextlib.contextmanager
     def mock_browserid_verifier(self, response=None, exc=None):
@@ -525,6 +531,44 @@ class TestService(unittest.TestCase):
         self.app.get('/1.0/sync/1.1', headers=headers, status=200)
         self.assertMetricWasLogged('uid')
         self.assertMetricWasLogged('uid.first_seen_at')
+        self.assertMetricWasLogged('metrics_uid')
+        self.assertMetricWasLogged('metrics_device_id')
+
+    def test_uid_and_kid_from_browserid_assertion(self):
+        assertion = self._getassertion(email="testuser@example.com")
+        headers_browserid = {
+            "Authorization": "BrowserID %s" % (assertion,),
+            "X-Client-State": "616161",
+        }
+        mock_response = {
+            "status": "okay",
+            "email": "testuser@example.com",
+            "idpClaims": {"fxa-generation": 12},
+        }
+        with self.mock_browserid_verifier(response=mock_response):
+            res = self.app.get("/1.0/sync/1.1", headers=headers_browserid)
+        token = self.unsafelyParseToken(res.json["id"])
+        self.assertEqual(token["uid"], res.json["uid"])
+        self.assertEqual(token["fxa_uid"], "testuser")
+        self.assertEqual(token["fxa_kid"], "616161")
+        self.assertNotEqual(token["hashed_fxa_uid"], token["fxa_uid"])
+        self.assertEqual(token["hashed_fxa_uid"], res.json["hashed_fxa_uid"])
+        self.assertIn("hashed_device_id", token)
+
+    def test_uid_and_kid_from_oauth_token(self):
+        oauth_token = self._gettoken(email="testuser@example.com")
+        headers_oauth = {
+            "Authorization": "Bearer %s" % (oauth_token,),
+            "X-KeyID": "12-YWFh",
+        }
+        res = self.app.get("/1.0/sync/1.1", headers=headers_oauth)
+        token = self.unsafelyParseToken(res.json["id"])
+        self.assertEqual(token["uid"], res.json["uid"])
+        self.assertEqual(token["fxa_uid"], "testuser")
+        self.assertEqual(token["fxa_kid"], "616161")
+        self.assertNotEqual(token["hashed_fxa_uid"], token["fxa_uid"])
+        self.assertEqual(token["hashed_fxa_uid"], res.json["hashed_fxa_uid"])
+        self.assertIn("hashed_device_id", token)
 
     def test_metrics_uid_is_returned_in_response(self):
         assert "fxa.metrics_uid_secret_key" in self.config.registry.settings

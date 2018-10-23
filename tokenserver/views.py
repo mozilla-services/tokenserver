@@ -102,17 +102,53 @@ def valid_authorization(request, **kwargs):
     name, token = authz
 
     if name.lower() == 'browserid':
-        return _valid_browserid_assertion(request, token)
+        _validate_browserid_assertion(request, token)
+    elif name.lower() == 'bearer':
+        _validate_oauth_token(request, token)
+    else:
+        resp = _unauthorized(description='Unsupported')
+        resp.www_authenticate = ('BrowserID', {})
+        raise resp
 
-    if name.lower() == 'bearer':
-        return _valid_oauth_token(request, token)
+    authorization = request.validated['authorization']
+    email = authorization['email']
+    request.validated['fxa_uid'] = email.split("@", 1)[0]
 
-    resp = _unauthorized(description='Unsupported')
-    resp.www_authenticate = ('BrowserID', {})
-    raise resp
+    # For metrics purposes we expose a "anonymized" version of the
+    # FxA uid which as been hmaced with a server-side secret key.
+    # We call this the "metrics uid" and it correlates to identifiers
+    # used in other systems, such as client-side telemetry.
+    #
+    # For legacy reasons the active_counts.lua script expects a longer
+    # id stored in the key "uid", while other scripts can accept a
+    # shorter id stored in the key "metrics_uid".
+    request.metrics['email'] = email
+    id_key = request.registry.settings.get("fxa.metrics_uid_secret_key")
+    if id_key is None:
+        id_key = 'insecure'
+    hashed_fxa_uid_full = fxa_metrics_hash(email, id_key)
+    hashed_fxa_uid = hashed_fxa_uid_full[:32]
+    request.metrics['uid'] = hashed_fxa_uid_full
+    request.metrics['metrics_uid'] = hashed_fxa_uid
+
+    # Similarly, we expose an "anonymized" device-id for metrics purposes
+    # where available.
+    try:
+        device = authorization['idpClaims']['fxa-deviceId']
+        if device is None:
+            device = 'none'
+    except KeyError:
+        device = 'none'
+    hashed_device_id = fxa_metrics_hash(hashed_fxa_uid + device, id_key)[:32]
+    request.metrics['metrics_device_id'] = hashed_device_id
+
+    # We also pass the metrics id back to the client so it
+    # can include that in its own metrics events.
+    request.validated['hashed_fxa_uid'] = hashed_fxa_uid
+    request.validated['hashed_device_id'] = hashed_device_id
 
 
-def _valid_browserid_assertion(request, assertion):
+def _validate_browserid_assertion(request, assertion):
     try:
         verifier = get_browserid_verifier(request.registry)
     except ComponentLookupError:
@@ -151,32 +187,8 @@ def _valid_browserid_assertion(request, assertion):
     request.metrics['token.assertion.verify_success'] = 1
     request.validated['authorization'] = assertion
 
-    id_key = request.registry.settings.get("fxa.metrics_uid_secret_key")
-    if id_key is None:
-        id_key = 'insecure'
-    email = assertion['email']
-    fxa_uid_full = fxa_metrics_hash(email, id_key)
-    # "legacy" key used by heka active_counts.lua
-    request.metrics['uid'] = fxa_uid_full
-    request.metrics['email'] = email
 
-    # "new" keys use shorter values
-    fxa_uid = fxa_uid_full[:32]
-    request.validated['fxa_uid'] = fxa_uid
-    request.metrics['fxa_uid'] = fxa_uid
-
-    try:
-        device = assertion['idpClaims']['fxa-deviceId']
-        if device is None:
-            device = 'none'
-    except KeyError:
-        device = 'none'
-    device_id = fxa_metrics_hash(fxa_uid + device, id_key)[:32]
-    request.validated['device_id'] = device_id
-    request.metrics['device_id'] = device_id
-
-
-def _valid_oauth_token(request, token):
+def _validate_oauth_token(request, token):
     try:
         verifier = get_oauth_verifier(request.registry)
     except ComponentLookupError:
@@ -227,28 +239,6 @@ def _valid_oauth_token(request, token):
             request.validated['client-state'] = client_state
         except (IndexError, ValueError):
             raise _unauthorized("invalid-credentials")
-
-    id_key = request.registry.settings.get("fxa.metrics_uid_secret_key")
-    if id_key is None:
-        id_key = 'insecure'
-    email = token['email']
-    fxa_uid_full = fxa_metrics_hash(email, id_key)
-    # "legacy" key used by heka active_counts.lua
-    request.metrics['uid'] = fxa_uid_full
-    request.metrics['email'] = email
-
-    # "new" keys use shorter values
-    fxa_uid = fxa_uid_full[:32]
-    request.validated['fxa_uid'] = fxa_uid
-    request.metrics['fxa_uid'] = fxa_uid
-
-    # There's currently no notion of a "device id" in OAuth.
-    # In future we might be able to use e.g. the refresh token
-    # or some derivative of it here.
-    device = 'none'
-    device_id = fxa_metrics_hash(fxa_uid + device, id_key)[:32]
-    request.validated['device_id'] = device_id
-    request.metrics['device_id'] = device_id
 
 
 def valid_app(request, **kwargs):
@@ -405,7 +395,9 @@ def return_token(request):
         'node': user['node'],
         'expires': int(time.time()) + token_duration,
         'fxa_uid': request.validated['fxa_uid'],
-        'device_id': request.validated['device_id']
+        'fxa_kid': request.validated['client-state'],
+        'hashed_fxa_uid': request.validated['hashed_fxa_uid'],
+        'hashed_device_id': request.validated['hashed_device_id']
     }
     token = tokenlib.make_token(token_data, secret=secret)
     secret = tokenlib.get_derived_secret(token, secret=secret)
@@ -424,7 +416,7 @@ def return_token(request):
         'id': token,
         'key': secret,
         'uid': user['uid'],
-        'hashed_fxa_uid': request.validated['fxa_uid'],
+        'hashed_fxa_uid': request.validated['hashed_fxa_uid'],
         'api_endpoint': endpoint,
         'duration': token_duration,
         'hashalg': tokenlib.DEFAULT_HASHMOD
