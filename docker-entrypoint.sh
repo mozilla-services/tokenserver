@@ -19,7 +19,7 @@ case "$1" in
             --timeout ${TOKENSERVER_TIMEOUT-600} \
             --workers ${WEB_CONCURRENCY-1}\
             --graceful-timeout ${TOKENSERVER_GRACEFUL_TIMEOUT-660}\
-            --max-requests ${TOKENSERER__MAX_REQUESTS-5000}\
+            --max-requests ${TOKENSERVER_MAX_REQUESTS-5000}\
             --log-config "$_SETTINGS_FILE"
         ;;
 
