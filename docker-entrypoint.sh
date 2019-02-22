@@ -23,6 +23,10 @@ case "$1" in
             --log-config "$_SETTINGS_FILE"
         ;;
 
+    python)
+        exec "$@"
+        ;;
+
     test_all)
         $0 test_flake8
         $0 test_nose
