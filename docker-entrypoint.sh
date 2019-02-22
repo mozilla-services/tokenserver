@@ -15,11 +15,11 @@ case "$1" in
         exec gunicorn \
             --paste "$_SETTINGS_FILE" \
             --bind ${HOST-127.0.0.1}:${PORT-8000}\
-            --worker-class mozsvc.gunicorn_worker.MozSvcGeventWorker \
+            --worker-class gevent \
             --timeout ${TOKENSERVER_TIMEOUT-600} \
-            --workers ${WEB_CONCURRENCY-1}\
+            --workers ${WEB_CONCURRENCY-5}\
             --graceful-timeout ${TOKENSERVER_GRACEFUL_TIMEOUT-660}\
-            --max-requests ${TOKENSERVER_MAX_REQUESTS-5000}\
+            --max-requests ${TOKENSERVER_MAX_REQUESTS-20000}\
             --log-config "$_SETTINGS_FILE"
         ;;
 
