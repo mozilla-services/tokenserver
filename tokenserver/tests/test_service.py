@@ -58,6 +58,19 @@ class TestService(unittest.TestCase):
         self.mock_oauth_verifier_context.__exit__(None, None, None)
         self.mock_browserid_verifier_context.__exit__(None, None, None)
 
+    def assertExceptionWasLogged(self, msg):
+        for r in self.logs.records:
+            if r.msg == msg:
+                assert r.exc_info is not None
+                break
+        else:
+            assert False, "exception with message %r was not logged" % (msg,)
+
+    def assertMessageWasNotLogged(self, msg):
+        for r in self.logs.records:
+            if r.msg == msg:
+                assert False, "message %r was unexpectedly logged" % (msg,)
+
     def assertMetricWasLogged(self, key):
         """Check that a metric was logged during the request."""
         for r in self.logs.records:
@@ -226,13 +239,7 @@ class TestService(unittest.TestCase):
             res = self.app.get('/1.0/sync/1.1', headers=headers, status=503)
         self.assertMetricWasLogged('token.assertion.verify_failure')
         self.assertMetricWasLogged('token.assertion.connection_error')
-        # It should also log a full traceback of the error.
-        for r in self.logs.records:
-            if r.msg == "Unexpected verification error":
-                assert r.exc_info is not None
-                break
-        else:
-            assert False, "failed to log a traceback for ConnectionError"
+        self.assertExceptionWasLogged('Unexpected verification error')
         self.clearLogs()
         # Some other wacky error -> not captured
         with self.mock_browserid_verifier(exc=ValueError):
@@ -243,22 +250,24 @@ class TestService(unittest.TestCase):
         token = self._gettoken()
         headers = {'Authorization': 'Bearer %s' % token}
         # Bad token -> "invalid-credentials"
-        err = fxa.errors.TrustError({"code": 400, "errno": 123})
+        err = fxa.errors.ClientError({"code": 400, "errno": 108})
         with self.mock_oauth_verifier(exc=err):
             res = self.app.get('/1.0/sync/1.1', headers=headers, status=401)
         self.assertEqual(res.json['status'], 'invalid-credentials')
+        self.assertMetricWasLogged('token.oauth.errno.108')
+        self.assertMessageWasNotLogged('Unexpected verification error')
+        # Untrusted scopes -> "invalid-credentials"
+        err = fxa.errors.TrustError({"code": 400, "errno": 999})
+        with self.mock_oauth_verifier(exc=err):
+            res = self.app.get('/1.0/sync/1.1', headers=headers, status=401)
+        self.assertEqual(res.json['status'], 'invalid-credentials')
+        self.assertMessageWasNotLogged('Unexpected verification error')
         # Connection error -> 503
         with self.mock_oauth_verifier(exc=errs.ConnectionError):
             res = self.app.get('/1.0/sync/1.1', headers=headers, status=503)
         self.assertMetricWasLogged('token.oauth.verify_failure')
         self.assertMetricWasLogged('token.oauth.connection_error')
-        # It should also log a full traceback of the error.
-        for r in self.logs.records:
-            if r.msg == "Unexpected verification error":
-                assert r.exc_info is not None
-                break
-        else:
-            assert False, "failed to log a traceback for ConnectionError"
+        self.assertExceptionWasLogged('Unexpected verification error')
         self.clearLogs()
         # Some other wacky error -> not captured
         with self.mock_oauth_verifier(exc=ValueError):
