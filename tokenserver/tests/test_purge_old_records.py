@@ -26,19 +26,21 @@ class TestPurgeOldRecordsScript(unittest.TestCase):
     so we can test that data-deletion requests go through ok.
     """
 
-    def setUp(self):
-        super(TestPurgeOldRecordsScript, self).setUp()
-
+    @classmethod
+    def setUpClass(cls):
         # Run a testing service in a separate thread
         # so that we can test for proper calls being made.
-        self.service_requests = []
-        self.service_node = "http://localhost:8002"
-        self.service = make_server("localhost", 8002, self._service_app)
-        target = self.service.serve_forever
-        self.service_thread = threading.Thread(target=target)
-        self.service_thread.start()
+        cls.service_requests = []
+        cls.service_node = "http://localhost:8002"
+        cls.service = make_server("localhost", 8002, cls._service_app)
+        target = cls.service.serve_forever
+        cls.service_thread = threading.Thread(target=target)
+        cls.service_thread.start()
         # This silences nuisance on-by-default logging output.
-        self.service.RequestHandlerClass.log_request = lambda *a: None
+        cls.service.RequestHandlerClass.log_request = lambda *a: None
+
+    def setUp(self):
+        super(TestPurgeOldRecordsScript, self).setUp()
 
         # Make a stub tokenserver app in-line.
         self.config = pyramid.testing.setUp()
@@ -63,11 +65,16 @@ class TestPurgeOldRecordsScript(unittest.TestCase):
             self.backend._safe_execute('delete from nodes')
             self.backend._safe_execute('delete from users')
         pyramid.testing.tearDown()
-        self.service.shutdown()
-        self.service_thread.join()
+        del self.service_requests[:]
 
-    def _service_app(self, environ, start_response):
-        self.service_requests.append(environ)
+    @classmethod
+    def tearDownClass(cls):
+        cls.service.shutdown()
+        cls.service_thread.join()
+
+    @classmethod
+    def _service_app(cls, environ, start_response):
+        cls.service_requests.append(environ)
         start_response("200 OK", [])
         return ""
 
@@ -118,3 +125,26 @@ class TestPurgeOldRecordsScript(unittest.TestCase):
         user = self.backend.get_user(service, email)
         self.assertEquals(user["client_state"], "c")
         self.assertEquals(len(user["old_client_states"]), 0)
+
+    def test_purging_is_not_done_on_downed_nodes(self):
+        # Make some old user records.
+        service = "test-1.0"
+        email = "test@mozilla.com"
+        user = self.backend.allocate_user(service, email, client_state="a")
+        self.backend.update_user(service, user, client_state="b")
+        user_records = list(self.backend.get_user_records(service, email))
+        self.assertEqual(len(user_records), 2)
+
+        # With the node down, we should not purge any records.
+        self.backend.update_node(service, self.service_node, downed=1)
+        self.assertTrue(purge_old_records(self.ini_file, grace_period=0))
+        user_records = list(self.backend.get_user_records(service, email))
+        self.assertEqual(len(user_records), 2)
+        self.assertEqual(len(self.service_requests), 0)
+
+        # With the node back up, we should purge correctly.
+        self.backend.update_node(service, self.service_node, downed=0)
+        self.assertTrue(purge_old_records(self.ini_file, grace_period=0))
+        user_records = list(self.backend.get_user_records(service, email))
+        self.assertEqual(len(user_records), 1)
+        self.assertEqual(len(self.service_requests), 1)
