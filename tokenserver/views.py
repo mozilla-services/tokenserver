@@ -30,12 +30,16 @@ import browserid.utils
 
 logger = logging.getLogger("tokenserver")
 
+DEFAULT_TOKEN_DURATION = 5 * 60
+
+# We expect the FxA OAuth server to return these errnos as part of ordinary
+# operations, so don't log noisily about them.
+OAUTH_EXPECTED_ERRNOS = (108,)
+
 # A GET on / returns the discovery API
 
 discovery = Service(name='discovery', path='/')
 token = Service(name='token', path='/1.0/{application}/{version}')
-
-DEFAULT_TOKEN_DURATION = 5 * 60
 
 
 def get_service_name(application, version):
@@ -203,7 +207,10 @@ def _validate_oauth_token(request, token):
         # Log a full traceback for errors that are not a simple
         # "your token was bad and we dont trust it".
         if not isinstance(e, fxa.errors.TrustError):
-            logger.exception("Unexpected verification error")
+            if not isinstance(e, fxa.errors.InProtocolError):
+                logger.exception("Unexpected verification error")
+            elif e.errno not in OAUTH_EXPECTED_ERRNOS:
+                logger.exception("Unexpected verification error")
         # Report an appropriate error code.
         if isinstance(e, ConnectionError):
             request.metrics['token.oauth.connection_error'] = 1
