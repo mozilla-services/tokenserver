@@ -3,12 +3,9 @@
 # service that can mock out FxA OAuth verification responses.
 #
 # When deployed, this API will proxy all HTTP requests through to a live
-# FxA OAuth server, with the following exceptions:
-#
-#  * `GET /config` will return a mocked default issuer.
-#  * `POST /v1/verify` will attempt to parse the submitted token as JSON.
-#     If it succeeds, then it will use the `status` and `body` fields from
-#     that JSON to return a mocked response.
+# FxA OAuth server except that `POST /v1/verify` will attempt to parse
+# the submitted token as JSON. If it succeeds, then it will use the `status`
+# and `body` fields from that JSON to return a mocked response.
 #
 # The idea is to let this API be used as a stand-in for the real FxA OAuth
 # server, and have it function correctly for manual testing with real accounts,
@@ -51,7 +48,7 @@ Parameters:
   MockIssuer:
     Type: "String"
     Default: "mockmyid.s3-us-west-2.amazonaws.com"
-    Description: "The mock BrowserID issuer to advertise in config"
+    Description: "The issuer domain to use for mock tokens"
   DomainName:
     Type: "String"
     Default: "mock-oauth-stage.dev.lcip.org"
@@ -119,28 +116,25 @@ Resources:
           }
 
           const HANDLERS = {
-
-            'GET:/config': function(event, context, callback) {
-              return callback(null, {
-                statusCode: 200,
-                headers: {
-                  "content-type": "application/json"
-                },
-                body: '{ "browserid": { "issuer": "${MockIssuer}" } }'
-              });
-            },
-
             'POST:/v1/verify': function(event, context, callback) {
               try {
                 const token = JSON.parse(event.body).token;
                 const mockResponse = JSON.parse(token);
+                const mockStatus = mockResponse.status || 200;
+                const mockBody = mockResponse.body || {};
+                // Ensure that successful responses always claim to be from
+                // the mock issuer. Otherwise you could use a mock token to
+                // any account, even accounts backed by accounts.firefox.com!
+                if (mockStatus < 400) {
+                  mockBody.issuer = "${MockIssuer}";
+                }
                 // Return the mocked response from the token.
                 return callback(null, {
-                  statusCode: mockResponse.status || 200,
+                  statusCode: mockStatus,
                   headers: {
                     "content-type": "application/json"
                   },
-                  body: JSON.stringify(mockResponse.body || {})
+                  body: JSON.stringify(mockBody)
                 });
               } catch (e) {
                 // If it's not a mock token, forward to real server.
