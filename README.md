@@ -108,6 +108,8 @@ contains the following fields:
 * `generation`: A monotonically increasing number provided by the FxA server, indicating
                 the last time at which the user's login credentials were changed.
 * `client_state`: The hash of the user's sync encryption key.
+* `keys_changed_at`: A monotonically increasing timestamp provided by the FxA server, indicating
+                the last time at which the user's encryption keys were changed.
 * `created_at`: Timestamp at which this node-assignment record was created.
 * `replaced_at`: Timestamp at which this node-assignment record was replaced by a newer assignment, if any.
 
@@ -124,9 +126,12 @@ revoked immediately when the user's credentials are changed.
 The `client_state` column is used to detect when the user's encryption key changes.
 When it sees a new value for `client_state`, Tokenserver will replace the user's node assignment
 with a new one, so that data encrypted with the new key will be written into a different
-storage "bucket" on the storage nodes. Tokenserver communicates this value to the storage nodes
-in the `fxa_kid` field (which unfortunately differs from the `X-KeyID` header used by OAuth clients,
-due to some inconsistencies in tracking the timestamp at which the key material changed).
+storage "bucket" on the storage nodes.
+
+The `keys_changed_at` column tracks the timestamp at which the user's encryption keys were
+last changed. Tokenserver uses it along with `client_state` to construct the `fxa_kid` field that is
+communicated to the storage nodes. (The value of `fxa_kid` is not stored directly because clients
+using BrowserID to not provide it as a single field).
 
 When replacing a user's node assignment, the previous column is not deleted immediately.
 Instead, it is marked as "replaced" by setting the `replaced_at` timestamp, and then a background

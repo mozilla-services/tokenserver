@@ -226,10 +226,13 @@ def _validate_oauth_token(request, token):
     kid = request.headers.get('X-KeyID')
     if kid:
         try:
-            # The kid combines a timestamp and a hash of the key material.
-            # Unfortunately the timestamp is not guaranteed to be the same
-            # as the `generation` number from BrowserID assertions.
-            _, client_state = kid.split("-", 1)
+            # The kid combines a timestamp and a hash of the key material,
+            # so we can decode it into equivalent information to what we
+            # get out of a BrowserID assertion.
+            keys_changed_at, client_state = kid.split("-", 1)
+            keys_changed_at = int(keys_changed_at)
+            idpClaims = request.validated['authorization']['idpClaims']
+            idpClaims['fxa-keysChangedAt'] = keys_changed_at
             client_state = browserid.utils.decode_bytes(client_state)
             client_state = client_state.encode('hex')
             if not 1 <= len(client_state) <= 32:
@@ -330,10 +333,14 @@ def return_token(request):
         idp_claims = request.validated['authorization']['idpClaims']
     except KeyError:
         generation = 0
+        keys_changed_at = 0
     else:
         generation = idp_claims.get('fxa-generation', 0)
         if not isinstance(generation, (int, long)):
             raise _unauthorized("invalid-generation")
+        keys_changed_at = idp_claims.get('fxa-keysChangedAt', 0)
+        if not isinstance(keys_changed_at, (int, long)):
+            raise _unauthorized("invalid-credentials", description="invalid keysChangedAt")
 
     application = request.validated['application']
     version = request.validated['version']
@@ -349,12 +356,19 @@ def return_token(request):
             raise _unauthorized('new-users-disabled')
         with metrics_timer('tokenserver.backend.allocate_user', request):
             user = backend.allocate_user(service, email, generation,
-                                         client_state)
+                                         client_state, keys_changed_at)
 
     # Update if this client is ahead of previously-seen clients.
     updates = {}
     if generation > user['generation']:
         updates['generation'] = generation
+    if keys_changed_at > user['keys_changed_at']:
+        # If there's a generation number available, then
+        # a change in keys should correspond to a change in generation number.
+        if generation > 0 and user['generation'] > 0 and 'generation' not in updates:
+            raise _unauthorized(
+                'new keys_changed_at value with no generation change')
+        updates['keys_changed_at'] = keys_changed_at
     if client_state != user['client_state']:
         # Don't revert from some-client-state to no-client-state.
         if not client_state:
@@ -362,12 +376,11 @@ def return_token(request):
         # Don't revert to a previous client-state.
         if client_state in user['old_client_states']:
             raise _invalid_client_state('stale value')
-        # If we have a generation number, then
-        # don't update client-state without a change in generation number.
-        if generation > 0:
-            if user['generation'] > 0 and 'generation' not in updates:
-                raise _invalid_client_state(
-                    'new value with no generation change')
+        # If the IdP has been sending keys_changed_at timestamps, then
+        # don't update client-state without a change in keys_changed_at.
+        if user['keys_changed_at'] > 0 and 'keys_changed_at' not in updates:
+            raise _invalid_client_state(
+                'new value with no keys_changed_at change')
         updates['client_state'] = client_state
     if updates:
         with metrics_timer('tokenserver.backend.update_user', request):
@@ -379,6 +392,11 @@ def return_token(request):
     # client may have raced with a concurrent update.
     if generation > 0 and user['generation'] > generation:
         raise _unauthorized("invalid-generation")
+
+    # Error out if this client somehow has old keys and we didn't detect it above
+    # when checking client_state.
+    if keys_changed_at > 0 and user['keys_changed_at'] > keys_changed_at:
+        raise _unauthorized("invalid-credentials")
 
     secrets = settings['tokenserver.secrets']
     node_secrets = secrets.get(user['node'])
@@ -399,12 +417,22 @@ def return_token(request):
         if 0 < requested_duration < token_duration:
             token_duration = requested_duration
 
+    # Format `fxa_kid` using the same logic as used for OAuth Scoped keys.
+    # If we don't have a `keys_changed_at` then we fall back to using the
+    # generation number, which is what FxA used to use for this purpose.
+    if keys_changed_at == 0:
+        keys_changed_at = generation
+    fxa_kid = "{:013d}-{}".format(
+        keys_changed_at,
+        request.validated['client-state']
+    )
+
     token_data = {
         'uid': user['uid'],
         'node': user['node'],
         'expires': int(time.time()) + token_duration,
         'fxa_uid': request.validated['fxa_uid'],
-        'fxa_kid': request.validated['client-state'],
+        'fxa_kid': fxa_kid,
         'hashed_fxa_uid': request.validated['hashed_fxa_uid'],
         'hashed_device_id': request.validated['hashed_device_id']
     }
