@@ -41,7 +41,8 @@ _Base = declarative_base()
 
 _GET_USER_RECORDS = sqltext("""\
 select
-    uid, nodes.node, generation, client_state, created_at, replaced_at
+    uid, nodes.node, generation, keys_changed_at, client_state, created_at,
+    replaced_at
 from
     users left outer join nodes on users.nodeid = nodes.id
 where
@@ -56,9 +57,11 @@ limit
 _CREATE_USER_RECORD = sqltext("""\
 insert into
     users
-    (service, email, nodeid, generation, client_state, created_at, replaced_at)
+    (service, email, nodeid, generation, keys_changed_at, client_state,
+     created_at, replaced_at)
 values
-    (:service, :email, :nodeid, :generation, :client_state, :timestamp, NULL)
+    (:service, :email, :nodeid, :generation, :keys_changed_at, :client_state,
+     :timestamp, NULL)
 """)
 
 
@@ -100,8 +103,8 @@ where
 
 _GET_OLD_USER_RECORDS_FOR_SERVICE = sqltext("""\
 select
-    uid, email, client_state, nodes.node, nodes.downed,
-    created_at, replaced_at
+    uid, email, generation, keys_changed_at, client_state,
+    nodes.node, nodes.downed, created_at, replaced_at
 from
     users left outer join nodes on users.nodeid = nodes.id
 where
@@ -266,6 +269,7 @@ class SQLNodeAssignment(object):
                 'uid': cur_row.uid,
                 'node': cur_row.node,
                 'generation': cur_row.generation,
+                'keys_changed_at': cur_row.keys_changed_at,
                 'client_state': cur_row.client_state,
                 'old_client_states': {},
                 'first_seen_at': cur_row.created_at
@@ -293,7 +297,7 @@ class SQLNodeAssignment(object):
             res.close()
 
     def allocate_user(self, service, email, generation=0, client_state='',
-                      node=None, timestamp=None):
+                      keys_changed_at=0, node=None, timestamp=None):
         if timestamp is None:
             timestamp = get_timestamp()
         if node is None:
@@ -302,8 +306,8 @@ class SQLNodeAssignment(object):
             nodeid = self.get_node_id(service, node)
         params = {
             'service': service, 'email': email, 'nodeid': nodeid,
-            'generation': generation, 'client_state': client_state,
-            'timestamp': timestamp
+            'generation': generation, 'keys_changed_at': keys_changed_at,
+            'client_state': client_state, 'timestamp': timestamp
         }
         res = self._safe_execute(_CREATE_USER_RECORD, **params)
         res.close()
@@ -312,13 +316,14 @@ class SQLNodeAssignment(object):
             'uid': res.lastrowid,
             'node': node,
             'generation': generation,
+            'keys_changed_at': keys_changed_at,
             'client_state': client_state,
             'old_client_states': {},
             'first_seen_at': timestamp
         }
 
     def update_user(self, service, user, generation=None, client_state=None,
-                    node=None):
+                    keys_changed_at=None, node=None):
         if client_state is None and node is None:
             # We're just updating the generation, re-use the existing record.
             if generation is not None:
@@ -356,16 +361,22 @@ class SQLNodeAssignment(object):
                 generation = max(user['generation'], generation)
             else:
                 generation = user['generation']
+            if keys_changed_at is not None:
+                keys_changed_at = max(user['keys_changed_at'], keys_changed_at)
+            else:
+                keys_changed_at = user['keys_changed_at']
             now = get_timestamp()
             params = {
                 'service': service, 'email': user['email'],
                 'nodeid': nodeid, 'generation': generation,
+                'keys_changed_at': keys_changed_at,
                 'client_state': client_state, 'timestamp': now,
             }
             res = self._safe_execute(_CREATE_USER_RECORD, **params)
             res.close()
             user['uid'] = res.lastrowid
             user['generation'] = generation
+            user['keys_changed_at'] = keys_changed_at
             user['old_client_states'][user['client_state']] = True
             user['client_state'] = client_state
             # mark old records as having been replaced.

@@ -52,7 +52,9 @@ build-requirements:
 	$(TEMPDIR)/bin/pip freeze | grep -v -- '^-e' > requirements.txt
 
 tests: install-dev
-	$(VENV)/bin/nosetests tokenserver/tests
+	# By default nose will skip tests in executable files, but that's annoying
+	# when working in WSL with a checkout mounted from the native filesystem.
+	$(VENV)/bin/nosetests --exe tokenserver/tests
 
 flake8: install-dev
 	$(VENV)/bin/flake8 tokenserver
