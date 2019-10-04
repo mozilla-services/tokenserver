@@ -41,7 +41,7 @@ def includeme(config):
     if "browserid.backend" in settings:
         load_and_register("browserid", config)
 
-    # initialize the auth backend if it exists
+    # initialize the oauth backend if it exists
     if "oauth.backend" in settings:
         load_and_register("oauth", config)
 
