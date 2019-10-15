@@ -356,7 +356,8 @@ def return_token(request):
             raise _unauthorized('new-users-disabled')
         with metrics_timer('tokenserver.backend.allocate_user', request):
             user = backend.allocate_user(service, email, generation,
-                                         client_state, keys_changed_at)
+                                         client_state,
+                                         keys_changed_at=keys_changed_at)
 
     # Update if this client is ahead of previously-seen clients.
     updates = {}
