@@ -226,13 +226,10 @@ def _validate_oauth_token(request, token):
     kid = request.headers.get('X-KeyID')
     if kid:
         try:
-            # The kid combines a timestamp and a hash of the key material,
-            # so we can decode it into equivalent information to what we
-            # get out of a BrowserID assertion.
-            generation, client_state = kid.split("-", 1)
-            generation = int(generation)
-            idpClaims = request.validated['authorization']['idpClaims']
-            idpClaims['fxa-generation'] = generation
+            # The kid combines a timestamp and a hash of the key material.
+            # Unfortunately the timestamp is not guaranteed to be the same
+            # as the `generation` number from BrowserID assertions.
+            _, client_state = kid.split("-", 1)
             client_state = browserid.utils.decode_bytes(client_state)
             client_state = client_state.encode('hex')
             if not 1 <= len(client_state) <= 32:
@@ -331,11 +328,13 @@ def return_token(request):
     email = request.validated['authorization']['email']
     try:
         idp_claims = request.validated['authorization']['idpClaims']
-        generation = idp_claims['fxa-generation']
-        if not isinstance(generation, (int, long)):
-            raise _unauthorized("invalid-generation")
     except KeyError:
         generation = 0
+    else:
+        generation = idp_claims.get('fxa-generation', 0)
+        if not isinstance(generation, (int, long)):
+            raise _unauthorized("invalid-generation")
+
     application = request.validated['application']
     version = request.validated['version']
     pattern = request.validated['pattern']
@@ -363,19 +362,22 @@ def return_token(request):
         # Don't revert to a previous client-state.
         if client_state in user['old_client_states']:
             raise _invalid_client_state('stale value')
-        # If the IdP has been sending generation numbers, then
+        # If we have a generation number, then
         # don't update client-state without a change in generation number.
-        if user['generation'] > 0 and 'generation' not in updates:
-            raise _invalid_client_state('new value with no generation change')
+        if generation > 0:
+            if user['generation'] > 0 and 'generation' not in updates:
+                raise _invalid_client_state(
+                    'new value with no generation change')
         updates['client_state'] = client_state
     if updates:
         with metrics_timer('tokenserver.backend.update_user', request):
             backend.update_user(service, user, **updates)
 
-    # Error out if this client is behind some previously-seen client.
+    # Error out if this client is behind the generation number of some
+    # previously-seen client.
     # This is done after the updates because some other, even more up-to-date
     # client may have raced with a concurrent update.
-    if user['generation'] > generation:
+    if generation > 0 and user['generation'] > generation:
         raise _unauthorized("invalid-generation")
 
     secrets = settings['tokenserver.secrets']
