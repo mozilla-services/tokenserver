@@ -118,6 +118,8 @@ The `generation` column is used to detect when the user's FxA credentials have b
 and to lock out clients that have not been updated with the latest credentials.
 Tokenserver tracks the highest value of `generation` that it has ever seen for a user,
 and rejects BrowserID assertions in which the `generation` number is less than that high-water mark.
+Note that OAuth clients do not provide a `generation` number, because OAuth tokens get
+revoked immediately when the user's credentials are changed.
 
 The `client_state` column is used to detect when the user's encryption key changes.
 When it sees a new value for `client_state`, Tokenserver will replace the user's node assignment

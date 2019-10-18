@@ -307,15 +307,16 @@ class TestService(unittest.TestCase):
             res2 = self.app.get("/1.0/sync/1.1", headers=headers)
         self.assertEqual(res1.json["uid"], res2.json["uid"])
         self.assertEqual(res1.json["api_endpoint"], res2.json["api_endpoint"])
-        # Previous generation numbers get an invalid-generation response.
+        # Clients that don't report generation number are still allowed.
         del mock_response["idpClaims"]
         with self.mock_browserid_verifier(response=mock_response):
-            res = self.app.get("/1.0/sync/1.1", headers=headers, status=401)
-        self.assertEqual(res.json["status"], "invalid-generation")
+            res2 = self.app.get("/1.0/sync/1.1", headers=headers)
+        self.assertEqual(res1.json["uid"], res2.json["uid"])
         mock_response["idpClaims"] = {"some-nonsense": "lolwut"}
         with self.mock_browserid_verifier(response=mock_response):
-            res = self.app.get("/1.0/sync/1.1", headers=headers, status=401)
-        self.assertEqual(res.json["status"], "invalid-generation")
+            res2 = self.app.get("/1.0/sync/1.1", headers=headers)
+        self.assertEqual(res1.json["uid"], res2.json["uid"])
+        # But previous generation numbers get an invalid-generation response.
         mock_response["idpClaims"] = {"fxa-generation": 10}
         with self.mock_browserid_verifier(response=mock_response):
             res = self.app.get("/1.0/sync/1.1", headers=headers, status=401)
@@ -469,23 +470,17 @@ class TestService(unittest.TestCase):
         with self.mock_browserid_verifier(response=mock_response):
             res = self.app.get("/1.0/sync/1.1", headers=headers_browserid,
                                status=401)
+        self.assertEqual(res1.json["api_endpoint"], res2.json["api_endpoint"])
         self.assertEqual(res.json["status"], "invalid-generation")
-        # Earlier generation number via OAuth -> invalid-generation
+        # Earlier generation number via OAuth is accepted.
         headers_oauth['X-KeyID'] = '11-YWFh'
-        res = self.app.get("/1.0/sync/1.1", headers=headers_oauth, status=401)
-        self.assertEqual(res.json["status"], "invalid-generation")
+        res1 = self.app.get("/1.0/sync/1.1", headers=headers_oauth)
+        self.assertEqual(res1.json["api_endpoint"], res2.json["api_endpoint"])
         # Change client-state via BrowserID.
         headers_browserid['X-Client-State'] = '626262'
         mock_response["idpClaims"]['fxa-generation'] = 42
         with self.mock_browserid_verifier(response=mock_response):
             res1 = self.app.get("/1.0/sync/1.1", headers=headers_browserid)
-        # Old OAuth credentials are rejected.
-        headers_oauth['X-KeyID'] = '12-YWFh'
-        res = self.app.get("/1.0/sync/1.1", headers=headers_oauth, status=401)
-        self.assertEqual(res.json["status"], "invalid-client-state")
-        headers_oauth['X-KeyID'] = '12-YmJi'
-        res = self.app.get("/1.0/sync/1.1", headers=headers_oauth, status=401)
-        self.assertEqual(res.json["status"], "invalid-generation")
         # Updated OAuth credentials are accepted.
         headers_oauth['X-KeyID'] = '42-YmJi'
         res2 = self.app.get("/1.0/sync/1.1", headers=headers_oauth)
