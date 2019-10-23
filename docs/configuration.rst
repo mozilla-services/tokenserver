@@ -1,9 +1,8 @@
 Configuration
 =============
 
-The token server comes with a main configuration file that's used to
-run it. It's located at :file:`etc/tokenserver-dev.ini` and is a
-typical Paste configuration file.
+The tokenserver uses a typical Page `.ini` file for configuration, and
+an example file is located at `./etc/tokenserver-dev.ini`.
 
 Relevant sections:
 
