@@ -4,6 +4,8 @@
 # You can obtain one at http://mozilla.org/MPL/2.0/.
 
 import sys
+import re
+import fnmatch
 from tokenserver.util import monkey_patch_gevent
 
 
@@ -44,6 +46,9 @@ def includeme(config):
     # initialize the oauth backend if it exists
     if "oauth.backend" in settings:
         load_and_register("oauth", config)
+
+    # initialize node-type classifier
+    load_node_type_classifier(config)
 
     # load apps and set them up back in the setting
     key = 'tokenserver.applications'
@@ -130,6 +135,51 @@ def read_endpoints(config):
         load_endpoints(mapping, config)
 
     config.registry['endpoints_patterns'] = LazyDict(_read)
+
+
+def load_node_type_classifier(config):
+    """Load fnmatch-style patterns for classifying node type.
+
+    Given entries in a config file like this:
+
+        [tokenserver]
+        node_type_patterns =
+            foo:*.foo.com
+            bar:*bar*
+            default:*
+
+    Returns a classifier function that will take a string argument and
+    return the name of the first matching pattern, or None if no patterns
+    matched to string. Patterns are matched in the order specified in the
+    config file.
+    """
+    settings = config.registry.settings
+    patterns = settings.get('tokenserver.node_type_patterns', ())
+    if isinstance(patterns, basestring):
+        raise ValueError(
+            "Expected 'tokenserver.node_type_patterns' to be a list")
+    patterns = [p.split(":", 1) for p in patterns]
+    # For easy matching, compile all the patterns together into a single regex.
+    # A good regex engine would turn this into a single FSA to efficiently test
+    # all patterns simultaneously. Python's regex engine will do a left-to-right
+    # backtracking search, which is also fine for our purposes.
+    regexes = []
+    for label, pattern in patterns:
+        regexes.append("(?P<{}>{})".format(label, fnmatch.translate(pattern)))
+    try:
+        regex = re.compile("|".join(regexes))
+    except re.error:
+        raise ValueError("Invalid node_type_patterns")
+
+    def classify(node):
+        # N.B. `match` always matches from the start of the string.
+        m = regex.match(node)
+        if m is None:
+            return None
+        return m.lastgroup
+
+    settings['tokenserver.node_type_classifier'] = classify
+    return classify
 
 
 def main(global_config, **settings):
