@@ -269,7 +269,7 @@ class SQLNodeAssignment(object):
                 'uid': cur_row.uid,
                 'node': cur_row.node,
                 'generation': cur_row.generation,
-                'keys_changed_at': cur_row.keys_changed_at,
+                'keys_changed_at': cur_row.keys_changed_at or 0,
                 'client_state': cur_row.client_state,
                 'old_client_states': {},
                 'first_seen_at': cur_row.created_at

@@ -382,10 +382,16 @@ def return_token(request):
     if generation > user['generation']:
         updates['generation'] = generation
     if keys_changed_at > user['keys_changed_at']:
-        # If there's a generation number available, then
-        # a change in keys should correspond to a change in generation number.
+        # If there's a generation number available, then a change
+        # in keys should correspond to a change in generation number.
         if generation > 0 and 'generation' not in updates:
-            raise _unauthorized('invalid-keysChangedAt')
+            # TODO: We can't accurately detect this case until all servers are
+            # reliably writing keys_changed_at to the database, so it will need
+            # to wait and be deployed separately. In the meantime we check that
+            # it's at least using the most-recently-seen generation number.
+            # Remove this `if` once keys_changed_at is fully deployed.
+            if generation != user['generation']:
+                raise _unauthorized('invalid-keysChangedAt')
         updates['keys_changed_at'] = keys_changed_at
     if client_state != user['client_state']:
         # Don't revert from some-client-state to no-client-state.

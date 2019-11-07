@@ -473,14 +473,18 @@ class TestService(unittest.TestCase):
             res = self.app.get('/1.0/sync/1.1', headers=headers)
         token = self.unsafelyParseToken(res.json["id"])
         self.assertEqual(token["fxa_kid"], "0000000002345-YmJi")
-        # We'll error if it changes without a change in generation.
-        mock_response["idpClaims"]["fxa-keysChangedAt"] = 4567
-        headers["X-Client-State"] = "636363"
-        with self.mock_browserid_verifier(response=mock_response):
-            res = self.app.get('/1.0/sync/1.1', headers=headers, status=401)
-        self.assertEqual(res.json["status"], "invalid-keysChangedAt")
+        # TODO: ideally we will error if keysChangedAt changes without a
+        # change in generation, but we can't do that until all servers
+        # are running the latest version of the code.
+        # mock_response["idpClaims"]["fxa-keysChangedAt"] = 4567
+        # headers["X-Client-State"] = "636363"
+        # with self.mock_browserid_verifier(response=mock_response):
+        #     res = self.app.get('/1.0/sync/1.1', headers=headers, status=401)
+        # self.assertEqual(res.json["status"], "invalid-keysChangedAt")
         # But accept further updates if both values change in unison.
         mock_response["idpClaims"]["fxa-generation"] = 4567
+        mock_response["idpClaims"]["fxa-keysChangedAt"] = 4567
+        headers["X-Client-State"] = "636363"
         with self.mock_browserid_verifier(response=mock_response):
             res = self.app.get('/1.0/sync/1.1', headers=headers)
         token = self.unsafelyParseToken(res.json["id"])
@@ -540,6 +544,42 @@ class TestService(unittest.TestCase):
             res = self.app.get('/1.0/sync/1.1', headers=headers_browserid)
         token = self.unsafelyParseToken(res.json["id"])
         self.assertEqual(token["fxa_kid"], "0000000003456-Y2Nj")
+
+    def test_kid_change_during_gradual_tokenserver_rollout(self):
+        # User hits updated tokenserver node, writing keys_changed_at to db.
+        headers = {
+            "Authorization": "BrowserID %s" % self._getassertion(),
+            "X-Client-State": "616161",
+        }
+        mock_response = {
+            "status": "okay",
+            "email": "test@mozilla.com",
+            "idpClaims": {
+                "fxa-generation": 1234,
+                "fxa-keysChangedAt": 1200,
+            },
+        }
+        with self.mock_browserid_verifier(response=mock_response):
+            self.app.get('/1.0/sync/1.1', headers=headers)
+        user = self.backend.get_user("sync-1.1", mock_response["email"])
+        self.assertEqual(user["generation"], 1234)
+        self.assertEqual(user["keys_changed_at"], 1200)
+        # User does a password reset on their Firefox Account.
+        mock_response["idpClaims"]["fxa-generation"] = 2345
+        mock_response["idpClaims"]["fxa-keysChangedAt"] = 2345
+        headers["X-Client-State"] = "626262"
+        # They sync again, but hit a tokenserver node that isn't updated yet.
+        # Simulate this by writing the updated data directly to the backend.
+        self.backend.update_user("sync-1.1", user,
+                                 generation=2345,
+                                 client_state="626262")
+        # They sync again, hitting an updated tokenserver node.
+        # This should succeed, despite keys_changed_at appearing to have
+        # changed without any corresponding change in generation number.
+        with self.mock_browserid_verifier(response=mock_response):
+            res = self.app.get('/1.0/sync/1.1', headers=headers)
+        token = self.unsafelyParseToken(res.json["id"])
+        self.assertEqual(token["fxa_kid"], "0000000002345-YmJi")
 
     def test_client_state_cannot_revert_to_empty(self):
         # Start with a client-state header.
