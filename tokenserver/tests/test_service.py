@@ -361,7 +361,7 @@ class TestService(unittest.TestCase):
         mock_response = {
             "status": "okay",
             "email": "test@mozilla.com",
-            "idpClaims": {"fxa-generation": 1234},
+            "idpClaims": {"fxa-generation": 1234, "fxa-keysChangedAt": 1234},
         }
         # Start with no client-state header.
         headers = {'Authorization': 'BrowserID %s' % self._getassertion()}
@@ -372,16 +372,24 @@ class TestService(unittest.TestCase):
         with self.mock_browserid_verifier(response=mock_response):
             res = self.app.get('/1.0/sync/1.1', headers=headers)
         self.assertEqual(res.json['uid'], uid0)
-        # Changing client-state header requires changing generation number.
+        # Changing client-state header requires changing generation.
         headers['X-Client-State'] = 'aaaa'
         with self.mock_browserid_verifier(response=mock_response):
             res = self.app.get('/1.0/sync/1.1', headers=headers, status=401)
         self.assertEqual(res.json['status'], 'invalid-client-state')
         desc = res.json['errors'][0]['description']
         self.assertTrue(desc.endswith('new value with no generation change'))
-        # Change the client-state header, get a new uid.
-        headers['X-Client-State'] = 'aaaa'
+        # Changing client-state header requires changing keys_changed_at.
         mock_response["idpClaims"]["fxa-generation"] += 1
+        headers['X-Client-State'] = 'aaaa'
+        with self.mock_browserid_verifier(response=mock_response):
+            res = self.app.get('/1.0/sync/1.1', headers=headers, status=401)
+        self.assertEqual(res.json['status'], 'invalid-client-state')
+        desc = res.json['errors'][0]['description']
+        self.assertTrue(desc.endswith('with no keys_changed_at change'))
+        # Change the client-state header, get a new uid.
+        mock_response["idpClaims"]["fxa-keysChangedAt"] += 1
+        headers['X-Client-State'] = 'aaaa'
         with self.mock_browserid_verifier(response=mock_response):
             res = self.app.get('/1.0/sync/1.1', headers=headers)
         uid1 = res.json['uid']
@@ -393,6 +401,7 @@ class TestService(unittest.TestCase):
         # Send a client-state header, get a new uid.
         headers['X-Client-State'] = 'bbbb'
         mock_response["idpClaims"]["fxa-generation"] += 1
+        mock_response["idpClaims"]["fxa-keysChangedAt"] += 1
         with self.mock_browserid_verifier(response=mock_response):
             res = self.app.get('/1.0/sync/1.1', headers=headers)
         uid2 = res.json['uid']
@@ -415,15 +424,168 @@ class TestService(unittest.TestCase):
         self.assertEqual(res.json['status'], 'invalid-client-state')
         headers['X-Client-State'] = 'aaaa'
         mock_response["idpClaims"]["fxa-generation"] += 1
+        mock_response["idpClaims"]["fxa-keysChangedAt"] += 1
         with self.mock_browserid_verifier(response=mock_response):
             res = self.app.get('/1.0/sync/1.1', headers=headers, status=401)
         self.assertEqual(res.json['status'], 'invalid-client-state')
+
+    def test_fxa_kid_change(self):
+        # Starting off not reporting keys_changed_at.
+        # We don't expect to encounter this in production, but it might
+        # happen to self-hosters who update tokenserver without updating
+        # their FxA stack.
+        headers = {
+            "Authorization": "BrowserID %s" % self._getassertion(),
+            "X-Client-State": "616161",
+        }
+        mock_response = {
+            "status": "okay",
+            "email": "test@mozilla.com",
+            "idpClaims": {"fxa-generation": 1234},
+        }
+        with self.mock_browserid_verifier(response=mock_response):
+            res = self.app.get('/1.0/sync/1.1', headers=headers)
+        token = self.unsafelyParseToken(res.json["id"])
+        self.assertEqual(token["fxa_kid"], "0000000001234-YWFh")
+        # Now pretend we updated FxA and it started sending keys_changed_at.
+        mock_response["idpClaims"]["fxa-generation"] = 2345
+        mock_response["idpClaims"]["fxa-keysChangedAt"] = 2345
+        headers["X-Client-State"] = "626262"
+        with self.mock_browserid_verifier(response=mock_response):
+            res = self.app.get('/1.0/sync/1.1', headers=headers)
+        token = self.unsafelyParseToken(res.json["id"])
+        self.assertEqual(token["fxa_kid"], "0000000002345-YmJi")
+        # If we roll back the FxA stack so it stops reporting keys_changed_at,
+        # users will get locked out because we can't produce `fxa_kid`.
+        del mock_response["idpClaims"]["fxa-keysChangedAt"]
+        with self.mock_browserid_verifier(response=mock_response):
+            res = self.app.get('/1.0/sync/1.1', headers=headers, status=401)
+        self.assertEqual(res.json["status"], "invalid-keysChangedAt")
+        # We will likewise reject values below the high-water mark.
+        mock_response["idpClaims"]["fxa-keysChangedAt"] = 2340
+        with self.mock_browserid_verifier(response=mock_response):
+            res = self.app.get('/1.0/sync/1.1', headers=headers, status=401)
+        self.assertEqual(res.json["status"], "invalid-keysChangedAt")
+        # But accept the correct value, even if generation number changes.
+        mock_response["idpClaims"]["fxa-generation"] = 3456
+        mock_response["idpClaims"]["fxa-keysChangedAt"] = 2345
+        with self.mock_browserid_verifier(response=mock_response):
+            res = self.app.get('/1.0/sync/1.1', headers=headers)
+        token = self.unsafelyParseToken(res.json["id"])
+        self.assertEqual(token["fxa_kid"], "0000000002345-YmJi")
+        # TODO: ideally we will error if keysChangedAt changes without a
+        # change in generation, but we can't do that until all servers
+        # are running the latest version of the code.
+        # mock_response["idpClaims"]["fxa-keysChangedAt"] = 4567
+        # headers["X-Client-State"] = "636363"
+        # with self.mock_browserid_verifier(response=mock_response):
+        #     res = self.app.get('/1.0/sync/1.1', headers=headers, status=401)
+        # self.assertEqual(res.json["status"], "invalid-keysChangedAt")
+        # But accept further updates if both values change in unison.
+        mock_response["idpClaims"]["fxa-generation"] = 4567
+        mock_response["idpClaims"]["fxa-keysChangedAt"] = 4567
+        headers["X-Client-State"] = "636363"
+        with self.mock_browserid_verifier(response=mock_response):
+            res = self.app.get('/1.0/sync/1.1', headers=headers)
+        token = self.unsafelyParseToken(res.json["id"])
+        self.assertEqual(token["fxa_kid"], "0000000004567-Y2Nj")
+
+    def test_fxa_kid_change_with_oauth(self):
+        # Starting off not reporting keys_changed_at.
+        # This uses BrowserID since OAuth always reports keys_changed_at.
+        headers_browserid = {
+            "Authorization": "BrowserID %s" % self._getassertion(),
+            "X-Client-State": "616161",
+        }
+        mock_response = {
+            "status": "okay",
+            "email": "test@mozilla.com",
+            "idpClaims": {"fxa-generation": 1234},
+        }
+        with self.mock_browserid_verifier(response=mock_response):
+            res = self.app.get('/1.0/sync/1.1', headers=headers_browserid)
+        token = self.unsafelyParseToken(res.json["id"])
+        self.assertEqual(token["fxa_kid"], "0000000001234-YWFh")
+        # Now an OAuth client shows up, setting keys_changed_at.
+        # (The value matches generation number above, beause in this scenario
+        # FxA hasn't been updated to track and report keysChangedAt yet).
+        headers_oauth = {
+            "Authorization": "Bearer %s" % self._gettoken("test@mozilla.com"),
+            "X-KeyID": "1234-YWFh",
+        }
+        res = self.app.get('/1.0/sync/1.1', headers=headers_oauth)
+        token = self.unsafelyParseToken(res.json["id"])
+        self.assertEqual(token["fxa_kid"], "0000000001234-YWFh")
+        # At this point, BrowserID clients are locked out until FxA is updated,
+        # because we're now expecting to see keys_changed_at for that user.
+        with self.mock_browserid_verifier(response=mock_response):
+            res = self.app.get('/1.0/sync/1.1', headers=headers_browserid,
+                               status=401)
+        self.assertEqual(res.json["status"], "invalid-keysChangedAt")
+        # We will likewise reject values below the high-water mark.
+        mock_response["idpClaims"]["fxa-keysChangedAt"] = 1230
+        with self.mock_browserid_verifier(response=mock_response):
+            res = self.app.get('/1.0/sync/1.1', headers=headers_browserid,
+                               status=401)
+        self.assertEqual(res.json["status"], "invalid-keysChangedAt")
+        headers_oauth["X-KeyID"] = "1230-YWFh"
+        res = self.app.get('/1.0/sync/1.1', headers=headers_oauth, status=401)
+        self.assertEqual(res.json["status"], "invalid-keysChangedAt")
+        # We accept new values via OAuth.
+        headers_oauth["X-KeyID"] = "2345-YmJi"
+        res = self.app.get('/1.0/sync/1.1', headers=headers_oauth)
+        token = self.unsafelyParseToken(res.json["id"])
+        self.assertEqual(token["fxa_kid"], "0000000002345-YmJi")
+        # And via BrowserID, as long as generation number increases as well.
+        headers_browserid["X-Client-State"] = "636363"
+        mock_response["idpClaims"]["fxa-generation"] = 3456
+        mock_response["idpClaims"]["fxa-keysChangedAt"] = 3456
+        with self.mock_browserid_verifier(response=mock_response):
+            res = self.app.get('/1.0/sync/1.1', headers=headers_browserid)
+        token = self.unsafelyParseToken(res.json["id"])
+        self.assertEqual(token["fxa_kid"], "0000000003456-Y2Nj")
+
+    def test_kid_change_during_gradual_tokenserver_rollout(self):
+        # User hits updated tokenserver node, writing keys_changed_at to db.
+        headers = {
+            "Authorization": "BrowserID %s" % self._getassertion(),
+            "X-Client-State": "616161",
+        }
+        mock_response = {
+            "status": "okay",
+            "email": "test@mozilla.com",
+            "idpClaims": {
+                "fxa-generation": 1234,
+                "fxa-keysChangedAt": 1200,
+            },
+        }
+        with self.mock_browserid_verifier(response=mock_response):
+            self.app.get('/1.0/sync/1.1', headers=headers)
+        user = self.backend.get_user("sync-1.1", mock_response["email"])
+        self.assertEqual(user["generation"], 1234)
+        self.assertEqual(user["keys_changed_at"], 1200)
+        # User does a password reset on their Firefox Account.
+        mock_response["idpClaims"]["fxa-generation"] = 2345
+        mock_response["idpClaims"]["fxa-keysChangedAt"] = 2345
+        headers["X-Client-State"] = "626262"
+        # They sync again, but hit a tokenserver node that isn't updated yet.
+        # Simulate this by writing the updated data directly to the backend.
+        self.backend.update_user("sync-1.1", user,
+                                 generation=2345,
+                                 client_state="626262")
+        # They sync again, hitting an updated tokenserver node.
+        # This should succeed, despite keys_changed_at appearing to have
+        # changed without any corresponding change in generation number.
+        with self.mock_browserid_verifier(response=mock_response):
+            res = self.app.get('/1.0/sync/1.1', headers=headers)
+        token = self.unsafelyParseToken(res.json["id"])
+        self.assertEqual(token["fxa_kid"], "0000000002345-YmJi")
 
     def test_client_state_cannot_revert_to_empty(self):
         # Start with a client-state header.
         headers = {
             'Authorization': 'BrowserID %s' % self._getassertion(),
-            'X-Client-State': 'aaa',
+            'X-Client-State': 'aaaa',
         }
         res = self.app.get('/1.0/sync/1.1', headers=headers)
         uid0 = res.json['uid']
@@ -439,7 +601,7 @@ class TestService(unittest.TestCase):
         desc = res.json['errors'][0]['description']
         self.assertTrue(desc.endswith('empty string'))
         # And the uid will be unchanged.
-        headers['X-Client-State'] = 'aaa'
+        headers['X-Client-State'] = 'aaaa'
         res = self.app.get('/1.0/sync/1.1', headers=headers)
         self.assertEqual(res.json['uid'], uid0)
 
@@ -447,7 +609,7 @@ class TestService(unittest.TestCase):
         # Send initial credentials via oauth.
         headers_oauth = {
             "Authorization": "Bearer %s" % self._gettoken(),
-            "X-KeyID": "12-YWFh",
+            "X-KeyID": "7-YWFh",
         }
         res1 = self.app.get("/1.0/sync/1.1", headers=headers_oauth)
         # Send the same credentials via BrowserID
@@ -458,7 +620,7 @@ class TestService(unittest.TestCase):
         mock_response = {
             "status": "okay",
             "email": "test1@example.com",
-            "idpClaims": {"fxa-generation": 12},
+            "idpClaims": {"fxa-generation": 12, "fxa-keysChangedAt": 7},
         }
         with self.mock_browserid_verifier(response=mock_response):
             res2 = self.app.get("/1.0/sync/1.1", headers=headers_browserid)
@@ -472,16 +634,28 @@ class TestService(unittest.TestCase):
                                status=401)
         self.assertEqual(res1.json["api_endpoint"], res2.json["api_endpoint"])
         self.assertEqual(res.json["status"], "invalid-generation")
-        # Earlier generation number via OAuth is accepted.
-        headers_oauth['X-KeyID'] = '11-YWFh'
-        res1 = self.app.get("/1.0/sync/1.1", headers=headers_oauth)
-        self.assertEqual(res1.json["api_endpoint"], res2.json["api_endpoint"])
+        # Earlier keys_changed_at via BrowserID is not accepted.
+        mock_response["idpClaims"]['fxa-generation'] = 12
+        mock_response["idpClaims"]['fxa-keysChangedAt'] = 6
+        with self.mock_browserid_verifier(response=mock_response):
+            res1 = self.app.get("/1.0/sync/1.1", headers=headers_browserid,
+                                status=401)
+        self.assertEqual(res1.json['status'], 'invalid-keysChangedAt')
+        # Earlier keys_changed_at via OAuth is not accepted.
+        headers_oauth['X-KeyID'] = '6-YWFh'
+        res1 = self.app.get("/1.0/sync/1.1", headers=headers_oauth, status=401)
+        self.assertEqual(res1.json['status'], 'invalid-keysChangedAt')
         # Change client-state via BrowserID.
         headers_browserid['X-Client-State'] = '626262'
         mock_response["idpClaims"]['fxa-generation'] = 42
+        mock_response["idpClaims"]['fxa-keysChangedAt'] = 42
         with self.mock_browserid_verifier(response=mock_response):
             res1 = self.app.get("/1.0/sync/1.1", headers=headers_browserid)
-        # Updated OAuth credentials are accepted.
+        # Previous OAuth creds are rejected due to keys_changed_at update.
+        headers_oauth['X-KeyID'] = '7-YmJi'
+        res2 = self.app.get("/1.0/sync/1.1", headers=headers_oauth, status=401)
+        self.assertEqual(res2.json['status'], 'invalid-keysChangedAt')
+        # Updated OAuth creds are accepted.
         headers_oauth['X-KeyID'] = '42-YmJi'
         res2 = self.app.get("/1.0/sync/1.1", headers=headers_oauth)
         # They should again get the same node assignment.
@@ -547,14 +721,14 @@ class TestService(unittest.TestCase):
         mock_response = {
             "status": "okay",
             "email": "testuser@example.com",
-            "idpClaims": {"fxa-generation": 12},
+            "idpClaims": {"fxa-generation": 13, 'fxa-keysChangedAt': 12},
         }
         with self.mock_browserid_verifier(response=mock_response):
             res = self.app.get("/1.0/sync/1.1", headers=headers_browserid)
         token = self.unsafelyParseToken(res.json["id"])
         self.assertEqual(token["uid"], res.json["uid"])
         self.assertEqual(token["fxa_uid"], "testuser")
-        self.assertEqual(token["fxa_kid"], "616161")
+        self.assertEqual(token["fxa_kid"], "0000000000012-YWFh")
         self.assertNotEqual(token["hashed_fxa_uid"], token["fxa_uid"])
         self.assertEqual(token["hashed_fxa_uid"], res.json["hashed_fxa_uid"])
         self.assertIn("hashed_device_id", token)
@@ -569,7 +743,7 @@ class TestService(unittest.TestCase):
         token = self.unsafelyParseToken(res.json["id"])
         self.assertEqual(token["uid"], res.json["uid"])
         self.assertEqual(token["fxa_uid"], "testuser")
-        self.assertEqual(token["fxa_kid"], "616161")
+        self.assertEqual(token["fxa_kid"], "0000000000012-YWFh")
         self.assertNotEqual(token["hashed_fxa_uid"], token["fxa_uid"])
         self.assertEqual(token["hashed_fxa_uid"], res.json["hashed_fxa_uid"])
         self.assertIn("hashed_device_id", token)

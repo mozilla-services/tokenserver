@@ -11,7 +11,6 @@ from cornice import Service
 from mozsvc.metrics import metrics_timer
 from pyramid import httpexceptions
 
-
 import tokenlib
 
 from tokenserver.verifiers import (
@@ -21,7 +20,12 @@ from tokenserver.verifiers import (
     get_oauth_verifier
 )
 from tokenserver.assignment import INodeAssignment
-from tokenserver.util import json_error, fxa_metrics_hash
+from tokenserver.util import (
+    json_error,
+    fxa_metrics_hash,
+    parse_key_id,
+    format_key_id
+)
 
 import fxa.errors
 import browserid.errors
@@ -91,10 +95,23 @@ def _invalid_client_state(reason, **kw):
 # validators
 
 def valid_authorization(request, **kwargs):
-    """Validate that the Authorization on the request is correct.
+    """Validate that the Authorization on the request is correct and valid.
 
-    If not, add errors in the response so that the client can know what
-    happened.
+    If authorization is valid, this validator populates user information into
+    `request.validated` as follows:
+
+      * `authorization`: a dict of information about the user:
+        * `email`: user id in the form "{userid}@{issuer}"
+        * `idpClaims`: a dict of optional extra claims from the IdP:
+          * `fxa-generation`: timestamp at which user credentials last changed
+          * `fxa-keysChangedAt`: timestamp at which user keys last changed
+      * `fxa_uid`: the userid component of `authorization.email`
+      * `client_state`: hash of the user's key material, as a hex string
+      * `hashed_fxa_uid`: hmaced `fxa_uid`, to use for metrics
+      * `hashed_device_id`: hmaced device identifier, to use for metrics
+
+    If authorization is not valid, this validator adds errors in the response
+    so that the client can know what happened.
     """
     authz = request.headers.get('Authorization')
     if authz is None:
@@ -227,10 +244,9 @@ def _validate_oauth_token(request, token):
     if kid:
         try:
             # The kid combines a timestamp and a hash of the key material.
-            # Unfortunately the timestamp is not guaranteed to be the same
-            # as the `generation` number from BrowserID assertions.
-            _, client_state = kid.split("-", 1)
-            client_state = browserid.utils.decode_bytes(client_state)
+            keys_changed_at, client_state = parse_key_id(kid)
+            idpClaims = request.validated['authorization']['idpClaims']
+            idpClaims['fxa-keysChangedAt'] = keys_changed_at
             client_state = client_state.encode('hex')
             if not 1 <= len(client_state) <= 32:
                 raise json_error(400, location='header', name='X-Client-State',
@@ -310,9 +326,11 @@ VALIDATORS = (
 def return_token(request):
     """This service does the following process:
 
-    - validates the BrowserID assertion provided on the Authorization header
+    - validates the BrowserID or OAuth credentials provided in the
+      Authorization header
     - allocates when necessary a node to the user for the required service
-    - checks generation numbers and x-client-state header
+    - checks generation number, key-rotation timestamp and x-client-state
+      header for consistency
     - returns a JSON mapping containing the following values:
 
         - **id** -- a signed authorization token, containing the
@@ -321,19 +339,26 @@ def return_token(request):
         - **uid** -- the user id for this servic
         - **api_endpoint** -- the root URL for the user for the service.
     """
-    # at this stage, we are sure that the assertion, application and version
+    # at this stage, we are sure that the credentials, application and version
     # number were valid, so let's build the authentication token and return it.
     backend = request.registry.getUtility(INodeAssignment)
     settings = request.registry.settings
     email = request.validated['authorization']['email']
+
+    # The `generation` and `keys_changed_at` fields are both optional.
     try:
         idp_claims = request.validated['authorization']['idpClaims']
     except KeyError:
         generation = 0
+        keys_changed_at = 0
     else:
         generation = idp_claims.get('fxa-generation', 0)
         if not isinstance(generation, (int, long)):
             raise _unauthorized("invalid-generation")
+        keys_changed_at = idp_claims.get('fxa-keysChangedAt', 0)
+        if not isinstance(keys_changed_at, (int, long)):
+            raise _unauthorized("invalid-credentials",
+                                description="invalid keysChangedAt")
 
     application = request.validated['application']
     version = request.validated['version']
@@ -349,12 +374,25 @@ def return_token(request):
             raise _unauthorized('new-users-disabled')
         with metrics_timer('tokenserver.backend.allocate_user', request):
             user = backend.allocate_user(service, email, generation,
-                                         client_state)
+                                         client_state,
+                                         keys_changed_at=keys_changed_at)
 
     # Update if this client is ahead of previously-seen clients.
     updates = {}
     if generation > user['generation']:
         updates['generation'] = generation
+    if keys_changed_at > user['keys_changed_at']:
+        # If there's a generation number available, then a change
+        # in keys should correspond to a change in generation number.
+        if generation > 0 and 'generation' not in updates:
+            # TODO: We can't accurately detect this case until all servers are
+            # reliably writing keys_changed_at to the database, so it will need
+            # to wait and be deployed separately. In the meantime we check that
+            # it's at least using the most-recently-seen generation number.
+            # Remove this `if` once keys_changed_at is fully deployed.
+            if generation != user['generation']:
+                raise _unauthorized('invalid-keysChangedAt')
+        updates['keys_changed_at'] = keys_changed_at
     if client_state != user['client_state']:
         # Don't revert from some-client-state to no-client-state.
         if not client_state:
@@ -364,21 +402,31 @@ def return_token(request):
             raise _invalid_client_state('stale value')
         # If we have a generation number, then
         # don't update client-state without a change in generation number.
-        if generation > 0:
-            if user['generation'] > 0 and 'generation' not in updates:
-                raise _invalid_client_state(
-                    'new value with no generation change')
+        if generation > 0 and 'generation' not in updates:
+            raise _invalid_client_state(
+                'new value with no generation change')
+        # If the IdP has been sending keys_changed_at timestamps, then
+        # don't update client-state without a change in keys_changed_at.
+        if user['keys_changed_at'] > 0 and 'keys_changed_at' not in updates:
+            raise _invalid_client_state(
+                'new value with no keys_changed_at change')
         updates['client_state'] = client_state
     if updates:
         with metrics_timer('tokenserver.backend.update_user', request):
             backend.update_user(service, user, **updates)
 
-    # Error out if this client is behind the generation number of some
-    # previously-seen client.
-    # This is done after the updates because some other, even more up-to-date
-    # client may have raced with a concurrent update.
+    # Error out if this client provided a generation number, but it is behind
+    # the generation number of some previously-seen client.
     if generation > 0 and user['generation'] > generation:
         raise _unauthorized("invalid-generation")
+
+    # Error out if we previously saw a keys_changed_at for this user, but they
+    # haven't provided one or it's earlier than previously seen. This means
+    # that once the IdP starts sending keys_changed_at, we'll error out if it
+    # stops (because we can't generate a proper `fxa_kid` in this case).
+    if user['keys_changed_at'] > 0:
+        if user['keys_changed_at'] > keys_changed_at:
+            raise _unauthorized("invalid-keysChangedAt")
 
     secrets = settings['tokenserver.secrets']
     node_secrets = secrets.get(user['node'])
@@ -404,7 +452,11 @@ def return_token(request):
         'node': user['node'],
         'expires': int(time.time()) + token_duration,
         'fxa_uid': request.validated['fxa_uid'],
-        'fxa_kid': request.validated['client-state'],
+        'fxa_kid': format_key_id(
+            # Follow FxA behaviour of using generation as a fallback.
+            user['keys_changed_at'] or user['generation'],
+            client_state.decode('hex')
+        ),
         'hashed_fxa_uid': request.validated['hashed_fxa_uid'],
         'hashed_device_id': request.validated['hashed_device_id']
     }

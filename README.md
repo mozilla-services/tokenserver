@@ -44,6 +44,7 @@ To access the user's sync data using BrowserID, the client must obtain a Browser
 with audience matching the tokenserver's public URL, as well as the user's Sync encryption key.
 They send the BrowserID assertion in the `Authorization` header, and the first half of the
 hex-encoded SHA256 digest of the encryption key in the `X-Client-State` header, like so:
+
 ```
 GET /1.0/sync/1.5
 Host: token.services.mozilla.com
@@ -94,20 +95,21 @@ The fields contained therein include:
 * `fxa_uid`: The user's stable FxA user id, as a hex string
 * `fxa_kid`: The key-id of the JWK representing the user's sync encryption key
 
-
 ## Data Model
 
 The core of the TokenServer's data model is a table named `users` that maps each user to their storage
 node, and that provides enough information to update that mapping over time.  Each row in the table
 contains the following fields:
 
-* `uid`: Auto-incrementing numeric userid, created automtically for each row.
+* `uid`: Auto-incrementing numeric userid, created automatically for each row.
 * `service`: The service the user is accessing; in practice this is always `sync-1.5`.
 * `email`: Stable identifier for the user; in practice this is always `<fxa_uid>@api.accounts.firefox.com`.
 * `nodeid`: The storage node to which the user has been assigned.
 * `generation`: A monotonically increasing number provided by the FxA server, indicating
                 the last time at which the user's login credentials were changed.
 * `client_state`: The hash of the user's sync encryption key.
+* `keys_changed_at`: A monotonically increasing timestamp provided by the FxA server, indicating
+                     the last time at which the user's encryption keys were changed.
 * `created_at`: Timestamp at which this node-assignment record was created.
 * `replaced_at`: Timestamp at which this node-assignment record was replaced by a newer assignment, if any.
 
@@ -124,9 +126,13 @@ revoked immediately when the user's credentials are changed.
 The `client_state` column is used to detect when the user's encryption key changes.
 When it sees a new value for `client_state`, Tokenserver will replace the user's node assignment
 with a new one, so that data encrypted with the new key will be written into a different
-storage "bucket" on the storage nodes. Tokenserver communicates this value to the storage nodes
-in the `fxa_kid` field (which unfortunately differs from the `X-KeyID` header used by OAuth clients,
-due to some inconsistencies in tracking the timestamp at which the key material changed).
+storage "bucket" on the storage nodes.
+
+The `keys_changed_at` column tracks the timestamp at which the user's encryption keys were
+last changed. BrowserID clients provide this as a field in the assertion, while OAuth clients
+provide it as part of the `X-KeyID` header. Tokenserver will check that changes in the value
+of `keys_changed_at` always correspond to a change in `client_state`, and will use this pair of
+values to construct the `fxa_kid` field that is communicated to the storage nodes.
 
 When replacing a user's node assignment, the previous column is not deleted immediately.
 Instead, it is marked as "replaced" by setting the `replaced_at` timestamp, and then a background

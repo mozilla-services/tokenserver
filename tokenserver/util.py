@@ -11,6 +11,8 @@ import time
 from pyramid.response import Response
 from pyramid import httpexceptions as exc
 
+from browserid.utils import encode_bytes as encode_bytes_b64
+from browserid.utils import decode_bytes as decode_bytes_b64
 from cornice.errors import Errors
 
 
@@ -102,3 +104,19 @@ def find_config_file(*paths):
 def get_timestamp():
     """Get current timestamp in milliseconds."""
     return int(time.time() * 1000)
+
+
+def parse_key_id(kid):
+    """Parse an FxA key ID into its constituent timestamp and key hash."""
+    keys_changed_at, key_hash = kid.split("-", 1)
+    keys_changed_at = int(keys_changed_at)
+    key_hash = decode_bytes_b64(key_hash)
+    return (keys_changed_at, key_hash)
+
+
+def format_key_id(keys_changed_at, key_hash):
+    """Format an FxA key ID from a timestamp and key hash."""
+    return "{:013d}-{}".format(
+        keys_changed_at,
+        encode_bytes_b64(key_hash),
+    )

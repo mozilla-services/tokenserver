@@ -82,13 +82,16 @@ class TestPurgeOldRecordsScript(unittest.TestCase):
         # Make some old user records.
         service = "test-1.0"
         email = "test@mozilla.com"
-        user = self.backend.allocate_user(service, email, client_state="a")
-        self.backend.update_user(service, user, client_state="b")
-        self.backend.update_user(service, user, client_state="c")
+        user = self.backend.allocate_user(service, email, client_state="aa",
+                                          generation=123)
+        self.backend.update_user(service, user, client_state="bb",
+                                 generation=456, keys_changed_at=450)
+        self.backend.update_user(service, user, client_state="cc",
+                                 generation=789)
         user_records = list(self.backend.get_user_records(service, email))
         self.assertEqual(len(user_records), 3)
         user = self.backend.get_user(service, email)
-        self.assertEquals(user["client_state"], "c")
+        self.assertEquals(user["client_state"], "cc")
         self.assertEquals(len(user["old_client_states"]), 2)
 
         # The default grace-period should prevent any cleanup.
@@ -106,7 +109,7 @@ class TestPurgeOldRecordsScript(unittest.TestCase):
         # Check that the proper delete requests were made to the service.
         secrets = self.config.registry.settings["tokenserver.secrets"]
         node_secret = secrets.get(self.service_node)[-1]
-        expected_kids = ["b", "a"]
+        expected_kids = ["0000000000450-uw", "0000000000123-qg"]
         for i, environ in enumerate(self.service_requests):
             # They must be to the correct path.
             self.assertEquals(environ["REQUEST_METHOD"], "DELETE")
@@ -123,15 +126,15 @@ class TestPurgeOldRecordsScript(unittest.TestCase):
 
         # Check that the user's current state is unaffected
         user = self.backend.get_user(service, email)
-        self.assertEquals(user["client_state"], "c")
+        self.assertEquals(user["client_state"], "cc")
         self.assertEquals(len(user["old_client_states"]), 0)
 
     def test_purging_is_not_done_on_downed_nodes(self):
         # Make some old user records.
         service = "test-1.0"
         email = "test@mozilla.com"
-        user = self.backend.allocate_user(service, email, client_state="a")
-        self.backend.update_user(service, user, client_state="b")
+        user = self.backend.allocate_user(service, email, client_state="aa")
+        self.backend.update_user(service, user, client_state="bb")
         user_records = list(self.backend.get_user_records(service, email))
         self.assertEqual(len(user_records), 2)
 

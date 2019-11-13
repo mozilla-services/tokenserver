@@ -28,6 +28,7 @@ import hawkauthlib
 
 import tokenserver.scripts
 from tokenserver.assignment import INodeAssignment
+from tokenserver.util import format_key_id
 
 
 logger = logging.getLogger("tokenserver.scripts.purge_old_records")
@@ -97,7 +98,10 @@ def delete_service_data(config, service, user, timeout=60):
         "uid": user.uid,
         "node": user.node,
         "fxa_uid": user.email.split("@", 1)[0],
-        "fxa_kid": user.client_state
+        "fxa_kid": format_key_id(
+            user.keys_changed_at or user.generation,
+            user.client_state.decode('hex')
+        ),
     }, secret=node_secrets[-1])
     secret = tokenlib.get_derived_secret(token, secret=node_secrets[-1])
     endpoint = pattern.format(uid=user.uid, service=service, node=user.node)
