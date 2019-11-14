@@ -23,7 +23,9 @@ In practice today, it is only used for connecting to Firefox Sync.
 
 Like this:
 
-    $ bin/paster serve etc/tokenserver-dev.ini
+    $ make install
+    $ ./local/bin/pip install gunicorn
+    $ ./local/bin/gunicorn --paste etc/tokenserver-dev.ini
 
 ## API
 
