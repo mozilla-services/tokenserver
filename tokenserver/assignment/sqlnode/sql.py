@@ -324,7 +324,7 @@ class SQLNodeAssignment(object):
 
     def update_user(self, service, user, generation=None, client_state=None,
                     keys_changed_at=None, node=None):
-        if client_state is None and node is None:
+        if client_state is None and node is None and keys_changed_at is None:
             # We're just updating the generation, re-use the existing record.
             if generation is not None:
                 params = {

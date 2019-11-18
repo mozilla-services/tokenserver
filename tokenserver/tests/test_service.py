@@ -546,6 +546,10 @@ class TestService(unittest.TestCase):
         self.assertEqual(token["fxa_kid"], "0000000003456-Y2Nj")
 
     def test_kid_change_during_gradual_tokenserver_rollout(self):
+        # Let's start with a user already in the db, with no keys_changed_at.
+        self.backend.allocate_user("sync-1.1", "test@mozilla.com",
+                                   generation=1234,
+                                   client_state="616161")
         # User hits updated tokenserver node, writing keys_changed_at to db.
         headers = {
             "Authorization": "BrowserID %s" % self._getassertion(),
@@ -561,6 +565,7 @@ class TestService(unittest.TestCase):
         }
         with self.mock_browserid_verifier(response=mock_response):
             self.app.get('/1.0/sync/1.1', headers=headers)
+        # That should have written keys_changed_at into the db.
         user = self.backend.get_user("sync-1.1", mock_response["email"])
         self.assertEqual(user["generation"], 1234)
         self.assertEqual(user["keys_changed_at"], 1200)
