@@ -52,8 +52,8 @@ class TestPurgeOldRecordsScript(unittest.TestCase):
 
         # Configure the node-assignment backend to talk to our test service.
         self.backend = self.config.registry.getUtility(INodeAssignment)
-        self.backend.add_service("test-1.0", "{node}/1.0/{uid}")
-        self.backend.add_node("test-1.0", self.service_node, 100)
+        self.backend.add_service("sync-1.1", "{node}/1.1/{uid}")
+        self.backend.add_node("sync-1.1", self.service_node, 100)
 
     def tearDown(self):
         if self.backend._engine.driver == 'pysqlite':
@@ -80,7 +80,7 @@ class TestPurgeOldRecordsScript(unittest.TestCase):
 
     def test_purging_of_old_user_records(self):
         # Make some old user records.
-        service = "test-1.0"
+        service = "sync-1.1"
         email = "test@mozilla.com"
         user = self.backend.allocate_user(service, email, client_state="aa",
                                           generation=123)
@@ -113,7 +113,7 @@ class TestPurgeOldRecordsScript(unittest.TestCase):
         for i, environ in enumerate(self.service_requests):
             # They must be to the correct path.
             self.assertEquals(environ["REQUEST_METHOD"], "DELETE")
-            self.assertTrue(re.match("/1.0/[0-9]+", environ["PATH_INFO"]))
+            self.assertTrue(re.match("/1.1/[0-9]+", environ["PATH_INFO"]))
             # They must have a correct request signature.
             token = hawkauthlib.get_id(environ)
             secret = tokenlib.get_derived_secret(token, secret=node_secret)
@@ -131,7 +131,7 @@ class TestPurgeOldRecordsScript(unittest.TestCase):
 
     def test_purging_is_not_done_on_downed_nodes(self):
         # Make some old user records.
-        service = "test-1.0"
+        service = "sync-1.1"
         email = "test@mozilla.com"
         user = self.backend.allocate_user(service, email, client_state="aa")
         self.backend.update_user(service, user, client_state="bb")

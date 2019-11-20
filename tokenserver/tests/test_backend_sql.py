@@ -29,8 +29,8 @@ class TestSQLBackend(unittest.TestCase):
         self.backend = self.config.registry.getUtility(INodeAssignment)
 
         # adding a service and a node with 100 slots
-        self.backend.add_service("sync-1.0", "{node}/{version}/{uid}")
-        self.backend.add_node("sync-1.0", "https://phx12", 100)
+        self.backend.add_service("sync-1.1", "{node}/1.1/{uid}")
+        self.backend.add_node("sync-1.1", "https://phx12", 100)
 
         self._sqlite = self.backend._engine.driver == 'pysqlite'
         endpoints = {}
@@ -48,18 +48,18 @@ class TestSQLBackend(unittest.TestCase):
             self.backend._safe_execute('delete from users')
 
     def test_get_node(self):
-        user = self.backend.get_user("sync-1.0", "test1@example.com")
+        user = self.backend.get_user("sync-1.1", "test1@example.com")
         self.assertEquals(user, None)
 
-        user = self.backend.allocate_user("sync-1.0", "test1@example.com")
+        user = self.backend.allocate_user("sync-1.1", "test1@example.com")
         self.assertEqual(user['email'], "test1@example.com")
         self.assertEqual(user['node'], "https://phx12")
 
-        user = self.backend.get_user("sync-1.0", "test1@example.com")
+        user = self.backend.get_user("sync-1.1", "test1@example.com")
         self.assertEqual(user['email'], "test1@example.com")
         self.assertEqual(user['node'], "https://phx12")
 
     def test_get_patterns(self):
         # patterns should have been populated
         patterns = get_current_registry()['endpoints_patterns']
-        self.assertDictEqual(patterns, {'sync-1.0': '{node}/{version}/{uid}'})
+        self.assertDictEqual(patterns, {'sync-1.1': '{node}/1.1/{uid}'})

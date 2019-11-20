@@ -14,6 +14,7 @@ from testfixtures import LogCapture
 from mozsvc.config import load_into_settings
 from mozsvc.plugin import load_and_register
 
+import tokenserver.views
 from tokenserver.assignment import INodeAssignment
 from tokenserver.verifiers import (
     get_browserid_verifier,
@@ -190,10 +191,20 @@ class TestService(unittest.TestCase):
         })
 
     def test_version_returns_404_by_default(self):
+        # clear cache
+        try:
+            del tokenserver.views.version_view.__json__
+        except AttributeError:
+            pass
         with mock.patch('os.path.exists', return_value=False):
             self.app.get('/__version__', status=404)
 
     def test_version_returns_file_in_current_folder_if_present(self):
+        # clear cache
+        try:
+            del tokenserver.views.version_view.__json__
+        except AttributeError:
+            pass
         content = {'version': '0.8.1'}
         fake_file = mock.mock_open(read_data=json.dumps(content))
         with mock.patch('os.path.exists'):
@@ -546,6 +557,10 @@ class TestService(unittest.TestCase):
         self.assertEqual(token["fxa_kid"], "0000000003456-Y2Nj")
 
     def test_kid_change_during_gradual_tokenserver_rollout(self):
+        # Let's start with a user already in the db, with no keys_changed_at.
+        self.backend.allocate_user("sync-1.1", "test@mozilla.com",
+                                   generation=1234,
+                                   client_state="616161")
         # User hits updated tokenserver node, writing keys_changed_at to db.
         headers = {
             "Authorization": "BrowserID %s" % self._getassertion(),
@@ -561,6 +576,7 @@ class TestService(unittest.TestCase):
         }
         with self.mock_browserid_verifier(response=mock_response):
             self.app.get('/1.0/sync/1.1', headers=headers)
+        # That should have written keys_changed_at into the db.
         user = self.backend.get_user("sync-1.1", mock_response["email"])
         self.assertEqual(user["generation"], 1234)
         self.assertEqual(user["keys_changed_at"], 1200)
@@ -754,6 +770,31 @@ class TestService(unittest.TestCase):
         headers = {'Authorization': 'BrowserID %s' % assertion}
         res = self.app.get('/1.0/sync/1.1', headers=headers, status=200)
         self.assertTrue('hashed_fxa_uid' in res.json)
+
+
+class TestServiceWithSQLBackend(TestService):
+
+    def get_ini(self):
+        return os.path.join(os.path.dirname(__file__),
+                            'test_sql.ini')
+
+    def setUp(self):
+        super(TestServiceWithSQLBackend, self).setUp()
+        # Start each test with a blank slate.
+        self.backend._safe_execute('delete from services')
+        self.backend._safe_execute('delete from nodes')
+        self.backend._safe_execute('delete from users')
+        # Ensure the necessary service exists in the db.
+        self.backend.add_service('sync-1.1', '{node}/1.1/{uid}')
+        # Ensure we have a node with enough capacity to run the tests.
+        self.backend.add_node('sync-1.1', 'https://example.com', 100)
+
+    def tearDown(self):
+        # And clean up at the end, for good measure.
+        self.backend._safe_execute('delete from services')
+        self.backend._safe_execute('delete from nodes')
+        self.backend._safe_execute('delete from users')
+        super(TestServiceWithSQLBackend, self).tearDown()
 
 
 class TestServiceWithNoBackends(unittest.TestCase):

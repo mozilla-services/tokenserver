@@ -15,7 +15,8 @@ from tokenserver.scripts.process_account_events import process_account_event
 from tokenserver.assignment import INodeAssignment
 
 
-SERVICE = "sync-1.0"
+SERVICE = "sync-1.1"
+PATTERN = "{node}/1.1/{uid}"
 EMAIL = "test@example.com"
 UID = "test"
 ISS = "example.com"
@@ -41,7 +42,7 @@ class TestProcessAccountEvents(unittest.TestCase):
         self.config.include("tokenserver")
         load_and_register("tokenserver", self.config)
         self.backend = self.config.registry.getUtility(INodeAssignment)
-        self.backend.add_service(SERVICE, "{node}/{version}/{uid}")
+        self.backend.add_service(SERVICE, PATTERN)
         self.backend.add_node(SERVICE, "https://phx12", 100)
         self.logs = LogCapture()
 
