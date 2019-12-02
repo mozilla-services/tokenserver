@@ -473,14 +473,25 @@ def return_token(request):
     # first saw this user as part of the logs.
     request.metrics['uid.first_seen_at'] = user['first_seen_at']
 
+    # To help segmented analysis of client-side metrics, we can tell
+    # clients to tag their metrics with a "node type" string that is
+    # at much coarser granularity than the individual node name.
+    try:
+        node_type = settings['tokenserver.node_type_classifier'](user['node'])
+    except KeyError:
+        node_type = None
+    request.metrics['node_type'] = node_type
+
     return {
         'id': token,
         'key': secret,
         'uid': user['uid'],
-        'hashed_fxa_uid': request.validated['hashed_fxa_uid'],
         'api_endpoint': endpoint,
         'duration': token_duration,
-        'hashalg': tokenlib.DEFAULT_HASHMOD
+        'hashalg': tokenlib.DEFAULT_HASHMOD,
+        # Extra stuff for clients to include in telemetry.
+        'hashed_fxa_uid': request.validated['hashed_fxa_uid'],
+        'node_type': node_type,
     }
 
 

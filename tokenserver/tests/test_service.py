@@ -771,6 +771,12 @@ class TestService(unittest.TestCase):
         res = self.app.get('/1.0/sync/1.1', headers=headers, status=200)
         self.assertTrue('hashed_fxa_uid' in res.json)
 
+    def test_node_type_is_returned_in_response(self):
+        assertion = self._getassertion(email="newuser2@test.com")
+        headers = {'Authorization': 'BrowserID %s' % assertion}
+        res = self.app.get('/1.0/sync/1.1', headers=headers, status=200)
+        self.assertEqual(res.json['node_type'], 'example')
+
 
 class TestServiceWithSQLBackend(TestService):
 
