@@ -515,8 +515,8 @@ class TestService(unittest.TestCase):
         }
         with self.mock_browserid_verifier(response=mock_response):
             res = self.app.get('/1.0/sync/1.1', headers=headers_browserid)
-        token = self.unsafelyParseToken(res.json["id"])
-        self.assertEqual(token["fxa_kid"], "0000000001234-YWFh")
+        token0 = self.unsafelyParseToken(res.json["id"])
+        self.assertEqual(token0["fxa_kid"], "0000000001234-YWFh")
         # Now an OAuth client shows up, setting keys_changed_at.
         # (The value matches generation number above, beause in this scenario
         # FxA hasn't been updated to track and report keysChangedAt yet).
@@ -527,6 +527,8 @@ class TestService(unittest.TestCase):
         res = self.app.get('/1.0/sync/1.1', headers=headers_oauth)
         token = self.unsafelyParseToken(res.json["id"])
         self.assertEqual(token["fxa_kid"], "0000000001234-YWFh")
+        self.assertEqual(token["uid"], token0["uid"])
+        self.assertEqual(token["node"], token0["node"])
         # At this point, BrowserID clients are locked out until FxA is updated,
         # because we're now expecting to see keys_changed_at for that user.
         with self.mock_browserid_verifier(response=mock_response):
@@ -547,6 +549,8 @@ class TestService(unittest.TestCase):
         res = self.app.get('/1.0/sync/1.1', headers=headers_oauth)
         token = self.unsafelyParseToken(res.json["id"])
         self.assertEqual(token["fxa_kid"], "0000000002345-YmJi")
+        self.assertNotEqual(token["uid"], token0["uid"])
+        self.assertEqual(token["node"], token0["node"])
         # And via BrowserID, as long as generation number increases as well.
         headers_browserid["X-Client-State"] = "636363"
         mock_response["idpClaims"]["fxa-generation"] = 3456
@@ -558,9 +562,9 @@ class TestService(unittest.TestCase):
 
     def test_kid_change_during_gradual_tokenserver_rollout(self):
         # Let's start with a user already in the db, with no keys_changed_at.
-        self.backend.allocate_user("sync-1.1", "test@mozilla.com",
-                                   generation=1234,
-                                   client_state="616161")
+        user0 = self.backend.allocate_user("sync-1.1", "test@mozilla.com",
+                                           generation=1234,
+                                           client_state="616161")
         # User hits updated tokenserver node, writing keys_changed_at to db.
         headers = {
             "Authorization": "BrowserID %s" % self._getassertion(),
@@ -576,19 +580,25 @@ class TestService(unittest.TestCase):
         }
         with self.mock_browserid_verifier(response=mock_response):
             self.app.get('/1.0/sync/1.1', headers=headers)
+        # That should not have triggered a node re-assignment.
+        user1 = self.backend.get_user("sync-1.1", mock_response["email"])
+        self.assertEqual(user1['uid'], user0['uid'])
+        self.assertEqual(user1['node'], user0['node'])
         # That should have written keys_changed_at into the db.
-        user = self.backend.get_user("sync-1.1", mock_response["email"])
-        self.assertEqual(user["generation"], 1234)
-        self.assertEqual(user["keys_changed_at"], 1200)
+        self.assertEqual(user1["generation"], 1234)
+        self.assertEqual(user1["keys_changed_at"], 1200)
         # User does a password reset on their Firefox Account.
         mock_response["idpClaims"]["fxa-generation"] = 2345
         mock_response["idpClaims"]["fxa-keysChangedAt"] = 2345
         headers["X-Client-State"] = "626262"
         # They sync again, but hit a tokenserver node that isn't updated yet.
-        # Simulate this by writing the updated data directly to the backend.
-        self.backend.update_user("sync-1.1", user,
+        # Simulate this by writing the updated data directly to the backend,
+        # which should trigger a node re-assignment.
+        self.backend.update_user("sync-1.1", user1,
                                  generation=2345,
                                  client_state="626262")
+        self.assertNotEqual(user1['uid'], user0['uid'])
+        self.assertEqual(user1['node'], user0['node'])
         # They sync again, hitting an updated tokenserver node.
         # This should succeed, despite keys_changed_at appearing to have
         # changed without any corresponding change in generation number.
@@ -596,6 +606,10 @@ class TestService(unittest.TestCase):
             res = self.app.get('/1.0/sync/1.1', headers=headers)
         token = self.unsafelyParseToken(res.json["id"])
         self.assertEqual(token["fxa_kid"], "0000000002345-YmJi")
+        # That should not have triggered a second node re-assignment.
+        user2 = self.backend.get_user("sync-1.1", mock_response["email"])
+        self.assertEqual(user2['uid'], user1['uid'])
+        self.assertEqual(user2['node'], user1['node'])
 
     def test_client_state_cannot_revert_to_empty(self):
         # Start with a client-state header.

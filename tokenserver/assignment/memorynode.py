@@ -34,7 +34,10 @@ class MemoryNodeAssignmentBackend(object):
         self._next_uid = 1
 
     def get_user(self, service, email):
-        return self._users.get((service, email), None)
+        try:
+            return self._users[(service, email)].copy()
+        except KeyError:
+            return None
 
     def allocate_user(self, service, email, generation=0, client_state='',
                       keys_changed_at=0, node=None):
@@ -54,7 +57,7 @@ class MemoryNodeAssignmentBackend(object):
         }
         self._users[(service, email)] = user
         self._next_uid += 1
-        return user
+        return user.copy()
 
     def update_user(self, service, user, generation=None, client_state=None,
                     keys_changed_at=None, node=None):
@@ -71,3 +74,4 @@ class MemoryNodeAssignmentBackend(object):
             user['client_state'] = client_state
             user['uid'] = self._next_uid
             self._next_uid += 1
+        self._users[(service, user['email'])].update(user)
