@@ -64,10 +64,11 @@ values
      :timestamp, NULL)
 """)
 
-# The `where` clause on this statement is designed as an extra layer of protection,
-# to ensure that concurrent updates don't accidentally move timestamp fields
-# backwards in time. The handling of `keys_changed_at` is additionally weird because
-# we want to treat the defalut `NULL` value as zero.
+# The `where` clause on this statement is designed as an extra layer of
+# protection, to ensure that concurrent updates don't accidentally move
+# timestamp fields backwards in time. The handling of `keys_changed_at`
+# is additionally weird because we want to treat the defalut `NULL` value
+# as zero.
 _UPDATE_USER_RECORD_IN_PLACE = sqltext("""\
 update
     users
