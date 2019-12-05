@@ -29,7 +29,7 @@ tests_require = [
 
 
 setup(name='tokenserver',
-      version='1.5.1',
+      version='1.5.3',
       packages=find_packages(),
       include_package_data=True,
       zip_safe=False,

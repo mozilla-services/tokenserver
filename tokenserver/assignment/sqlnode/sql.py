@@ -64,15 +64,23 @@ values
      :timestamp, NULL)
 """)
 
-
-_UPDATE_GENERATION_NUMBER = sqltext("""\
+# The `where` clause on this statement is designed as an extra layer of
+# protection, to ensure that concurrent updates don't accidentally move
+# timestamp fields backwards in time. The handling of `keys_changed_at`
+# is additionally weird because we want to treat the defalut `NULL` value
+# as zero.
+_UPDATE_USER_RECORD_IN_PLACE = sqltext("""\
 update
     users
 set
-    generation = :generation
+    generation = COALESCE(:generation, generation),
+    keys_changed_at = COALESCE(:keys_changed_at, keys_changed_at)
 where
     service = :service and email = :email and
-    generation < :generation and replaced_at is null
+    generation <= COALESCE(:generation, generation) and
+    COALESCE(keys_changed_at, 0) <=
+        COALESCE(:keys_changed_at, keys_changed_at, 0) and
+    replaced_at is null
 """)
 
 
@@ -324,17 +332,22 @@ class SQLNodeAssignment(object):
 
     def update_user(self, service, user, generation=None, client_state=None,
                     keys_changed_at=None, node=None):
-        if client_state is None and node is None and keys_changed_at is None:
-            # We're just updating the generation, re-use the existing record.
-            if generation is not None:
-                params = {
-                    'service': service,
-                    'email': user['email'],
-                    'generation': generation
-                }
-                res = self._safe_execute(_UPDATE_GENERATION_NUMBER, **params)
-                res.close()
-                user['generation'] = max(generation, user['generation'])
+        if client_state is None and node is None:
+            # No need for a node-reassignment, just update the row in place.
+            # Note that if we're changing keys_changed_at without changing
+            # client_state, it's because we're seeing an existing value of
+            # keys_changed_at for the first time.
+            params = {
+                'service': service,
+                'email': user['email'],
+                'generation': generation,
+                'keys_changed_at': keys_changed_at,
+            }
+            res = self._safe_execute(_UPDATE_USER_RECORD_IN_PLACE, **params)
+            res.close()
+            user['generation'] = max(generation, user['generation'])
+            user['keys_changed_at'] = max(keys_changed_at,
+                                          user['keys_changed_at'])
         else:
             # Reject previously-seen client-state strings.
             if client_state is None:
