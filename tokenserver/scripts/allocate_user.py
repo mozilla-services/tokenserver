@@ -24,10 +24,8 @@ from tokenserver.assignment import INodeAssignment
 logger = logging.getLogger("tokenserver.scripts.allocate_user")
 
 
-def allocate_user(config_file, service, email, node=None):
+def allocate_user(config, service, email, node=None):
     logger.info("Allocating node for user %s", email)
-    logger.debug("Using config file %r", config_file)
-    config = tokenserver.scripts.load_configurator(config_file)
     config.begin()
     try:
         backend = config.registry.getUtility(INodeAssignment)
@@ -68,6 +66,9 @@ def main(args=None):
     tokenserver.scripts.configure_script_logging(opts)
 
     config_file = os.path.abspath(args[0])
+    logger.debug("Using config file %r", config_file)
+    config = tokenserver.scripts.load_configurator(config_file)
+
     service = args[1]
     email = args[2]
     if len(args) == 3:
@@ -75,7 +76,7 @@ def main(args=None):
     else:
         node_name = args[3]
 
-    allocate_user(config_file, service, email, node_name)
+    allocate_user(config, service, email, node_name)
     return 0
 
 

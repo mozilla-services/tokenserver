@@ -4,6 +4,11 @@ from zope.interface import Interface
 class INodeAssignment(Interface):
     """Interface definition for backend node-assignment db."""
 
+    def lucky_user(self):
+        """Determine if this is one of the lucky users to get routed to spanner
+
+        """
+
     def get_user(self, service, email):
         """Returns the user record for the given service and email.
 
@@ -16,6 +21,8 @@ class INodeAssignment(Interface):
           * generation:  the last-seen generation number for that email
           * client_state:  the last-seen client state string for that email
           * old_client_states:  any previously--seen client state strings
+          * migration_state: one of None, "MIGRATING", "MIGRATED", where
+            a state of "MIGRATING" should cause a 501 return. 
 
         """
 

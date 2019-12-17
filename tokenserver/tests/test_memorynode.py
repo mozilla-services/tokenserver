@@ -45,3 +45,15 @@ class TestFixedBackend(unittest.TestCase):
         user = self.backend.get_user(DEFAULT_EMAIL, DEFAULT_SERVICE)
         self.assertEquals(user['uid'], 1)
         self.assertEquals(user['node'], DEFAULT_NODE)
+
+    def test_AAA_assignment_spanner(self):
+        settings = self.config.get_settings()
+        settings['tokenserver.migrate_new_user_percentage'] = 1 
+        self.config.add_settings(settings)
+
+        user0 = self.backend.allocate_user(
+            DEFAULT_SERVICE, 'user0@example.com')
+        user1 = self.backend.allocate_user(
+            DEFAULT_SERVICE, 'user1@example.com')
+        self.assertEquals(user0['node'], settings['tokenserver.spanner_entry'])
+        self.assertEquals(user1['node'], settings['tokenserver.service_entry'])

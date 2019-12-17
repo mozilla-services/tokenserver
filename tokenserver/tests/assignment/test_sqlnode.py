@@ -29,6 +29,7 @@ class NodeAssignmentTests(object):
         self.backend.add_service('sync-1.5', '{node}/1.5/{uid}')
         self.backend.add_service('queuey-1.0', '{node}/{service}/{uid}')
         self.backend.add_node('sync-1.0', 'https://phx12', 100)
+        self.backend._migrate_new_user_percentage = 0
 
     def test_node_allocation(self):
         user = self.backend.get_user("sync-1.0", "test1@example.com")
@@ -425,6 +426,22 @@ class NodeAssignmentTests(object):
         user3 = self.backend.get_user(SERVICE, EMAIL)
         self.assertEqual(user3["uid"], user2["uid"])
         self.assertNotEqual(user3["first_seen_at"], user2["first_seen_at"])
+
+    def test_spanner_allocation(self):
+        SERVICE = "sync-1.5"
+        sync_15_node = 'https://etc1'
+        # TODO: this should go in with whatever inits the backend:
+        self.backend._spanner_entry = (self.backend._spanner_entry or
+            "https://spanner.example.com")
+        self.backend.add_service('spanner', 'https://spanner/1.5/{uid}')
+        self.backend.add_node('sync-1.5', sync_15_node, 100)
+        self.backend.add_node('spanner', 'https://spanner', capacity=1000)
+        self.backend._migrate_new_user_percentage = 1
+
+        user0 = self.backend.allocate_user(SERVICE, "test1@example.com")
+        user1 = self.backend.allocate_user(SERVICE, "test2@example.com")
+        self.assertEqual(user0['node'], self.backend._spanner_entry)
+        self.assertEqual(user1['node'], sync_15_node)
 
 
 class TestSQLDB(NodeAssignmentTests, unittest.TestCase):

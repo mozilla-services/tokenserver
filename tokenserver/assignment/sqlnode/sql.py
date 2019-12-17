@@ -42,7 +42,7 @@ _Base = declarative_base()
 _GET_USER_RECORDS = sqltext("""\
 select
     uid, nodes.node, generation, keys_changed_at, client_state, created_at,
-    replaced_at
+    replaced_at, migration_state
 from
     users left outer join nodes on users.nodeid = nodes.id
 where
@@ -58,10 +58,10 @@ _CREATE_USER_RECORD = sqltext("""\
 insert into
     users
     (service, email, nodeid, generation, keys_changed_at, client_state,
-     created_at, replaced_at)
+     created_at, replaced_at, migration_state)
 values
     (:service, :email, :nodeid, :generation, :keys_changed_at, :client_state,
-     :timestamp, NULL)
+     :timestamp, NULL, NULL)
 """)
 
 # The `where` clause on this statement is designed as an extra layer of
@@ -181,6 +181,19 @@ where
 """)
 
 
+# Migrate a user to spanner
+_MIGRATE_USER = sqltext("""\
+update
+    users
+set
+    migration_state = :migration_state, 
+    nodeid = :nodeid
+where
+    email = :email
+    and service = :service
+""")
+
+
 class SQLNodeAssignment(object):
 
     implements(INodeAssignment)
@@ -224,6 +237,10 @@ class SQLNodeAssignment(object):
         self.services = get_cls('services', _Base)
         self.nodes = get_cls('nodes', _Base)
         self.users = get_cls('users', _Base)
+        self._migrate_new_user_percentage = kw.get(
+            "tokenserver.migrate_new_user_percentage", 0)
+        self._spanner_entry = kw.get("tokenserver.spanner_entry", None)
+        self._spanner_node_id = kw.get("tokenserver.spanner_node_id", 800)
 
         for table in (self.services, self.nodes, self.users):
             table.metadata.bind = self._engine
@@ -280,7 +297,8 @@ class SQLNodeAssignment(object):
                 'keys_changed_at': cur_row.keys_changed_at or 0,
                 'client_state': cur_row.client_state,
                 'old_client_states': {},
-                'first_seen_at': cur_row.created_at
+                'first_seen_at': cur_row.created_at,
+                'migration_state': cur_row.migration_state
             }
             # If the current row is marked as replaced or is missing a node,
             # and they haven't been retired, then assign them a new node.
@@ -304,8 +322,12 @@ class SQLNodeAssignment(object):
         finally:
             res.close()
 
+    def lucky_user(self, uid):
+        return uid % 100 <= self._migrate_new_user_percentage
+
     def allocate_user(self, service, email, generation=0, client_state='',
                       keys_changed_at=0, node=None, timestamp=None):
+        spanner_candidate = node is None
         if timestamp is None:
             timestamp = get_timestamp()
         if node is None:
@@ -315,9 +337,18 @@ class SQLNodeAssignment(object):
         params = {
             'service': service, 'email': email, 'nodeid': nodeid,
             'generation': generation, 'keys_changed_at': keys_changed_at,
-            'client_state': client_state, 'timestamp': timestamp
+            'client_state': client_state, 'timestamp': timestamp,
+            'migration_state': ''
         }
         res = self._safe_execute(_CREATE_USER_RECORD, **params)
+        uid = res.lastrowid
+        # Update info if the user is selected to go to the spanner cluster:
+        if spanner_candidate and self.lucky_user(uid):
+            service = "spanner"
+            nodeid = params['nodeid'] = self._spanner_node_id
+            params['migration_state'] = "ORIGINAL"
+            node = self._spanner_entry
+            self._safe_execute(_MIGRATE_USER, params)
         res.close()
         return {
             'email': email,
@@ -327,11 +358,12 @@ class SQLNodeAssignment(object):
             'keys_changed_at': keys_changed_at,
             'client_state': client_state,
             'old_client_states': {},
-            'first_seen_at': timestamp
+            'first_seen_at': timestamp,
+            'migration_state': params['migration_state']
         }
 
     def update_user(self, service, user, generation=None, client_state=None,
-                    keys_changed_at=None, node=None):
+                    keys_changed_at=None, node=None, migration_state=None):
         if client_state is None and node is None:
             # No need for a node-reassignment, just update the row in place.
             # Note that if we're changing keys_changed_at without changing
@@ -342,6 +374,7 @@ class SQLNodeAssignment(object):
                 'email': user['email'],
                 'generation': generation,
                 'keys_changed_at': keys_changed_at,
+                'migration_state': migration_state or ''
             }
             res = self._safe_execute(_UPDATE_USER_RECORD_IN_PLACE, **params)
             res.close()
@@ -384,6 +417,7 @@ class SQLNodeAssignment(object):
                 'nodeid': nodeid, 'generation': generation,
                 'keys_changed_at': keys_changed_at,
                 'client_state': client_state, 'timestamp': now,
+                'migration_state': ''
             }
             res = self._safe_execute(_CREATE_USER_RECORD, **params)
             res.close()
@@ -475,6 +509,12 @@ class SQLNodeAssignment(object):
         res = self._safe_execute(_DELETE_USER_RECORD, **params)
         res.close()
 
+    def migrate_user(self, service, uid, state):
+        """Set the migration state for a uid."""
+        params = {'service': service, 'uid': uid, 'state': state}
+        res = self._safe_execute(_MIGRATE_USER, **params)
+        res.close()
+
     #
     # Nodes management
     #
@@ -522,11 +562,12 @@ class SQLNodeAssignment(object):
         res = self._safe_execute(sqltext(
             """
             insert into nodes (service, node, available, capacity,
-                               current_load, downed, backoff)
+                            current_load, downed, backoff)
             values (:service, :node, :available, :capacity,
                     :current_load, :downed, :backoff)
             """),
-            service=service, node=node, capacity=capacity, available=available,
+            service=service, node=node, 
+            capacity=capacity, available=available,
             current_load=kwds.get('current_load', 0),
             downed=kwds.get('downed', 0),
             backoff=kwds.get('backoff', 0),
@@ -647,6 +688,8 @@ class SQLNodeAssignment(object):
                 res.close()
                 if res.rowcount == 0:
                     break
+            else:
+                break
 
         # Did we succeed in finding a node?
         if row is None:
