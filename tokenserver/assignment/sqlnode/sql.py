@@ -186,7 +186,7 @@ _MIGRATE_USER = sqltext("""\
 update
     users
 set
-    migration_state = :migration_state, 
+    migration_state = :migration_state,
     nodeid = :nodeid
 where
     email = :email
@@ -566,7 +566,7 @@ class SQLNodeAssignment(object):
             values (:service, :node, :available, :capacity,
                     :current_load, :downed, :backoff)
             """),
-            service=service, node=node, 
+            service=service, node=node,
             capacity=capacity, available=available,
             current_load=kwds.get('current_load', 0),
             downed=kwds.get('downed', 0),

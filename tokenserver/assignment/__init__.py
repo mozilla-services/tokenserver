@@ -22,7 +22,7 @@ class INodeAssignment(Interface):
           * client_state:  the last-seen client state string for that email
           * old_client_states:  any previously--seen client state strings
           * migration_state: one of None, "MIGRATING", "MIGRATED", where
-            a state of "MIGRATING" should cause a 501 return. 
+            a state of "MIGRATING" should cause a 501 return.
 
         """
 

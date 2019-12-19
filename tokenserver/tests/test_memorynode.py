@@ -48,7 +48,7 @@ class TestFixedBackend(unittest.TestCase):
 
     def test_AAA_assignment_spanner(self):
         settings = self.config.get_settings()
-        settings['tokenserver.migrate_new_user_percentage'] = 1 
+        settings['tokenserver.migrate_new_user_percentage'] = 1
         self.config.add_settings(settings)
 
         user0 = self.backend.allocate_user(

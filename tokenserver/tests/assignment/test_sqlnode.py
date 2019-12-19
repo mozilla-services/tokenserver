@@ -431,8 +431,8 @@ class NodeAssignmentTests(object):
         SERVICE = "sync-1.5"
         sync_15_node = 'https://etc1'
         # TODO: this should go in with whatever inits the backend:
-        self.backend._spanner_entry = (self.backend._spanner_entry or
-            "https://spanner.example.com")
+        self.backend._spanner_entry = (
+            self.backend._spanner_entry or "https://spanner.example.com")
         self.backend.add_service('spanner', 'https://spanner/1.5/{uid}')
         self.backend.add_node('sync-1.5', sync_15_node, 100)
         self.backend.add_node('spanner', 'https://spanner', capacity=1000)
