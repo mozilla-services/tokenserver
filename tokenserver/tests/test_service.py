@@ -791,6 +791,31 @@ class TestService(unittest.TestCase):
         res = self.app.get('/1.0/sync/1.1', headers=headers, status=200)
         self.assertEqual(res.json['node_type'], 'example')
 
+    def test_migrate_new_user(self):
+        EMAIL0 = "abO-test@example.com"
+        EMAIL1 = "abT-test@example.com"
+        settings = self.backend.settings
+        # the two platfroms differ in how the settings are labeled.
+        prefix = ""
+        if not isinstance(
+            self.backend,
+                tokenserver.assignment.sqlnode.sql.SQLNodeAssignment):
+            prefix = 'tokenserver.'
+        old = settings.get('{}migrate_new_user_percentage'.format(prefix), 0)
+        self.backend.settings[
+            '{}migrate_new_user_percentage'.format(prefix)] = 1
+
+        user0 = self.backend.allocate_user("sync-1.5", EMAIL0)
+        user1 = self.backend.allocate_user("sync-1.5", EMAIL1)
+        self.assertEquals(
+            user0['node'],
+            settings['{}spanner_entry'.format(prefix)])
+        self.assertEquals(
+            user1['node'],
+            settings.get('{}service_entry'.format(prefix), 'https://phx11'))
+
+        settings['{}migrate_new_user_percentage'.format(prefix)] = old
+
 
 class TestServiceWithSQLBackend(TestService):
 
@@ -806,8 +831,14 @@ class TestServiceWithSQLBackend(TestService):
         self.backend._safe_execute('delete from users')
         # Ensure the necessary service exists in the db.
         self.backend.add_service('sync-1.1', '{node}/1.1/{uid}')
+        self.backend.add_service('sync-1.5', '{node}/1.5/{uid}')
+        self.backend.add_service(
+            'spanner', 'https://spanner.example.com/1.5/{uid}')
         # Ensure we have a node with enough capacity to run the tests.
         self.backend.add_node('sync-1.1', 'https://example.com', 100)
+        self.backend.add_node('sync-1.5', 'https://phx11', 100)
+        self.backend.add_node('spanner',
+                              'https://spanner.example.com/1.5/{uid}', 9000)
 
     def tearDown(self):
         # And clean up at the end, for good measure.

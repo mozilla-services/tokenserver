@@ -1,3 +1,4 @@
+import hashlib
 
 from pyramid.threadlocal import get_current_registry
 from zope.interface import implements
@@ -19,6 +20,7 @@ class MemoryNodeAssignmentBackend(object):
         self._service_entry = service_entry
         self._users = {}
         self._next_uid = 1
+        self.settings = get_current_registry().settings
 
     @property
     def service_entry(self):
@@ -39,8 +41,10 @@ class MemoryNodeAssignmentBackend(object):
         except KeyError:
             return None
 
-    def lucky_user(self, percentage):
-        return self._next_uid % 100 <= percentage
+    def lucky_user(self, email):
+        return ord(hashlib.sha1(email.encode()).digest()[0]) < (
+            256 * (self.settings.get(
+                    'tokenserver.migrate_new_user_percentage') * .01))
 
     def allocate_user(self, service, email, generation=0, client_state='',
                       keys_changed_at=0, node=None):
@@ -48,10 +52,8 @@ class MemoryNodeAssignmentBackend(object):
             raise BackendError('user already exists: ' + email)
         if node is not None and node != self.service_entry:
             raise ValueError("unknown node: %s" % (node,))
-        settings = get_current_registry().settings
-        if self.lucky_user(settings.get(
-                    'tokenserver.migrate_new_user_percentage')):
-            service_entry = settings.get('tokenserver.spanner_entry')
+        if self.lucky_user(email):
+            service_entry = self.settings.get('tokenserver.spanner_entry')
         else:
             service_entry = self.service_entry
         user = {
@@ -63,14 +65,13 @@ class MemoryNodeAssignmentBackend(object):
             'client_state': client_state,
             'old_client_states': {},
             'first_seen_at': get_timestamp(),
-            'migration_state': None,
         }
         self._users[(service, email)] = user
         self._next_uid += 1
         return user.copy()
 
     def update_user(self, service, user, generation=None, client_state=None,
-                    keys_changed_at=None, node=None, migration_state=None):
+                    keys_changed_at=None, node=None):
         if (service, user['email']) not in self._users:
             raise BackendError('unknown user: ' + user['email'])
         if node is not None and node != self.service_entry:
@@ -84,6 +85,4 @@ class MemoryNodeAssignmentBackend(object):
             user['client_state'] = client_state
             user['uid'] = self._next_uid
             self._next_uid += 1
-        if migration_state:
-            user['migration_state'] = migration_state
         self._users[(service, user['email'])].update(user)

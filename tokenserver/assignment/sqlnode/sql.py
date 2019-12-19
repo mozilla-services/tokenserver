@@ -10,6 +10,7 @@ with their load, capacity etc
 """
 import math
 import traceback
+import hashlib
 from mozsvc.exceptions import BackendError
 
 from sqlalchemy.sql import select, update, and_
@@ -42,7 +43,7 @@ _Base = declarative_base()
 _GET_USER_RECORDS = sqltext("""\
 select
     uid, nodes.node, generation, keys_changed_at, client_state, created_at,
-    replaced_at, migration_state
+    replaced_at
 from
     users left outer join nodes on users.nodeid = nodes.id
 where
@@ -58,10 +59,10 @@ _CREATE_USER_RECORD = sqltext("""\
 insert into
     users
     (service, email, nodeid, generation, keys_changed_at, client_state,
-     created_at, replaced_at, migration_state)
+     created_at, replaced_at)
 values
     (:service, :email, :nodeid, :generation, :keys_changed_at, :client_state,
-     :timestamp, NULL, NULL)
+     :timestamp, NULL)
 """)
 
 # The `where` clause on this statement is designed as an extra layer of
@@ -181,19 +182,6 @@ where
 """)
 
 
-# Migrate a user to spanner
-_MIGRATE_USER = sqltext("""\
-update
-    users
-set
-    migration_state = :migration_state,
-    nodeid = :nodeid
-where
-    email = :email
-    and service = :service
-""")
-
-
 class SQLNodeAssignment(object):
 
     implements(INodeAssignment)
@@ -237,10 +225,7 @@ class SQLNodeAssignment(object):
         self.services = get_cls('services', _Base)
         self.nodes = get_cls('nodes', _Base)
         self.users = get_cls('users', _Base)
-        self._migrate_new_user_percentage = kw.get(
-            "tokenserver.migrate_new_user_percentage", 0)
-        self._spanner_entry = kw.get("tokenserver.spanner_entry", None)
-        self._spanner_node_id = kw.get("tokenserver.spanner_node_id", 800)
+        self.settings = kw
 
         for table in (self.services, self.nodes, self.users):
             table.metadata.bind = self._engine
@@ -298,7 +283,6 @@ class SQLNodeAssignment(object):
                 'client_state': cur_row.client_state,
                 'old_client_states': {},
                 'first_seen_at': cur_row.created_at,
-                'migration_state': cur_row.migration_state
             }
             # If the current row is marked as replaced or is missing a node,
             # and they haven't been retired, then assign them a new node.
@@ -322,33 +306,29 @@ class SQLNodeAssignment(object):
         finally:
             res.close()
 
-    def lucky_user(self, uid):
-        return uid % 100 <= self._migrate_new_user_percentage
+    def lucky_user(self, email):
+        pick = ord(hashlib.sha1(email.encode()).digest()[0])
+        migrate = self.settings.get('migrate_new_user_percentage', 0)
+        return pick < (256 * (migrate * .01))
 
     def allocate_user(self, service, email, generation=0, client_state='',
                       keys_changed_at=0, node=None, timestamp=None):
-        spanner_candidate = node is None
         if timestamp is None:
             timestamp = get_timestamp()
         if node is None:
-            nodeid, node = self.get_best_node(service)
+            nodeid, node = self.get_best_node(service, email)
         else:
             nodeid = self.get_node_id(service, node)
         params = {
-            'service': service, 'email': email, 'nodeid': nodeid,
-            'generation': generation, 'keys_changed_at': keys_changed_at,
-            'client_state': client_state, 'timestamp': timestamp,
-            'migration_state': ''
+            'service': service,
+            'email': email,
+            'nodeid': nodeid,
+            'generation': generation,
+            'keys_changed_at': keys_changed_at,
+            'client_state': client_state,
+            'timestamp': timestamp
         }
         res = self._safe_execute(_CREATE_USER_RECORD, **params)
-        uid = res.lastrowid
-        # Update info if the user is selected to go to the spanner cluster:
-        if spanner_candidate and self.lucky_user(uid):
-            service = "spanner"
-            nodeid = params['nodeid'] = self._spanner_node_id
-            params['migration_state'] = "ORIGINAL"
-            node = self._spanner_entry
-            self._safe_execute(_MIGRATE_USER, params)
         res.close()
         return {
             'email': email,
@@ -359,11 +339,10 @@ class SQLNodeAssignment(object):
             'client_state': client_state,
             'old_client_states': {},
             'first_seen_at': timestamp,
-            'migration_state': params['migration_state']
         }
 
     def update_user(self, service, user, generation=None, client_state=None,
-                    keys_changed_at=None, node=None, migration_state=None):
+                    keys_changed_at=None, node=None):
         if client_state is None and node is None:
             # No need for a node-reassignment, just update the row in place.
             # Note that if we're changing keys_changed_at without changing
@@ -373,8 +352,7 @@ class SQLNodeAssignment(object):
                 'service': service,
                 'email': user['email'],
                 'generation': generation,
-                'keys_changed_at': keys_changed_at,
-                'migration_state': migration_state or ''
+                'keys_changed_at': keys_changed_at
             }
             res = self._safe_execute(_UPDATE_USER_RECORD_IN_PLACE, **params)
             res.close()
@@ -417,7 +395,6 @@ class SQLNodeAssignment(object):
                 'nodeid': nodeid, 'generation': generation,
                 'keys_changed_at': keys_changed_at,
                 'client_state': client_state, 'timestamp': now,
-                'migration_state': ''
             }
             res = self._safe_execute(_CREATE_USER_RECORD, **params)
             res.close()
@@ -507,12 +484,6 @@ class SQLNodeAssignment(object):
         res = self._safe_execute(_FREE_SLOT_ON_NODE, **params)
         res.close()
         res = self._safe_execute(_DELETE_USER_RECORD, **params)
-        res.close()
-
-    def migrate_user(self, service, uid, state):
-        """Set the migration state for a uid."""
-        params = {'service': service, 'uid': uid, 'state': state}
-        res = self._safe_execute(_MIGRATE_USER, **params)
         res.close()
 
     #
@@ -637,10 +608,16 @@ class SQLNodeAssignment(object):
         )
         res.close()
 
-    def get_best_node(self, service):
+    def get_best_node(self, service, email):
         """Returns the 'least loaded' node currently available, increments the
         active count on that node, and decrements the slots currently available
         """
+        if self.lucky_user(email):
+            return (
+                self.settings.get("spanner_node_id", 800),
+                self.settings.get("spanner_entry", None)
+            )
+
         nodes = self._get_nodes_table(service)
         service = self._get_service_id(service)
 

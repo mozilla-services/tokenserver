@@ -50,7 +50,6 @@ class _UsersBase(object):
     replaced_at = Column(BigInteger(), nullable=True)
     nodeid = Column(BigInteger(), nullable=False)
     keys_changed_at = Column(BigInteger(), nullable=True)
-    migration_state = Column(String(32), nullable=True)
 
     @declared_attr
     def __table_args__(cls):
