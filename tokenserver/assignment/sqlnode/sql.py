@@ -12,6 +12,7 @@ import math
 import traceback
 import hashlib
 from mozsvc.exceptions import BackendError
+from pyramid.threadlocal import get_current_registry
 
 from sqlalchemy.sql import select, update, and_
 from sqlalchemy.ext.declarative import declarative_base
@@ -194,6 +195,7 @@ class SQLNodeAssignment(object):
         self.sqluri = sqluri
         if pool_reset_on_return.lower() in ('', 'none'):
             pool_reset_on_return = None
+        self._test_settings = {}  # unit test specific overrides
 
         # Use production-ready pool settings for the MySQL backend.
         # We also need to work around mysql using "LEAST(a,b)" and
@@ -225,7 +227,7 @@ class SQLNodeAssignment(object):
         self.services = get_cls('services', _Base)
         self.nodes = get_cls('nodes', _Base)
         self.users = get_cls('users', _Base)
-        self.settings = kw
+        self._settings = kw or {}
 
         for table in (self.services, self.nodes, self.users):
             table.metadata.bind = self._engine
@@ -234,6 +236,22 @@ class SQLNodeAssignment(object):
 
     def _get_engine(self, service=None):
         return self._engine
+
+    @property
+    def settings(self):
+        # Normalize the various settings by picking out the
+        # `tokenserver.` settings from the pyramid settings
+        # registry, remove the namespace prefix so that they
+        # match the values that should be passed in as *kw
+        # to the __init__()
+        settings = dict(
+           map(lambda (k, v): (
+               k.replace('tokenserver.', ''), v),
+               filter(lambda e: e[0].startswith('tokenserver.'),
+                      (get_current_registry().settings or {}).items()))
+        ) or self._settings
+        settings.update(self._test_settings)
+        return settings
 
     def _safe_execute(self, *args, **kwds):
         """Execute an sqlalchemy query, raise BackendError on failure."""
@@ -306,7 +324,11 @@ class SQLNodeAssignment(object):
         finally:
             res.close()
 
-    def lucky_user(self, email):
+    def allocate_to_spanner(self, email):
+        """use a simple, reproducable hashing mechanism to determine if
+        a user should be provisioned to spanner. Does not need to be
+        secure, just a selectable percentage."""
+
         pick = ord(hashlib.sha1(email.encode()).digest()[0])
         migrate = self.settings.get('migrate_new_user_percentage', 0)
         return pick < (256 * (migrate * .01))
@@ -612,7 +634,7 @@ class SQLNodeAssignment(object):
         """Returns the 'least loaded' node currently available, increments the
         active count on that node, and decrements the slots currently available
         """
-        if self.lucky_user(email):
+        if self.allocate_to_spanner(email):
             return (
                 self.settings.get("spanner_node_id", 800),
                 self.settings.get("spanner_entry", None)

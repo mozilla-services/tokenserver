@@ -794,27 +794,20 @@ class TestService(unittest.TestCase):
     def test_migrate_new_user(self):
         EMAIL0 = "abO-test@example.com"
         EMAIL1 = "abT-test@example.com"
-        settings = self.backend.settings
         # the two platfroms differ in how the settings are labeled.
-        prefix = ""
-        if not isinstance(
-            self.backend,
-                tokenserver.assignment.sqlnode.sql.SQLNodeAssignment):
-            prefix = 'tokenserver.'
-        old = settings.get('{}migrate_new_user_percentage'.format(prefix), 0)
-        self.backend.settings[
-            '{}migrate_new_user_percentage'.format(prefix)] = 1
+        self.backend._test_settings['migrate_new_user_percentage'] = 1
+        settings = self.backend.settings
 
         user0 = self.backend.allocate_user("sync-1.5", EMAIL0)
         user1 = self.backend.allocate_user("sync-1.5", EMAIL1)
         self.assertEquals(
             user0['node'],
-            settings['{}spanner_entry'.format(prefix)])
+            settings['spanner_entry'])
         self.assertEquals(
             user1['node'],
-            settings.get('{}service_entry'.format(prefix), 'https://phx11'))
+            settings.get('service_entry', 'https://phx11'))
 
-        settings['{}migrate_new_user_percentage'.format(prefix)] = old
+        del(self.backend._settings['migrate_new_user_percentage'])
 
 
 class TestServiceWithSQLBackend(TestService):
