@@ -12,7 +12,6 @@ import math
 import traceback
 import hashlib
 from mozsvc.exceptions import BackendError
-from pyramid.threadlocal import get_current_registry
 
 from sqlalchemy.sql import select, update, and_
 from sqlalchemy.ext.declarative import declarative_base
@@ -190,12 +189,12 @@ class SQLNodeAssignment(object):
     def __init__(self, sqluri, create_tables=False, pool_size=100,
                  pool_recycle=60, pool_timeout=30, max_overflow=10,
                  pool_reset_on_return='rollback', capacity_release_rate=0.1,
+                 spanner_node_id=None, migrate_new_user_percentage=0,
                  **kw):
         self._cached_service_ids = {}
         self.sqluri = sqluri
         if pool_reset_on_return.lower() in ('', 'none'):
             pool_reset_on_return = None
-        self._test_settings = {}  # unit test specific overrides
 
         # Use production-ready pool settings for the MySQL backend.
         # We also need to work around mysql using "LEAST(a,b)" and
@@ -210,9 +209,11 @@ class SQLNodeAssignment(object):
                 max_overflow=max_overflow,
                 logging_name='tokenserver.assignment.sqlnode'
             )
+            self._sqlfunc_max = sqlfunc.greatest
             self._sqlfunc_min = sqlfunc.least
         else:
             self._engine = create_engine(sqluri, poolclass=NullPool)
+            self._sqlfunc_max = sqlfunc.max
             self._sqlfunc_min = sqlfunc.min
 
         self._engine.echo = kw.get('echo', False)
@@ -224,10 +225,16 @@ class SQLNodeAssignment(object):
         else:
             from tokenserver.assignment.sqlnode.schemas import get_cls
 
+        self._spanner_node_id = spanner_node_id
+        self._migrate_new_user_percentage = migrate_new_user_percentage
+        if self._migrate_new_user_percentage > 0:
+            if self._spanner_node_id is None:
+                raise ValueError("Must set spanner_node_id when migrating "
+                                 "users to spanner")
+
         self.services = get_cls('services', _Base)
         self.nodes = get_cls('nodes', _Base)
         self.users = get_cls('users', _Base)
-        self._settings = kw or {}
 
         for table in (self.services, self.nodes, self.users):
             table.metadata.bind = self._engine
@@ -236,22 +243,6 @@ class SQLNodeAssignment(object):
 
     def _get_engine(self, service=None):
         return self._engine
-
-    @property
-    def settings(self):
-        # Normalize the various settings by picking out the
-        # `tokenserver.` settings from the pyramid settings
-        # registry, remove the namespace prefix so that they
-        # match the values that should be passed in as *kw
-        # to the __init__()
-        settings = dict(
-           map(lambda (k, v): (
-               k.replace('tokenserver.', ''), v),
-               filter(lambda e: e[0].startswith('tokenserver.'),
-                      (get_current_registry().settings or {}).items()))
-        ) or self._settings
-        settings.update(self._test_settings)
-        return settings
 
     def _safe_execute(self, *args, **kwds):
         """Execute an sqlalchemy query, raise BackendError on failure."""
@@ -330,8 +321,7 @@ class SQLNodeAssignment(object):
         secure, just a selectable percentage."""
 
         pick = ord(hashlib.sha1(email.encode()).digest()[0])
-        migrate = self.settings.get('migrate_new_user_percentage', 0)
-        return pick < (256 * (migrate * .01))
+        return pick < (256 * (self._migrate_new_user_percentage * .01))
 
     def allocate_user(self, service, email, generation=0, client_state='',
                       keys_changed_at=0, node=None, timestamp=None):
@@ -554,13 +544,16 @@ class SQLNodeAssignment(object):
             available = math.ceil(capacity * self.capacity_release_rate)
         res = self._safe_execute(sqltext(
             """
-            insert into nodes (service, node, available, capacity,
+            insert into nodes (id, service, node, available, capacity,
                             current_load, downed, backoff)
-            values (:service, :node, :available, :capacity,
+            values (:nodeid, :service, :node, :available, :capacity,
                     :current_load, :downed, :backoff)
             """),
-            service=service, node=node,
-            capacity=capacity, available=available,
+            nodeid=kwds.get('nodeid', None),
+            service=service,
+            node=node,
+            capacity=capacity,
+            available=available,
             current_load=kwds.get('current_load', 0),
             downed=kwds.get('downed', 0),
             backoff=kwds.get('backoff', 0),
@@ -634,35 +627,34 @@ class SQLNodeAssignment(object):
         """Returns the 'least loaded' node currently available, increments the
         active count on that node, and decrements the slots currently available
         """
-        if self.should_allocate_to_spanner(email):
-            return (
-                self.settings.get("spanner_node_id", 800),
-                self.settings.get("spanner_entry", None)
-            )
-
         nodes = self._get_nodes_table(service)
         service = self._get_service_id(service)
 
-        # Pick the least-loaded node that has available slots.
-        where = [nodes.c.service == service,
-                 nodes.c.available > 0,
-                 nodes.c.capacity > nodes.c.current_load,
-                 nodes.c.downed == 0,
-                 nodes.c.backoff == 0]
+        query = select([nodes])
 
-        query = select([nodes]).where(and_(*where))
-
-        if self._is_sqlite:
-            # sqlite doesn't have the 'log' funtion, and requires
-            # coercion to a float for the sorting to work.
-            query = query.order_by(nodes.c.current_load * 1.0 /
-                                   nodes.c.capacity)
+        if self.should_allocate_to_spanner(email):
+            # Some users get allocated directly to the new spanner node.
+            query = query.where(nodes.c.id == self._spanner_node_id)
         else:
-            # using log() increases floating-point precision on mysql
-            # and thus makes the sorting more accurate.
-            query = query.order_by(sqlfunc.log(nodes.c.current_load) /
-                                   sqlfunc.log(nodes.c.capacity))
-        query = query.limit(1)
+            # Pick the least-loaded node that has available slots.
+            query = query.where(and_(
+                nodes.c.service == service,
+                nodes.c.available > 0,
+                nodes.c.capacity > nodes.c.current_load,
+                nodes.c.downed == 0,
+                nodes.c.backoff == 0
+            ))
+            if self._is_sqlite:
+                # sqlite doesn't have the 'log' funtion, and requires
+                # coercion to a float for the sorting to work.
+                query = query.order_by(nodes.c.current_load * 1.0 /
+                                       nodes.c.capacity)
+            else:
+                # using log() increases floating-point precision on mysql
+                # and thus makes the sorting more accurate.
+                query = query.order_by(sqlfunc.log(nodes.c.current_load) /
+                                       sqlfunc.log(nodes.c.capacity))
+            query = query.limit(1)
 
         # We may have to re-try the query if we need to release more capacity.
         # This loop allows a maximum of five retries before bailing out.
@@ -701,7 +693,7 @@ class SQLNodeAssignment(object):
         # This is a little racy with concurrent assignments, but no big deal.
         where = [nodes.c.service == service, nodes.c.node == node]
         where = and_(*where)
-        fields = {'available': nodes.c.available - 1,
+        fields = {'available': self._sqlfunc_max(nodes.c.available - 1, 0),
                   'current_load': nodes.c.current_load + 1}
         query = update(nodes, where, fields)
         con = self._safe_execute(query, close=True)

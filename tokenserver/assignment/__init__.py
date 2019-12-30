@@ -4,11 +4,6 @@ from zope.interface import Interface
 class INodeAssignment(Interface):
     """Interface definition for backend node-assignment db."""
 
-    def should_allocate_to_spanner(self, email):
-        """Determine if this user is routed to spanner
-
-        """
-
     def get_user(self, service, email):
         """Returns the user record for the given service and email.
 
