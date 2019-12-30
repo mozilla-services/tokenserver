@@ -4,7 +4,7 @@ from zope.interface import Interface
 class INodeAssignment(Interface):
     """Interface definition for backend node-assignment db."""
 
-    def allocate_to_spanner(self, email):
+    def should_allocate_to_spanner(self, email):
         """Determine if this user is routed to spanner
 
         """

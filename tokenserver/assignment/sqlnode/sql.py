@@ -324,7 +324,7 @@ class SQLNodeAssignment(object):
         finally:
             res.close()
 
-    def allocate_to_spanner(self, email):
+    def should_allocate_to_spanner(self, email):
         """use a simple, reproducable hashing mechanism to determine if
         a user should be provisioned to spanner. Does not need to be
         secure, just a selectable percentage."""
@@ -634,7 +634,7 @@ class SQLNodeAssignment(object):
         """Returns the 'least loaded' node currently available, increments the
         active count on that node, and decrements the slots currently available
         """
-        if self.allocate_to_spanner(email):
+        if self.should_allocate_to_spanner(email):
             return (
                 self.settings.get("spanner_node_id", 800),
                 self.settings.get("spanner_entry", None)

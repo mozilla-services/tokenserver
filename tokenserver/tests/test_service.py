@@ -794,7 +794,6 @@ class TestService(unittest.TestCase):
     def test_migrate_new_user(self):
         EMAIL0 = "abO-test@example.com"
         EMAIL1 = "abT-test@example.com"
-        # the two platfroms differ in how the settings are labeled.
         self.backend._test_settings['migrate_new_user_percentage'] = 1
         settings = self.backend.settings
 
@@ -825,6 +824,9 @@ class TestServiceWithSQLBackend(TestService):
         # Ensure the necessary service exists in the db.
         self.backend.add_service('sync-1.1', '{node}/1.1/{uid}')
         self.backend.add_service('sync-1.5', '{node}/1.5/{uid}')
+        # while stand alone mysql dbs will not hava a "spanner" service
+        # the unified test suite will fail if a "spanner" service is not
+        # defined.
         self.backend.add_service(
             'spanner', 'https://spanner.example.com/1.5/{uid}')
         # Ensure we have a node with enough capacity to run the tests.

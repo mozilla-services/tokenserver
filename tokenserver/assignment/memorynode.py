@@ -57,7 +57,7 @@ class MemoryNodeAssignmentBackend(object):
         except KeyError:
             return None
 
-    def allocate_to_spanner(self, email):
+    def should_allocate_to_spanner(self, email):
         """use a simple, reproducable hashing mechanism to determine if
         a user should be provisioned to spanner. Does not need to be
         secure, just a selectable percentage."""
@@ -71,7 +71,7 @@ class MemoryNodeAssignmentBackend(object):
             raise BackendError('user already exists: ' + email)
         if node is not None and node != self.service_entry:
             raise ValueError("unknown node: %s" % (node,))
-        if self.allocate_to_spanner(email):
+        if self.should_allocate_to_spanner(email):
             service_entry = self.settings.get('spanner_entry')
         else:
             service_entry = self.service_entry
