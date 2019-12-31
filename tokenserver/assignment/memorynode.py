@@ -1,6 +1,5 @@
 import hashlib
 
-from pyramid.threadlocal import get_current_registry
 from zope.interface import implements
 
 from tokenserver.assignment import INodeAssignment
@@ -20,24 +19,7 @@ class MemoryNodeAssignmentBackend(object):
         self._service_entry = service_entry
         self._users = {}
         self._next_uid = 1
-        self._test_settings = {}  # unit test specific overrides
-        self._settings = kw or {}
-
-    @property
-    def settings(self):
-        # Normalize the various settings by picking out the
-        # `tokenserver.` settings from the pyramid settings
-        # registry, remove the namespace prefix so that they
-        # match the values that should be passed in as *kw
-        # to the __init__()
-        settings = dict(
-           map(lambda (k, v): (
-               k.replace('tokenserver.', ''), v),
-               filter(lambda e: e[0].startswith('tokenserver.'),
-                      (get_current_registry().settings or {}).items()))
-        ) or self._settings
-        settings.update(self._test_settings)
-        return settings
+        self.settings = kw or {}
 
     @property
     def service_entry(self):
@@ -71,14 +53,10 @@ class MemoryNodeAssignmentBackend(object):
             raise BackendError('user already exists: ' + email)
         if node is not None and node != self.service_entry:
             raise ValueError("unknown node: %s" % (node,))
-        if self.should_allocate_to_spanner(email):
-            service_entry = self.settings.get('spanner_entry')
-        else:
-            service_entry = self.service_entry
         user = {
             'email': email,
             'uid': self._next_uid,
-            'node': service_entry,
+            'node': self._service_entry,
             'generation': generation,
             'keys_changed_at': keys_changed_at,
             'client_state': client_state,

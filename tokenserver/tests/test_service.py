@@ -791,25 +791,11 @@ class TestService(unittest.TestCase):
         res = self.app.get('/1.0/sync/1.1', headers=headers, status=200)
         self.assertEqual(res.json['node_type'], 'example')
 
-    def test_migrate_new_user(self):
-        EMAIL0 = "abO-test@example.com"
-        EMAIL1 = "abT-test@example.com"
-        self.backend._test_settings['migrate_new_user_percentage'] = 1
-        settings = self.backend.settings
-
-        user0 = self.backend.allocate_user("sync-1.5", EMAIL0)
-        user1 = self.backend.allocate_user("sync-1.5", EMAIL1)
-        self.assertEquals(
-            user0['node'],
-            settings['spanner_entry'])
-        self.assertEquals(
-            user1['node'],
-            settings.get('service_entry', 'https://phx11'))
-
-        del(self.backend._settings['migrate_new_user_percentage'])
-
 
 class TestServiceWithSQLBackend(TestService):
+
+    spanner_node = "https://spanner.example.com"
+    mysql_node = "https://example.com"
 
     def get_ini(self):
         return os.path.join(os.path.dirname(__file__),
@@ -824,16 +810,13 @@ class TestServiceWithSQLBackend(TestService):
         # Ensure the necessary service exists in the db.
         self.backend.add_service('sync-1.1', '{node}/1.1/{uid}')
         self.backend.add_service('sync-1.5', '{node}/1.5/{uid}')
-        # while stand alone mysql dbs will not hava a "spanner" service
-        # the unified test suite will fail if a "spanner" service is not
-        # defined.
-        self.backend.add_service(
-            'spanner', 'https://spanner.example.com/1.5/{uid}')
         # Ensure we have a node with enough capacity to run the tests.
-        self.backend.add_node('sync-1.1', 'https://example.com', 100)
-        self.backend.add_node('sync-1.5', 'https://phx11', 100)
-        self.backend.add_node('spanner',
-                              'https://spanner.example.com/1.5/{uid}', 9000)
+        self.backend.add_node('sync-1.1', self.mysql_node, 100)
+        self.backend.add_node('sync-1.5', self.mysql_node, 100)
+        # Ensure we have a spanner node, but give it not capacity
+        # so users are not assigned to it except under special
+        # circumstances.
+        self.backend.add_node('sync-1.5', self.spanner_node, 0, nodeid=800)
 
     def tearDown(self):
         # And clean up at the end, for good measure.
@@ -841,6 +824,18 @@ class TestServiceWithSQLBackend(TestService):
         self.backend._safe_execute('delete from nodes')
         self.backend._safe_execute('delete from users')
         super(TestServiceWithSQLBackend, self).tearDown()
+
+    def test_assign_new_users_to_spanner(self):
+        self.backend.migrate_new_user_percentage = 1
+        # These emails are carefully selected os that the first is assigned
+        # to spanner, but the second will not be.
+        EMAIL0 = "abO-test@example.com"
+        EMAIL1 = "abT-test@example.com"
+
+        user0 = self.backend.allocate_user("sync-1.5", EMAIL0)
+        user1 = self.backend.allocate_user("sync-1.5", EMAIL1)
+        self.assertEquals(user0['node'], self.spanner_node)
+        self.assertEquals(user1['node'], self.mysql_node)
 
 
 class TestServiceWithNoBackends(unittest.TestCase):
