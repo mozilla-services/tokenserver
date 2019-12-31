@@ -1,5 +1,3 @@
-
-from pyramid.threadlocal import get_current_registry
 from zope.interface import implements
 
 from tokenserver.assignment import INodeAssignment
@@ -16,18 +14,10 @@ class MemoryNodeAssignmentBackend(object):
     implements(INodeAssignment)
 
     def __init__(self, service_entry=None, **kw):
-        self._service_entry = service_entry
+        self.service_entry = service_entry
         self._users = {}
         self._next_uid = 1
-
-    @property
-    def service_entry(self):
-        """Implement this as a property to have the context when looking for
-        the value of the setting"""
-        if self._service_entry is None:
-            settings = get_current_registry().settings
-            self._service_entry = settings.get('tokenserver.service_entry')
-        return self._service_entry
+        self.settings = kw or {}
 
     def clear(self):
         self._users.clear()
@@ -53,7 +43,7 @@ class MemoryNodeAssignmentBackend(object):
             'keys_changed_at': keys_changed_at,
             'client_state': client_state,
             'old_client_states': {},
-            'first_seen_at': get_timestamp()
+            'first_seen_at': get_timestamp(),
         }
         self._users[(service, email)] = user
         self._next_uid += 1

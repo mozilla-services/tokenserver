@@ -336,7 +336,7 @@ def return_token(request):
         - **id** -- a signed authorization token, containing the
           user's id for hthe application and the node.
         - **secret** -- a secret derived from the shared secret
-        - **uid** -- the user id for this servic
+        - **uid** -- the user id for this service
         - **api_endpoint** -- the root URL for the user for the service.
     """
     # at this stage, we are sure that the credentials, application and version

@@ -10,6 +10,7 @@ with their load, capacity etc
 """
 import math
 import traceback
+import hashlib
 from mozsvc.exceptions import BackendError
 
 from sqlalchemy.sql import select, update, and_
@@ -188,11 +189,18 @@ class SQLNodeAssignment(object):
     def __init__(self, sqluri, create_tables=False, pool_size=100,
                  pool_recycle=60, pool_timeout=30, max_overflow=10,
                  pool_reset_on_return='rollback', capacity_release_rate=0.1,
+                 spanner_node_id=None, migrate_new_user_percentage=0,
                  **kw):
         self._cached_service_ids = {}
         self.sqluri = sqluri
         if pool_reset_on_return.lower() in ('', 'none'):
             pool_reset_on_return = None
+
+        self._spanner_node_id = spanner_node_id
+        self.migrate_new_user_percentage = migrate_new_user_percentage
+        if self.migrate_new_user_percentage and self._spanner_node_id is None:
+            raise ValueError("Must set spanner_node_id when migrating "
+                             "users to spanner")
 
         # Use production-ready pool settings for the MySQL backend.
         # We also need to work around mysql using "LEAST(a,b)" and
@@ -208,9 +216,11 @@ class SQLNodeAssignment(object):
                 logging_name='tokenserver.assignment.sqlnode'
             )
             self._sqlfunc_min = sqlfunc.least
+            self._sqlfunc_max = sqlfunc.greatest
         else:
             self._engine = create_engine(sqluri, poolclass=NullPool)
             self._sqlfunc_min = sqlfunc.min
+            self._sqlfunc_max = sqlfunc.max
 
         self._engine.echo = kw.get('echo', False)
         self.capacity_release_rate = capacity_release_rate
@@ -280,7 +290,7 @@ class SQLNodeAssignment(object):
                 'keys_changed_at': cur_row.keys_changed_at or 0,
                 'client_state': cur_row.client_state,
                 'old_client_states': {},
-                'first_seen_at': cur_row.created_at
+                'first_seen_at': cur_row.created_at,
             }
             # If the current row is marked as replaced or is missing a node,
             # and they haven't been retired, then assign them a new node.
@@ -304,18 +314,32 @@ class SQLNodeAssignment(object):
         finally:
             res.close()
 
+    def should_allocate_to_spanner(self, email):
+        """use a simple, reproducable hashing mechanism to determine if
+        a user should be provisioned to spanner. Does not need to be
+        secure, just a selectable percentage."""
+        if self.migrate_new_user_percentage:
+            pick = ord(hashlib.sha1(email.encode()).digest()[0])
+            return pick < (256 * (self.migrate_new_user_percentage * .01))
+        else:
+            return False
+
     def allocate_user(self, service, email, generation=0, client_state='',
                       keys_changed_at=0, node=None, timestamp=None):
         if timestamp is None:
             timestamp = get_timestamp()
         if node is None:
-            nodeid, node = self.get_best_node(service)
+            nodeid, node = self.get_best_node(service, email)
         else:
             nodeid = self.get_node_id(service, node)
         params = {
-            'service': service, 'email': email, 'nodeid': nodeid,
-            'generation': generation, 'keys_changed_at': keys_changed_at,
-            'client_state': client_state, 'timestamp': timestamp
+            'service': service,
+            'email': email,
+            'nodeid': nodeid,
+            'generation': generation,
+            'keys_changed_at': keys_changed_at,
+            'client_state': client_state,
+            'timestamp': timestamp
         }
         res = self._safe_execute(_CREATE_USER_RECORD, **params)
         res.close()
@@ -327,7 +351,7 @@ class SQLNodeAssignment(object):
             'keys_changed_at': keys_changed_at,
             'client_state': client_state,
             'old_client_states': {},
-            'first_seen_at': timestamp
+            'first_seen_at': timestamp,
         }
 
     def update_user(self, service, user, generation=None, client_state=None,
@@ -341,7 +365,7 @@ class SQLNodeAssignment(object):
                 'service': service,
                 'email': user['email'],
                 'generation': generation,
-                'keys_changed_at': keys_changed_at,
+                'keys_changed_at': keys_changed_at
             }
             res = self._safe_execute(_UPDATE_USER_RECORD_IN_PLACE, **params)
             res.close()
@@ -521,12 +545,16 @@ class SQLNodeAssignment(object):
             available = math.ceil(capacity * self.capacity_release_rate)
         res = self._safe_execute(sqltext(
             """
-            insert into nodes (service, node, available, capacity,
-                               current_load, downed, backoff)
-            values (:service, :node, :available, :capacity,
+            insert into nodes (id, service, node, available, capacity,
+                            current_load, downed, backoff)
+            values (:nodeid, :service, :node, :available, :capacity,
                     :current_load, :downed, :backoff)
             """),
-            service=service, node=node, capacity=capacity, available=available,
+            nodeid=kwds.get('nodeid', None),
+            service=service,
+            node=node,
+            capacity=capacity,
+            available=available,
             current_load=kwds.get('current_load', 0),
             downed=kwds.get('downed', 0),
             backoff=kwds.get('backoff', 0),
@@ -596,33 +624,38 @@ class SQLNodeAssignment(object):
         )
         res.close()
 
-    def get_best_node(self, service):
+    def get_best_node(self, service, email):
         """Returns the 'least loaded' node currently available, increments the
         active count on that node, and decrements the slots currently available
         """
         nodes = self._get_nodes_table(service)
         service = self._get_service_id(service)
-
-        # Pick the least-loaded node that has available slots.
-        where = [nodes.c.service == service,
-                 nodes.c.available > 0,
-                 nodes.c.capacity > nodes.c.current_load,
-                 nodes.c.downed == 0,
-                 nodes.c.backoff == 0]
-
-        query = select([nodes]).where(and_(*where))
-
-        if self._is_sqlite:
-            # sqlite doesn't have the 'log' funtion, and requires
-            # coercion to a float for the sorting to work.
-            query = query.order_by(nodes.c.current_load * 1.0 /
-                                   nodes.c.capacity)
+        query = select([nodes])
+        send_to_spanner = self.should_allocate_to_spanner(email)
+        if send_to_spanner:
+            query = query.where(nodes.c.id == self._spanner_node_id)
         else:
-            # using log() increases floating-point precision on mysql
-            # and thus makes the sorting more accurate.
-            query = query.order_by(sqlfunc.log(nodes.c.current_load) /
-                                   sqlfunc.log(nodes.c.capacity))
-        query = query.limit(1)
+            # Pick the least-loaded node that has available slots.
+            query = query.where(and_(
+                nodes.c.service == service,
+                nodes.c.available > 0,
+                nodes.c.capacity > nodes.c.current_load,
+                nodes.c.downed == 0,
+                nodes.c.backoff == 0
+            ))
+            if self._is_sqlite:
+                # sqlite doesn't have the 'log' funtion, and requires
+                # coercion to a float for the sorting to work.
+                query = query.order_by(
+                    nodes.c.current_load * 1.0 /
+                    nodes.c.capacity)
+            else:
+                # using log() increases floating-point precision on mysql
+                # and thus makes the sorting more accurate.
+                query = query.order_by(
+                    sqlfunc.log(nodes.c.current_load) /
+                    sqlfunc.log(nodes.c.capacity))
+            query = query.limit(1)
 
         # We may have to re-try the query if we need to release more capacity.
         # This loop allows a maximum of five retries before bailing out.
@@ -647,6 +680,8 @@ class SQLNodeAssignment(object):
                 res.close()
                 if res.rowcount == 0:
                     break
+            else:
+                break
 
         # Did we succeed in finding a node?
         if row is None:
@@ -656,11 +691,13 @@ class SQLNodeAssignment(object):
         node = str(row.node)
 
         # Update the node to reflect the new assignment.
-        # This is a little racy with concurrent assignments, but no big deal.
+        # This is a little racy with concurrent assignments, but no big
+        # deal.
         where = [nodes.c.service == service, nodes.c.node == node]
         where = and_(*where)
-        fields = {'available': nodes.c.available - 1,
-                  'current_load': nodes.c.current_load + 1}
+        fields = {'current_load': nodes.c.current_load + 1}
+        if not send_to_spanner:
+            fields['available'] = self._sqlfunc_max(nodes.c.available - 1, 0)
         query = update(nodes, where, fields)
         con = self._safe_execute(query, close=True)
         con.close()
