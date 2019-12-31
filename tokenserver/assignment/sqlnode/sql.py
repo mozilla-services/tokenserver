@@ -234,7 +234,6 @@ class SQLNodeAssignment(object):
         self.services = get_cls('services', _Base)
         self.nodes = get_cls('nodes', _Base)
         self.users = get_cls('users', _Base)
-        self.settings = kw or {}
 
         for table in (self.services, self.nodes, self.users):
             table.metadata.bind = self._engine
@@ -691,17 +690,17 @@ class SQLNodeAssignment(object):
         nodeid = row.id
         node = str(row.node)
 
+        # Update the node to reflect the new assignment.
+        # This is a little racy with concurrent assignments, but no big
+        # deal.
+        where = [nodes.c.service == service, nodes.c.node == node]
+        where = and_(*where)
+        fields = {'current_load': nodes.c.current_load + 1}
         if not send_to_spanner:
-            # Update the node to reflect the new assignment.
-            # This is a little racy with concurrent assignments, but no big
-            # deal.
-            where = [nodes.c.service == service, nodes.c.node == node]
-            where = and_(*where)
-            fields = {'available': self._sqlfunc_max(nodes.c.available - 1, 0),
-                      'current_load': nodes.c.current_load + 1}
-            query = update(nodes, where, fields)
-            con = self._safe_execute(query, close=True)
-            con.close()
+            fields['available'] = self._sqlfunc_max(nodes.c.available - 1, 0)
+        query = update(nodes, where, fields)
+        con = self._safe_execute(query, close=True)
+        con.close()
 
         return nodeid, node
 

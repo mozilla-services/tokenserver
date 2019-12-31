@@ -29,8 +29,6 @@ class NodeAssignmentTests(object):
         self.backend.add_service('sync-1.5', '{node}/1.5/{uid}')
         self.backend.add_service('queuey-1.0', '{node}/{service}/{uid}')
         self.backend.add_node('sync-1.0', 'https://phx12', 100)
-        self.backend.add_node('sync-1.5', 'https://phx11', 100)
-        self.backend.migrate_new_user_percentage = 0
 
     def test_node_allocation(self):
         user = self.backend.get_user("sync-1.0", "test1@example.com")

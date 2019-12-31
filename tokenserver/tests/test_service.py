@@ -813,7 +813,7 @@ class TestServiceWithSQLBackend(TestService):
         # Ensure we have a node with enough capacity to run the tests.
         self.backend.add_node('sync-1.1', self.mysql_node, 100)
         self.backend.add_node('sync-1.5', self.mysql_node, 100)
-        # Ensure we have a spanner node, but give it not capacity
+        # Ensure we have a spanner node, but give it no capacity
         # so users are not assigned to it except under special
         # circumstances.
         self.backend.add_node('sync-1.5', self.spanner_node, 0, nodeid=800)
@@ -827,7 +827,7 @@ class TestServiceWithSQLBackend(TestService):
 
     def test_assign_new_users_to_spanner(self):
         self.backend.migrate_new_user_percentage = 1
-        # These emails are carefully selected os that the first is assigned
+        # These emails are carefully selected so that the first is assigned
         # to spanner, but the second will not be.
         EMAIL0 = "abO-test@example.com"
         EMAIL1 = "abT-test@example.com"
