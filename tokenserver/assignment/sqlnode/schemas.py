@@ -116,3 +116,17 @@ class _NodesBase(object):
 
 
 _add('nodes', _NodesBase)
+
+
+class _SettingsBase(object):
+    """This table holds dynamic setting values for operations.
+
+    Really, only useful for longer lived SQL nodes right now.
+
+    """
+    setting = Column(String(100), primary_key=True, nullable=False)
+    value = Column(String(255), nullable=False)
+    description = Column(String(255), nullable=True)
+
+
+_add('dynamic_settings', _SettingsBase)
