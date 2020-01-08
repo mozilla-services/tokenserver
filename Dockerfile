@@ -1,10 +1,8 @@
-FROM python:2.7-alpine
+FROM pypy:2.7-slim
 
 WORKDIR /app
 
-RUN addgroup -g 1001 app \
-    && adduser -u 1001 -S -D -G app -s /usr/sbin/nologin app
-
+RUN addgroup -gid 1001 app && useradd -g app --shell /usr/sbin/nologin --uid 1001 app
 # run the server by default
 ENTRYPOINT ["/app/docker-entrypoint.sh"]
 CMD ["server"]
@@ -14,15 +12,14 @@ COPY ./dev-requirements.txt /app/dev-requirements.txt
 
 # install dependencies, cleanup and add libstdc++ back in since
 # we the app needs to link to it
-RUN apk add --update build-base ca-certificates libffi-dev openssl-dev && \
-    pip install -r requirements.txt gunicorn gevent && \
+RUN apt-get update && \
+    apt-get install -y build-essential ca-certificates libffi-dev libssl-dev libmysqlclient-dev && \
     pip install -r dev-requirements.txt && \
-    apk del --purge build-base gcc && \
-    apk add libstdc++
+    apt-get remove -y build-essential gcc
 
 # Copy in the whole app after dependencies have been installed & cached
 COPY . /app
-RUN python ./setup.py develop
+RUN pypy ./setup.py develop
 
 # run as non priviledged user
 USER app
