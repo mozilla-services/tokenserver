@@ -8,6 +8,7 @@ configparser==3.7.4
 cornice==3.5.1
 cryptography==2.6.1
 enum34==1.1.6
+gunicorn==19.10.0
 hawkauthlib==2.0.0
 hupper==1.6.1
 idna==2.8
@@ -16,6 +17,7 @@ konfig==1.1
 Mako==1.0.9
 MarkupSafe==1.1.1
 mozsvc==0.10
+mysqlclient==1.4.6
 Paste==3.0.8
 PasteDeploy==2.0.1
 plaster==1.0
