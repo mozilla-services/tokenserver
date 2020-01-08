@@ -12,10 +12,12 @@ case "$1" in
 
         echo "Starting gunicorn with config: $_SETTINGS_FILE"
 
+        # the 'gevent' worker class causes gunicorn to fail to load
+        # under Docker. Switching to 'sync' solves this.
         exec gunicorn \
             --paste "$_SETTINGS_FILE" \
             --bind ${HOST-127.0.0.1}:${PORT-8000}\
-            --worker-class gevent \
+            --worker-class sync \
             --timeout ${TOKENSERVER_TIMEOUT-600} \
             --workers ${WEB_CONCURRENCY-5}\
             --graceful-timeout ${TOKENSERVER_GRACEFUL_TIMEOUT-660}\
