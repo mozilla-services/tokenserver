@@ -58,11 +58,14 @@ def purge_old_records(config_file, grace_period=-1, max_per_loop=10,
                     "limit": max_per_loop,
                 }
                 rows = list(backend.get_old_user_records(service, **kwds))
+                logger.info("Fetched %d rows", len(rows))
                 for row in rows:
                     # Don't attempt to purge data from downed nodes.
                     # Instead wait for them to either come back up or to be
                     # completely removed from service.
                     if row.node is None:
+                        logger.info("Deleting user record for uid %s on %s",
+                                    row.uid, row.node)
                         backend.delete_user_record(service, row.uid)
                     elif not row.downed:
                         logger.info("Purging uid %s on %s", row.uid, row.node)
