@@ -35,12 +35,17 @@ logger = logging.getLogger("tokenserver.scripts.purge_old_records")
 
 
 def purge_old_records(config_file, grace_period=-1, max_per_loop=10,
-                      request_timeout=60):
+                      max_offset=0, request_timeout=60):
     """Purge old records from the assignment backend in the given config file.
 
     This function iterates through each storage backend in the given config
     file and calls its purge_expired_items() method.  The result is a
     gradual pruning of expired items from each database.
+
+    `max_offset` is used to select a random offset into the list of purgeable
+    records. With multiple tasks running concurrently, this will provide each
+    a (likely) different set of records to work on. A cheap, imperfect
+    randomization.
     """
     logger.info("Purging old user records")
     logger.debug("Using config file %r", config_file)
@@ -53,16 +58,21 @@ def purge_old_records(config_file, grace_period=-1, max_per_loop=10,
             logger.debug("Purging old user records for service: %s", service)
             # Process batches of <max_per_loop> items, until we run out.
             while True:
+                offset = random.randint(0, max_offset)
                 kwds = {
                     "grace_period": grace_period,
                     "limit": max_per_loop,
+                    "offset": offset,
                 }
                 rows = list(backend.get_old_user_records(service, **kwds))
+                logger.info("Fetched %d rows at offset %d", len(rows), offset)
                 for row in rows:
                     # Don't attempt to purge data from downed nodes.
                     # Instead wait for them to either come back up or to be
                     # completely removed from service.
                     if row.node is None:
+                        logger.info("Deleting user record for uid %s on %s",
+                                    row.uid, row.node)
                         backend.delete_user_record(service, row.uid)
                     elif not row.downed:
                         logger.info("Purging uid %s on %s", row.uid, row.node)
@@ -137,6 +147,10 @@ def main(args=None):
                       help="Number of seconds grace to allow on replacement")
     parser.add_option("", "--max-per-loop", type="int", default=10,
                       help="Maximum number of items to fetch in one go")
+    # N.B., if the number of purgeable rows is <<< max_offset then most
+    # selects will return zero rows. Choose this value accordingly.
+    parser.add_option("", "--max-offset", type="int", default=0,
+                      help="Use random offset from 0 to max_offset")
     parser.add_option("", "--request-timeout", type="int", default=60,
                       help="Timeout for service deletion requests")
     parser.add_option("", "--oneshot", action="store_true",
@@ -156,6 +170,7 @@ def main(args=None):
     purge_old_records(config_file,
                       grace_period=opts.grace_period,
                       max_per_loop=opts.max_per_loop,
+                      max_offset=opts.max_offset,
                       request_timeout=opts.request_timeout)
     if not opts.oneshot:
         while True:
@@ -168,6 +183,7 @@ def main(args=None):
             purge_old_records(config_file,
                               grace_period=opts.grace_period,
                               max_per_loop=opts.max_per_loop,
+                              max_offset=opts.max_offset,
                               request_timeout=opts.request_timeout)
     return 0
 

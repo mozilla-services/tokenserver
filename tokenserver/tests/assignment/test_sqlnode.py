@@ -175,6 +175,10 @@ class NodeAssignmentTests(object):
         # That should be a total of 7 old records.
         old_records = list(self.backend.get_old_user_records(service, 0))
         self.assertEqual(len(old_records), 7)
+        # And with max_offset of 3, the first record should be id 4
+        old_records = list(self.backend.get_old_user_records(service, 0,
+                                                             100, 3))
+        self.assertEqual(old_records[0][0], 4)
         # The 'limit' parameter should be respected.
         old_records = list(self.backend.get_old_user_records(service, 0, 2))
         self.assertEqual(len(old_records), 2)
