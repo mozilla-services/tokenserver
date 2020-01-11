@@ -124,6 +124,8 @@ order by
     replaced_at desc, uid desc
 limit
     :limit
+offset
+    :offset
 """)
 
 
@@ -454,7 +456,8 @@ class SQLNodeAssignment(object):
         finally:
             res.close()
 
-    def get_old_user_records(self, service, grace_period=-1, limit=100):
+    def get_old_user_records(self, service, grace_period=-1, limit=100,
+                             offset=0):
         """Get user records that were replaced outside the grace period."""
         if grace_period < 0:
             grace_period = 60 * 60 * 24 * 7  # one week, in seconds
@@ -463,6 +466,7 @@ class SQLNodeAssignment(object):
             "service": service,
             "timestamp": get_timestamp() - grace_period,
             "limit": limit,
+            "offset": offset
         }
         res = self._safe_execute(_GET_OLD_USER_RECORDS_FOR_SERVICE, **params)
         try:
