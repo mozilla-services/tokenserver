@@ -192,6 +192,8 @@ where
     setting = :setting
 """)
 
+MIGRATION_CACHE_LIFESPAN = 300
+
 
 class SQLNodeAssignment(object):
 
@@ -203,7 +205,7 @@ class SQLNodeAssignment(object):
                  spanner_node_id=None, migrate_new_user_percentage=0,
                  **kw):
         self._cached_service_ids = {}
-        self._cache_migration_ttl = 0
+        self._migration_percentage_cache_ttl = 0
         self.sqluri = sqluri
         if pool_reset_on_return.lower() in ('', 'none'):
             pool_reset_on_return = None
@@ -331,7 +333,7 @@ class SQLNodeAssignment(object):
     def get_migration_percent(self):
         """get a cached Ops controllable percentage value for the number of
         new users to migrate to Spanner."""
-        if self._cache_migration_ttl > time.time():
+        if self._migration_percentage_cache_ttl > time.time():
             return self.migrate_new_user_percentage
         default = self.migrate_new_user_percentage or 0
         try:
@@ -341,9 +343,10 @@ class SQLNodeAssignment(object):
             self.migrate_new_user_percentage = (
                 int(res.fetchone()[0]) or default
             )
-            self._cache_migration_ttl = time.time() + 300
+            self._migration_percentage_cache_ttl = \
+                time.time() + MIGRATION_CACHE_LIFESPAN
         except Exception as ex:
-            logger.info(
+            logger.warn(
                 "Could not get migration percent \"{}\" using default: {}"
                 .format(ex, default)
             )
