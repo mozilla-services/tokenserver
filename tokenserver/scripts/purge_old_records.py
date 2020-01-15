@@ -79,6 +79,9 @@ def purge_old_records(config_file, grace_period=-1, max_per_loop=10,
                         delete_service_data(config, service, row,
                                             timeout=request_timeout)
                         backend.delete_user_record(service, row.uid)
+                    else:
+                        logger.info("Punting on this row: uid %s on %s downed? %d", row.uid, row.node, row.downed)
+                        time.sleep(2.0)
                 if len(rows) < max_per_loop:
                     break
     except Exception:
