@@ -82,7 +82,9 @@ def purge_old_records(config_file, grace_period=-1, max_per_loop=10,
                     else:
                         logger.info("Punting on this row: uid %s on %s (%d)",
                                     row.uid, row.node, row.downed)
-                        time.sleep(2.0)
+                        # Essentially pause for 60 seconds if all the nodes
+                        # in these return rows are downed.
+                        time.sleep(60.0/len(rows))
                 if len(rows) < max_per_loop:
                     break
     except Exception:
