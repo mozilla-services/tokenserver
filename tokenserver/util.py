@@ -22,7 +22,10 @@ def monkey_patch_gevent():
         from gevent import monkey
     except ImportError:
         return
-    monkey.patch_all()
+    try:
+        monkey.patch_all()
+    except AttributeError:
+        return
     try:
         import zmq
         import zmq.eventloop

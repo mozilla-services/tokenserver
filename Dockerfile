@@ -1,4 +1,4 @@
-FROM pypy:2.7-slim
+FROM pypy:2.7-jessie
 
 WORKDIR /app
 
