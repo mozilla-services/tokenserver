@@ -13,7 +13,8 @@ import traceback
 import hashlib
 from mozsvc.exceptions import BackendError
 
-from sqlalchemy.sql import select, update, and_
+from sqlalchemy.sql import select, update, and_, desc
+from sqlalchemy.sql.functions import coalesce
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import create_engine
 from sqlalchemy.pool import NullPool
@@ -107,25 +108,6 @@ set
 where
     email = :email
     and replaced_at is null
-""")
-
-
-_GET_OLD_USER_RECORDS_FOR_SERVICE = sqltext("""\
-select
-    uid, email, generation, keys_changed_at, client_state,
-    nodes.node, nodes.downed, created_at, replaced_at
-from
-    users left outer join nodes on users.nodeid = nodes.id
-where
-    users.service = :service
-and
-    replaced_at is not null and replaced_at < :timestamp
-order by
-    replaced_at desc, uid desc
-limit
-    :limit
-offset
-    :offset
 """)
 
 
@@ -459,16 +441,41 @@ class SQLNodeAssignment(object):
     def get_old_user_records(self, service, grace_period=-1, limit=100,
                              offset=0):
         """Get user records that were replaced outside the grace period."""
+        nodes = self._get_nodes_table(service)
+        users = self._get_users_table(service)
+        service = self._get_service_id(service)
+
         if grace_period < 0:
             grace_period = 60 * 60 * 24 * 7  # one week, in seconds
         grace_period = int(grace_period * 1000)  # convert seconds -> millis
-        params = {
-            "service": service,
-            "timestamp": get_timestamp() - grace_period,
-            "limit": limit,
-            "offset": offset
-        }
-        res = self._safe_execute(_GET_OLD_USER_RECORDS_FOR_SERVICE, **params)
+        timestamp = get_timestamp() - grace_period
+
+        query = select([users.c.uid,
+                        users.c.email,
+                        users.c.generation,
+                        users.c.keys_changed_at,
+                        users.c.client_state,
+                        nodes.c.node,
+                        nodes.c.downed,
+                        users.c.created_at,
+                        users.c.replaced_at])
+        query = query.with_hint(users, 'USE INDEX (replaced_at_idx)',
+                                dialect_name='mysql')
+        query = query.select_from(users.outerjoin(
+            nodes,
+            users.c.nodeid == nodes.c.id))
+        query = query.where(
+            and_(users.c.service == service,
+                 # This coalesce deals with the fact that downed rows can be
+                 #  0, 1 or NULL. We wish to exclude only those with value 1.
+                 coalesce(nodes.c.downed, 0) != 1,
+                 # sqlalchemy requires `!=` to produce `IS NOT NULL`
+                 users.c.replaced_at != None, # noqa; sqlalchemy
+                 users.c.replaced_at < timestamp))
+        query = query.order_by(desc(users.c.replaced_at), desc(users.c.uid))
+        query = query.limit(limit).offset(offset)
+
+        res = self._safe_execute(query)
         try:
             for row in res:
                 yield row
