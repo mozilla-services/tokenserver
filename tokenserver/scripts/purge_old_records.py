@@ -64,7 +64,8 @@ def purge_old_records(config_file, grace_period=-1, max_per_loop=10,
                     "limit": max_per_loop,
                     "offset": offset,
                 }
-                rows = list(backend.get_old_user_records(service, **kwds))
+                rows = backend.get_old_user_records_to_purge(service, **kwds)
+                rows = list(rows)
                 logger.info("Fetched %d rows at offset %d", len(rows), offset)
                 for row in rows:
                     # Don't attempt to purge data from downed nodes.
