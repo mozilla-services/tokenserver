@@ -438,9 +438,22 @@ class SQLNodeAssignment(object):
         finally:
             res.close()
 
-    def get_old_user_records(self, service, grace_period=-1, limit=100,
-                             offset=0):
-        """Get user records that were replaced outside the grace period."""
+    def get_old_user_records_to_purge(self, service, grace_period=-1,
+                                      limit=100, offset=0):
+        """Get user records that were replaced and can be purged.
+
+        This method returns user records that have been marked as replaced
+        and can be considered for purging from the db. Since the purging
+        process involves asking the node to delete user data, there are
+        some old records that cannot be purged, including:
+
+          * Records replaced recently, within the given grace_period.
+            Clients may not yet have received their new node assignment,
+            meaning they could continue writing user data to the node.
+          * Records where the node is marked as down. It will not be
+            possible to ask a downed node to delete user data, so we
+            need to maintain the user record until the node comes back up.
+        """
         nodes = self._get_nodes_table(service)
         users = self._get_users_table(service)
         service = self._get_service_id(service)
@@ -459,8 +472,13 @@ class SQLNodeAssignment(object):
                         nodes.c.downed,
                         users.c.created_at,
                         users.c.replaced_at])
+        # In testing on prod data, MySQL picked a bad index here.
+        # Force it to use the intended one.
         query = query.with_hint(users, 'USE INDEX (replaced_at_idx)',
                                 dialect_name='mysql')
+        # We need an outer join on the `nodes` table here, so that `users`
+        # rows for which the corresponding `nodes` entry has been deleted
+        # will still be available to purge.
         query = query.select_from(users.outerjoin(
             nodes,
             users.c.nodeid == nodes.c.id))

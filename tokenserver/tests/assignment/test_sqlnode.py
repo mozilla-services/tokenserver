@@ -52,7 +52,7 @@ class NodeAssignmentTests(object):
         with self.assertRaises(BackendError):
             self.backend.allocate_user("sync-1.0", "test1@mozilla.com")
 
-    def test_allocation_is_not_allowed_to_backof_nodes(self):
+    def test_allocation_is_not_allowed_to_backoff_nodes(self):
         self.backend.update_node('sync-1.0', 'https://phx12', backoff=True)
         with self.assertRaises(BackendError):
             self.backend.allocate_user("sync-1.0", "test1@mozilla.com")
@@ -152,16 +152,21 @@ class NodeAssignmentTests(object):
 
     def test_cleanup_of_old_records(self):
         service = "sync-1.0"
+        self.backend.add_node('sync-1.0', 'https://phx23', 0)
         # Create 6 user records for the first user.
         # Do a sleep halfway through so we can test use of grace period.
+        # Due to node capacity config they will also go to phx12 by default,
+        # except for one which we force to use phx23.
         email1 = "test1@mozilla.com"
         user1 = self.backend.allocate_user(service, email1)
         self.backend.update_user(service, user1, client_state="a")
         self.backend.update_user(service, user1, client_state="b")
-        self.backend.update_user(service, user1, client_state="c")
+        self.backend.update_user(service, user1, client_state="c",
+                                 node="https://phx23")
         break_time = time.time()
         time.sleep(0.1)
-        self.backend.update_user(service, user1, client_state="d")
+        self.backend.update_user(service, user1, client_state="d",
+                                 node="https://phx12")
         self.backend.update_user(service, user1, client_state="e")
         records = list(self.backend.get_user_records(service, email1))
         self.assertEqual(len(records), 6)
@@ -173,27 +178,35 @@ class NodeAssignmentTests(object):
         records = list(self.backend.get_user_records(service, email2))
         self.assertEqual(len(records), 3)
         # That should be a total of 7 old records.
-        old_records = list(self.backend.get_old_user_records(service, 0))
-        self.assertEqual(len(old_records), 7)
+        old_records = self.backend.get_old_user_records_to_purge(service, 0)
+        self.assertEqual(len(list(old_records)), 7)
+        # Unless phx23 is marked as down, in which case it won't be returned.
+        self.backend.update_node(service, 'https://phx23', downed=True)
+        old_records = self.backend.get_old_user_records_to_purge(service, 0)
+        self.assertEqual(len(list(old_records)), 6)
+        self.backend.update_node(service, 'https://phx23', downed=False)
         # And with max_offset of 3, the first record should be id 4
-        old_records = list(self.backend.get_old_user_records(service, 0,
-                                                             100, 3))
+        old_records = self.backend.get_old_user_records_to_purge(service, 0,
+                                                                 100, 3)
+        old_records = list(old_records)
         self.assertEqual(old_records[0][0], 4)
         # The 'limit' parameter should be respected.
-        old_records = list(self.backend.get_old_user_records(service, 0, 2))
-        self.assertEqual(len(old_records), 2)
+        old_records = self.backend.get_old_user_records_to_purge(service, 0, 2)
+        self.assertEqual(len(list(old_records)), 2)
         # The default grace period is too big to pick them up.
-        old_records = list(self.backend.get_old_user_records(service))
-        self.assertEqual(len(old_records), 0)
+        old_records = self.backend.get_old_user_records_to_purge(service)
+        self.assertEqual(len(list(old_records)), 0)
         # The grace period can select a subset of the records.
         grace = time.time() - break_time
-        old_records = list(self.backend.get_old_user_records(service, grace))
+        old_records = self.backend.get_old_user_records_to_purge(service,
+                                                                 grace)
+        old_records = list(old_records)
         self.assertEqual(len(old_records), 3)
         # Old records can be successfully deleted:
         for record in old_records:
             self.backend.delete_user_record(service, record.uid)
-        old_records = list(self.backend.get_old_user_records(service, 0))
-        self.assertEqual(len(old_records), 4)
+        old_records = self.backend.get_old_user_records_to_purge(service, 0)
+        self.assertEqual(len(list(old_records)), 4)
 
     def test_node_reassignment_when_records_are_replaced(self):
         self.backend.allocate_user("sync-1.0", "test@mozilla.com",
@@ -224,12 +237,12 @@ class NodeAssignmentTests(object):
                                            timestamp=timestamp)
         self.assertNotEqual(user1["uid"], user2["uid"])
         # Neither is marked replaced initially.
-        old_records = list(self.backend.get_old_user_records("sync-1.0", 0))
-        self.assertEqual(len(old_records), 0)
+        old_records = self.backend.get_old_user_records_to_purge("sync-1.0", 0)
+        self.assertEqual(len(list(old_records)), 0)
         # Reading current details will detect the problem and fix it.
         self.backend.get_user("sync-1.0", "test@mozilla.com")
-        old_records = list(self.backend.get_old_user_records("sync-1.0", 0))
-        self.assertEqual(len(old_records), 1)
+        old_records = self.backend.get_old_user_records_to_purge("sync-1.0", 0)
+        self.assertEqual(len(list(old_records)), 1)
 
     def test_that_race_recovery_respects_generation_number_monotonicity(self):
         timestamp = get_timestamp()
@@ -246,8 +259,8 @@ class NodeAssignmentTests(object):
         self.assertEqual(user["generation"], 2)
         self.assertEqual(user["uid"], user2["uid"])
         # And the other record should get marked as replaced.
-        old_records = list(self.backend.get_old_user_records("sync-1.0", 0))
-        self.assertEqual(len(old_records), 1)
+        old_records = self.backend.get_old_user_records_to_purge("sync-1.0", 0)
+        self.assertEqual(len(list(old_records)), 1)
 
     def test_node_reassignment_and_removal(self):
         NODE1 = "https://phx12"
@@ -284,7 +297,7 @@ class NodeAssignmentTests(object):
         # The old users records pointing to NODE2 should have a NULL 'node'
         # property since it has been removed from the db.
         null_node_count = 0
-        for row in self.backend.get_old_user_records("sync-1.0", 0):
+        for row in self.backend.get_old_user_records_to_purge("sync-1.0", 0):
             if row.node is None:
                 null_node_count += 1
             else:
