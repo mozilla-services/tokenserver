@@ -11,6 +11,7 @@ with their load, capacity etc
 import math
 import traceback
 import hashlib
+import uuid
 from mozsvc.exceptions import BackendError
 
 from sqlalchemy.sql import select, update, and_
@@ -54,15 +55,16 @@ limit
     20
 """)
 
-
+# `uid` was an autoincrement field, however that's no longer being set
+# as autoincrementing by sqlalchemy
 _CREATE_USER_RECORD = sqltext("""\
 insert into
     users
-    (service, email, nodeid, generation, keys_changed_at, client_state,
+    (uid, service, email, nodeid, generation, keys_changed_at, client_state,
      created_at, replaced_at)
 values
-    (:service, :email, :nodeid, :generation, :keys_changed_at, :client_state,
-     :timestamp, NULL)
+    (:uid, :service, :email, :nodeid, :generation, :keys_changed_at,
+     :client_state, :timestamp, NULL)
 """)
 
 # The `where` clause on this statement is designed as an extra layer of
@@ -324,8 +326,21 @@ class SQLNodeAssignment(object):
         else:
             return False
 
+    def gen_uid(self):
+        while True:
+            uid = uuid.uuid4().int & 0xffffffffffffffff
+            # sanity check that we're not duplicating an existing id
+            res = self._safe_execute(
+                "select uid from users where uid=:uid limit 1",
+                **{'uid': uid}
+                )
+            if res.rowcount() == 0:
+                return uid
+
     def allocate_user(self, service, email, generation=0, client_state='',
                       keys_changed_at=0, node=None, timestamp=None):
+        import pdb; pdb.set_trace()
+        uid = self.gen_uid()
         if timestamp is None:
             timestamp = get_timestamp()
         if node is None:
@@ -333,6 +348,7 @@ class SQLNodeAssignment(object):
         else:
             nodeid = self.get_node_id(service, node)
         params = {
+            'uid': uid,
             'service': service,
             'email': email,
             'nodeid': nodeid,
@@ -341,11 +357,15 @@ class SQLNodeAssignment(object):
             'client_state': client_state,
             'timestamp': timestamp
         }
-        res = self._safe_execute(_CREATE_USER_RECORD, **params)
-        res.close()
+        try:
+            res = self._safe_execute(_CREATE_USER_RECORD, **params)
+            res.close()
+        except Exception as ex:
+            import pdb; pdb.set_trace()
+            print (ex)
         return {
             'email': email,
-            'uid': res.lastrowid,
+            'uid': uid,
             'node': node,
             'generation': generation,
             'keys_changed_at': keys_changed_at,
