@@ -55,7 +55,7 @@ class TestPurgeOldRecordsScript(unittest.TestCase):
         # Configure the node-assignment backend to talk to our test service.
         self.backend = self.config.registry.getUtility(INodeAssignment)
         self.backend.add_service("sync-1.1", "{node}/1.1/{uid}")
-        self.backend.add_node("sync-1.1", self.service_node, 100)
+        self.backend.add_node("sync-1.1", self.service_node, 100, nodeid=123)
 
     def tearDown(self):
         if self.backend._engine.driver == 'pysqlite':

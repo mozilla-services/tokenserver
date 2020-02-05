@@ -40,7 +40,6 @@ class _UsersBase(object):
     a uid, an allocated node, and last-seen generation and client-state values.
     Rows are timestamped for easy cleanup of old records.
     """
-    import pdb; pdb.set_trace()
     # Not sure why, but sqlalchemy + sqlite aren't noting this field as
     # auto-incrementing anyomre.
     uid = Column(BigInteger(), primary_key=True, autoincrement=True,

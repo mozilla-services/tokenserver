@@ -327,19 +327,26 @@ class SQLNodeAssignment(object):
             return False
 
     def gen_uid(self):
-        while True:
-            uid = uuid.uuid4().int & 0xffffffffffffffff
+        uid = uuid.uuid4().int & 0xeffffffffffffff
+        """
+            while True:
             # sanity check that we're not duplicating an existing id
-            res = self._safe_execute(
-                "select uid from users where uid=:uid limit 1",
-                **{'uid': uid}
-                )
-            if res.rowcount() == 0:
-                return uid
+            try:
+                res = self._safe_execute(
+                    sqltext("select uid from users where uid=:uid limit 1"),
+                    {'uid': uid}
+                    )
+                if res.rowcount != 0:
+                    uid = uuid.uuid4().int & 0xefffffffffffffff
+                    continue
+                break
+            finally:
+                res.close()
+            """
+        return uid
 
     def allocate_user(self, service, email, generation=0, client_state='',
                       keys_changed_at=0, node=None, timestamp=None):
-        import pdb; pdb.set_trace()
         uid = self.gen_uid()
         if timestamp is None:
             timestamp = get_timestamp()
@@ -357,12 +364,7 @@ class SQLNodeAssignment(object):
             'client_state': client_state,
             'timestamp': timestamp
         }
-        try:
-            res = self._safe_execute(_CREATE_USER_RECORD, **params)
-            res.close()
-        except Exception as ex:
-            import pdb; pdb.set_trace()
-            print (ex)
+        self._safe_execute(_CREATE_USER_RECORD, **params)
         return {
             'email': email,
             'uid': uid,
@@ -423,7 +425,9 @@ class SQLNodeAssignment(object):
             else:
                 keys_changed_at = user['keys_changed_at']
             now = get_timestamp()
+            uid = self.gen_uid()
             params = {
+                'uid': uid,
                 'service': service, 'email': user['email'],
                 'nodeid': nodeid, 'generation': generation,
                 'keys_changed_at': keys_changed_at,
@@ -431,7 +435,7 @@ class SQLNodeAssignment(object):
             }
             res = self._safe_execute(_CREATE_USER_RECORD, **params)
             res.close()
-            user['uid'] = res.lastrowid
+            user['uid'] = uid
             user['generation'] = generation
             user['keys_changed_at'] = keys_changed_at
             user['old_client_states'][user['client_state']] = True
