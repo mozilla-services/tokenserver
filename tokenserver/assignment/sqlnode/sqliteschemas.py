@@ -6,8 +6,10 @@
 """
 from tokenserver.assignment.sqlnode.schemas import (_UsersBase,
                                                     _NodesBase,
+                                                    _SettingsBase,
                                                     Integer,
                                                     Column,
+                                                    String,
                                                     _add,
                                                     declared_attr)
 
@@ -37,3 +39,14 @@ class _SQLITEUsersBase(_UsersBase):
 
 
 _add('users', _SQLITEUsersBase)
+
+
+class _SQLITESettingsBase(_SettingsBase):
+    setting = Column(String(100), primary_key=True)
+
+    @declared_attr
+    def __table_args__(cls):
+        return()
+
+
+_add('dynamic_settings', _SQLITESettingsBase)

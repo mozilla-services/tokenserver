@@ -12,6 +12,7 @@ import math
 import traceback
 import hashlib
 import uuid
+import time
 from mozsvc.exceptions import BackendError
 
 from sqlalchemy.sql import select, update, and_
@@ -126,6 +127,8 @@ order by
     replaced_at desc, uid desc
 limit
     :limit
+offset
+    :offset
 """)
 
 
@@ -184,6 +187,18 @@ where
 """)
 
 
+_GET_DYNAMIC_SETTING = sqltext("""
+select
+    value
+from
+    dynamic_settings
+where
+    setting = :setting
+""")
+
+MIGRATION_CACHE_LIFESPAN = 300
+
+
 class SQLNodeAssignment(object):
 
     implements(INodeAssignment)
@@ -194,6 +209,7 @@ class SQLNodeAssignment(object):
                  spanner_node_id=None, migrate_new_user_percentage=0,
                  **kw):
         self._cached_service_ids = {}
+        self._migration_percentage_cache_ttl = 0
         self.sqluri = sqluri
         if pool_reset_on_return.lower() in ('', 'none'):
             pool_reset_on_return = None
@@ -236,8 +252,10 @@ class SQLNodeAssignment(object):
         self.services = get_cls('services', _Base)
         self.nodes = get_cls('nodes', _Base)
         self.users = get_cls('users', _Base)
+        self.dyn_settings = get_cls('dynamic_settings', _Base)
 
-        for table in (self.services, self.nodes, self.users):
+        for table in (self.services, self.nodes,
+                      self.users, self.dyn_settings):
             table.metadata.bind = self._engine
             if create_tables:
                 table.create(checkfirst=True)
@@ -316,13 +334,36 @@ class SQLNodeAssignment(object):
         finally:
             res.close()
 
+    def get_migration_percent(self):
+        """get a cached Ops controllable percentage value for the number of
+        new users to migrate to Spanner."""
+        if self._migration_percentage_cache_ttl > time.time():
+            return self.migrate_new_user_percentage
+        default = self.migrate_new_user_percentage or 0
+        try:
+            res = self._safe_execute(
+                _GET_DYNAMIC_SETTING,
+                {"setting": "migrate_new_user_percentage"})
+            self.migrate_new_user_percentage = (
+                int(res.fetchone()[0]) or default
+            )
+            self._migration_percentage_cache_ttl = \
+                time.time() + MIGRATION_CACHE_LIFESPAN
+        except Exception as ex:
+            logger.warn(
+                "Could not get migration percent \"{}\" using default: {}"
+                .format(ex, default)
+            )
+        return self.migrate_new_user_percentage
+
     def should_allocate_to_spanner(self, email):
         """use a simple, reproducable hashing mechanism to determine if
         a user should be provisioned to spanner. Does not need to be
         secure, just a selectable percentage."""
-        if self.migrate_new_user_percentage:
+        migrate = self.get_migration_percent()
+        if migrate:
             pick = ord(hashlib.sha1(email.encode()).digest()[0])
-            return pick < (256 * (self.migrate_new_user_percentage * .01))
+            return pick < (256 * (migrate * .01))
         else:
             return False
 
@@ -478,7 +519,8 @@ class SQLNodeAssignment(object):
         finally:
             res.close()
 
-    def get_old_user_records(self, service, grace_period=-1, limit=100):
+    def get_old_user_records(self, service, grace_period=-1, limit=100,
+                             offset=0):
         """Get user records that were replaced outside the grace period."""
         if grace_period < 0:
             grace_period = 60 * 60 * 24 * 7  # one week, in seconds
@@ -487,6 +529,7 @@ class SQLNodeAssignment(object):
             "service": service,
             "timestamp": get_timestamp() - grace_period,
             "limit": limit,
+            "offset": offset
         }
         res = self._safe_execute(_GET_OLD_USER_RECORDS_FOR_SERVICE, **params)
         try:
