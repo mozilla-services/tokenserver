@@ -28,7 +28,7 @@ class NodeAssignmentTests(object):
         self.backend.add_service('sync-1.0', '{node}/1.0/{uid}')
         self.backend.add_service('sync-1.5', '{node}/1.5/{uid}')
         self.backend.add_service('queuey-1.0', '{node}/{service}/{uid}')
-        self.backend.add_node('sync-1.0', 'https://phx12', 100)
+        self.backend.add_node('sync-1.0', 'https://phx12', 100, nodeid=123)
 
     def test_node_allocation(self):
         user = self.backend.get_user("sync-1.0", "test1@example.com")
@@ -175,10 +175,7 @@ class NodeAssignmentTests(object):
         # That should be a total of 7 old records.
         old_records = list(self.backend.get_old_user_records(service, 0))
         self.assertEqual(len(old_records), 7)
-        # And with max_offset of 3, the first record should be id 4
-        old_records = list(self.backend.get_old_user_records(service, 0,
-                                                             100, 3))
-        self.assertEqual(old_records[0][0], 4)
+        # record ids are now random.
         # The 'limit' parameter should be respected.
         old_records = list(self.backend.get_old_user_records(service, 0, 2))
         self.assertEqual(len(old_records), 2)
