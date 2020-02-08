@@ -23,6 +23,7 @@ requires = [
 tests_require = [
     'mock',
     'nose',
+    'responses',
     'unittest2',
     'webtest',
 ]
