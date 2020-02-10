@@ -316,7 +316,8 @@ class SQLNodeAssignment(object):
                 if cur_row.generation < MAX_GENERATION:
                     user = self.allocate_user(service, email,
                                               cur_row.generation,
-                                              cur_row.client_state)
+                                              cur_row.client_state,
+                                              cur_row.keys_changed_at)
             for old_row in old_rows:
                 # Collect any previously-seen client-state values.
                 if old_row.client_state != user['client_state']:

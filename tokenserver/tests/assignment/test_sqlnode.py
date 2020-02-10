@@ -197,12 +197,17 @@ class NodeAssignmentTests(object):
 
     def test_node_reassignment_when_records_are_replaced(self):
         self.backend.allocate_user("sync-1.0", "test@mozilla.com",
-                                   generation=42, client_state="aaa")
+                                   generation=42,
+                                   keys_changed_at=12,
+                                   client_state="aaa")
         user1 = self.backend.get_user("sync-1.0", "test@mozilla.com")
         self.backend.replace_user_records("sync-1.0", "test@mozilla.com")
         user2 = self.backend.get_user("sync-1.0", "test@mozilla.com")
+        # They should have got a new uid.
         self.assertNotEqual(user2["uid"], user1["uid"])
+        # But their account metadata should have been preserved.
         self.assertEqual(user2["generation"], user1["generation"])
+        self.assertEqual(user2["keys_changed_at"], user1["keys_changed_at"])
         self.assertEqual(user2["client_state"], user1["client_state"])
 
     def test_node_reassignment_not_done_for_retired_users(self):
