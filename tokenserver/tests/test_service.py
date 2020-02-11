@@ -811,8 +811,8 @@ class TestServiceWithSQLBackend(TestService):
         self.backend.add_service('sync-1.1', '{node}/1.1/{uid}')
         self.backend.add_service('sync-1.5', '{node}/1.5/{uid}')
         # Ensure we have a node with enough capacity to run the tests.
-        self.backend.add_node('sync-1.1', self.mysql_node, 100, nodeid=123)
-        self.backend.add_node('sync-1.5', self.mysql_node, 100, nodeid=124)
+        self.backend.add_node('sync-1.1', self.mysql_node, 100)
+        self.backend.add_node('sync-1.5', self.mysql_node, 100)
         # Ensure we have a spanner node, but give it no capacity
         # so users are not assigned to it except under special
         # circumstances.
@@ -831,7 +831,6 @@ class TestServiceWithSQLBackend(TestService):
         # to spanner, but the second will not be.
         EMAIL0 = "abO-test@example.com"
         EMAIL1 = "abT-test@example.com"
-
         user0 = self.backend.allocate_user("sync-1.5", EMAIL0)
         user1 = self.backend.allocate_user("sync-1.5", EMAIL1)
         self.assertEquals(user0['node'], self.spanner_node)

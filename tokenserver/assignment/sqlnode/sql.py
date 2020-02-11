@@ -11,7 +11,6 @@ with their load, capacity etc
 import math
 import traceback
 import hashlib
-import uuid
 import time
 from mozsvc.exceptions import BackendError
 
@@ -61,10 +60,10 @@ limit
 _CREATE_USER_RECORD = sqltext("""\
 insert into
     users
-    (uid, service, email, nodeid, generation, keys_changed_at, client_state,
+    (service, email, nodeid, generation, keys_changed_at, client_state,
      created_at, replaced_at)
 values
-    (:uid, :service, :email, :nodeid, :generation, :keys_changed_at,
+    ( :service, :email, :nodeid, :generation, :keys_changed_at,
      :client_state, :timestamp, NULL)
 """)
 
@@ -367,28 +366,8 @@ class SQLNodeAssignment(object):
         else:
             return False
 
-    def gen_uid(self):
-        uid = uuid.uuid4().int & 0xeffffffffffffff
-        """
-            while True:
-            # sanity check that we're not duplicating an existing id
-            try:
-                res = self._safe_execute(
-                    sqltext("select uid from users where uid=:uid limit 1"),
-                    {'uid': uid}
-                    )
-                if res.rowcount != 0:
-                    uid = uuid.uuid4().int & 0xefffffffffffffff
-                    continue
-                break
-            finally:
-                res.close()
-            """
-        return uid
-
     def allocate_user(self, service, email, generation=0, client_state='',
                       keys_changed_at=0, node=None, timestamp=None):
-        uid = self.gen_uid()
         if timestamp is None:
             timestamp = get_timestamp()
         if node is None:
@@ -396,7 +375,6 @@ class SQLNodeAssignment(object):
         else:
             nodeid = self.get_node_id(service, node)
         params = {
-            'uid': uid,
             'service': service,
             'email': email,
             'nodeid': nodeid,
@@ -405,10 +383,10 @@ class SQLNodeAssignment(object):
             'client_state': client_state,
             'timestamp': timestamp
         }
-        self._safe_execute(_CREATE_USER_RECORD, **params)
+        res = self._safe_execute(_CREATE_USER_RECORD, **params)
         return {
             'email': email,
-            'uid': uid,
+            'uid': res.lastrowid,
             'node': node,
             'generation': generation,
             'keys_changed_at': keys_changed_at,
@@ -466,9 +444,7 @@ class SQLNodeAssignment(object):
             else:
                 keys_changed_at = user['keys_changed_at']
             now = get_timestamp()
-            uid = self.gen_uid()
             params = {
-                'uid': uid,
                 'service': service, 'email': user['email'],
                 'nodeid': nodeid, 'generation': generation,
                 'keys_changed_at': keys_changed_at,
@@ -476,7 +452,7 @@ class SQLNodeAssignment(object):
             }
             res = self._safe_execute(_CREATE_USER_RECORD, **params)
             res.close()
-            user['uid'] = uid
+            user['uid'] = res.lastrowid
             user['generation'] = generation
             user['keys_changed_at'] = keys_changed_at
             user['old_client_states'][user['client_state']] = True
@@ -610,14 +586,20 @@ class SQLNodeAssignment(object):
         # We release only a fraction of the node's capacity to start.
         if available is None:
             available = math.ceil(capacity * self.capacity_release_rate)
-        res = self._safe_execute(sqltext(
-            """
-            insert into nodes (id, service, node, available, capacity,
-                            current_load, downed, backoff)
-            values (:nodeid, :service, :node, :available, :capacity,
-                    :current_load, :downed, :backoff)
-            """),
-            nodeid=kwds.get('nodeid', None),
+        cols = ["service", "node", "available", "capacity",
+                "current_load", "downed", "backoff"]
+        args = [":" + v for v in cols]
+        # Handle test cases that require nodeid to be 800
+        if "nodeid" in kwds:
+            cols.append("id")
+            args.append(":nodeid")
+        query = """
+            insert into nodes ({cols})
+            values ({args})
+            """.format(cols=", ".join(cols), args=", ".join(args))
+        res = self._safe_execute(
+            sqltext(query),
+            nodeid=kwds.get('nodeid'),
             service=service,
             node=node,
             capacity=capacity,

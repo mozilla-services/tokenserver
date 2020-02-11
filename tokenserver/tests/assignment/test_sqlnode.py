@@ -28,7 +28,7 @@ class NodeAssignmentTests(object):
         self.backend.add_service('sync-1.0', '{node}/1.0/{uid}')
         self.backend.add_service('sync-1.5', '{node}/1.5/{uid}')
         self.backend.add_service('queuey-1.0', '{node}/{service}/{uid}')
-        self.backend.add_node('sync-1.0', 'https://phx12', 100, nodeid=123)
+        self.backend.add_node('sync-1.0', 'https://phx12', 100)
 
     def test_node_allocation(self):
         user = self.backend.get_user("sync-1.0", "test1@example.com")
@@ -42,7 +42,7 @@ class NodeAssignmentTests(object):
         self.assertEqual(user['node'], wanted)
 
     def test_allocation_to_least_loaded_node(self):
-        self.backend.add_node('sync-1.0', 'https://phx13', 100, nodeid=124)
+        self.backend.add_node('sync-1.0', 'https://phx13', 100)
         user1 = self.backend.allocate_user("sync-1.0", "test1@mozilla.com")
         user2 = self.backend.allocate_user("sync-1.0", "test2@mozilla.com")
         self.assertNotEqual(user1['node'], user2['node'])
@@ -250,7 +250,7 @@ class NodeAssignmentTests(object):
         NODE1 = "https://phx12"
         NODE2 = "https://phx13"
         # note that NODE1 is created by default for all tests.
-        self.backend.add_node("sync-1.0", NODE2, 100, nodeid=125)
+        self.backend.add_node("sync-1.0", NODE2, 100)
         # Assign four users, we should get two on each node.
         user1 = self.backend.allocate_user("sync-1.0", "test1@mozilla.com")
         user2 = self.backend.allocate_user("sync-1.0", "test2@mozilla.com")
@@ -310,7 +310,7 @@ class NodeAssignmentTests(object):
 
     def test_that_we_can_allocate_users_to_a_specific_node(self):
         node = "https://phx13"
-        self.backend.add_node('sync-1.0', node, 50, nodeid=126)
+        self.backend.add_node('sync-1.0', node, 50)
         # The new node is not selected by default, because of lower capacity.
         user = self.backend.allocate_user("sync-1.0", "test1@mozilla.com")
         self.assertNotEqual(user["node"], node)
@@ -321,7 +321,7 @@ class NodeAssignmentTests(object):
 
     def test_that_we_can_move_users_to_a_specific_node(self):
         node = "https://phx13"
-        self.backend.add_node('sync-1.0', node, 50, nodeid=127)
+        self.backend.add_node('sync-1.0', node, 50)
         # The new node is not selected by default, because of lower capacity.
         user = self.backend.allocate_user("sync-1.0", "test@mozilla.com")
         self.assertNotEqual(user["node"], node)
@@ -370,7 +370,7 @@ class NodeAssignmentTests(object):
                                  current_load=4)
         node2 = "https://phx13"
         self.backend.add_node(service, node2, capacity=6, available=1,
-                              current_load=4, nodeid=128)
+                              current_load=4)
         # Two allocations should succeed without update, one on each node.
         user = self.backend.allocate_user(service, "test1@mozilla.com")
         self.assertEqual(user["node"], node1)
@@ -449,7 +449,7 @@ class TestSQLDB(NodeAssignmentTests, unittest.TestCase):
 
     def test_default_node_available_capacity(self):
         node = "https://phx13"
-        self.backend.add_node("sync-1.0", node, capacity=100, nodeid=129)
+        self.backend.add_node("sync-1.0", node, capacity=100)
         available = int(math.ceil(self.backend.capacity_release_rate * 100))
         query = sqltext("SELECT * FROM nodes WHERE node=:node")
         res = self.backend._safe_execute(query, node=node)

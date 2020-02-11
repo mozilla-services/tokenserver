@@ -28,10 +28,6 @@ logger = logging.getLogger('tokenserver')
 
 def includeme(config):
     settings = config.registry.settings
-    """
-    if settings.get('tokenserver.monkey_patch_gevent', True):
-        monkey_patch_gevent()
-    """
     config.include("cornice")
     config.include("mozsvc")
     config.include("tokenserver.tweens")

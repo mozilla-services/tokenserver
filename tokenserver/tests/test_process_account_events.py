@@ -43,7 +43,7 @@ class TestProcessAccountEvents(unittest.TestCase):
         load_and_register("tokenserver", self.config)
         self.backend = self.config.registry.getUtility(INodeAssignment)
         self.backend.add_service(SERVICE, PATTERN)
-        self.backend.add_node(SERVICE, "https://phx12", 100, nodeid=123)
+        self.backend.add_node(SERVICE, "https://phx12", 100)
         self.logs = LogCapture()
 
     def tearDown(self):

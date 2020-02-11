@@ -35,7 +35,7 @@ class TestSQLBackend(unittest.TestCase):
         except IntegrityError:
             # ignore if the service was already added by another test.
             pass
-        self.backend.add_node("sync-1.1", "https://phx12", 100, nodeid=0)
+        self.backend.add_node("sync-1.1", "https://phx12", 100)
 
         self._sqlite = self.backend._engine.driver == 'pysqlite'
         endpoints = {}
