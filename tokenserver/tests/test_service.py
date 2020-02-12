@@ -831,7 +831,6 @@ class TestServiceWithSQLBackend(TestService):
         # to spanner, but the second will not be.
         EMAIL0 = "abO-test@example.com"
         EMAIL1 = "abT-test@example.com"
-
         user0 = self.backend.allocate_user("sync-1.5", EMAIL0)
         user1 = self.backend.allocate_user("sync-1.5", EMAIL1)
         self.assertEquals(user0['node'], self.spanner_node)

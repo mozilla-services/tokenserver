@@ -6,12 +6,9 @@
 import sys
 import re
 import fnmatch
-from tokenserver.util import monkey_patch_gevent
 
 
 runner = sys.argv[0]
-if runner.endswith('nosetests'):
-    monkey_patch_gevent()
 
 
 import logging
@@ -28,9 +25,6 @@ logger = logging.getLogger('tokenserver')
 
 def includeme(config):
     settings = config.registry.settings
-    if settings.get('tokenserver.monkey_patch_gevent', True):
-        monkey_patch_gevent()
-
     config.include("cornice")
     config.include("mozsvc")
     config.include("tokenserver.tweens")

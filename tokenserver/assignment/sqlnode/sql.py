@@ -55,15 +55,14 @@ limit
     20
 """)
 
-
 _CREATE_USER_RECORD = sqltext("""\
 insert into
     users
     (service, email, nodeid, generation, keys_changed_at, client_state,
      created_at, replaced_at)
 values
-    (:service, :email, :nodeid, :generation, :keys_changed_at, :client_state,
-     :timestamp, NULL)
+    (:service, :email, :nodeid, :generation, :keys_changed_at,
+     :client_state, :timestamp, NULL)
 """)
 
 # The `where` clause on this statement is designed as an extra layer of
@@ -384,7 +383,6 @@ class SQLNodeAssignment(object):
             'timestamp': timestamp
         }
         res = self._safe_execute(_CREATE_USER_RECORD, **params)
-        res.close()
         return {
             'email': email,
             'uid': res.lastrowid,
@@ -587,14 +585,20 @@ class SQLNodeAssignment(object):
         # We release only a fraction of the node's capacity to start.
         if available is None:
             available = math.ceil(capacity * self.capacity_release_rate)
-        res = self._safe_execute(sqltext(
-            """
-            insert into nodes (id, service, node, available, capacity,
-                            current_load, downed, backoff)
-            values (:nodeid, :service, :node, :available, :capacity,
-                    :current_load, :downed, :backoff)
-            """),
-            nodeid=kwds.get('nodeid', None),
+        cols = ["service", "node", "available", "capacity",
+                "current_load", "downed", "backoff"]
+        args = [":" + v for v in cols]
+        # Handle test cases that require nodeid to be 800
+        if "nodeid" in kwds:
+            cols.append("id")
+            args.append(":nodeid")
+        query = """
+            insert into nodes ({cols})
+            values ({args})
+            """.format(cols=", ".join(cols), args=", ".join(args))
+        res = self._safe_execute(
+            sqltext(query),
+            nodeid=kwds.get('nodeid'),
             service=service,
             node=node,
             capacity=capacity,

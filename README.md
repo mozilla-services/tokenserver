@@ -97,6 +97,16 @@ The fields contained therein include:
 * `fxa_uid`: The user's stable FxA user id, as a hex string
 * `fxa_kid`: The key-id of the JWK representing the user's sync encryption key
 
+## Specifying the Data Store
+
+The data store is specified in the *[tokenserver]* section as `sqluri`. If you want to use a longer
+lived data store than `sqlite3`, you will need to specify the Data Source Name (DSN) as a Universal
+Resource Locator (URL) such as: `sqluri = mysql+pymysql://scott:tiger@localhost/tokenserver`. See the
+[SQLAlchemy Engine](https://docs.sqlalchemy.org/en/13/core/engines.html) specification for details.
+
+TokenServer comes with support for `pymysql`, `mysqldb`, and `sqlite3` by default. Additional databases
+will require `pip install`.
+
 ## Data Model
 
 The core of the TokenServer's data model is a table named `users` that maps each user to their storage

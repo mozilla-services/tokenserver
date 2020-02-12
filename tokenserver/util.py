@@ -16,41 +16,6 @@ from browserid.utils import decode_bytes as decode_bytes_b64
 from cornice.errors import Errors
 
 
-def monkey_patch_gevent():
-    """Monkey-patch gevent into core and zmq."""
-    try:
-        from gevent import monkey
-    except ImportError:
-        return
-    monkey.patch_all()
-    try:
-        import zmq
-        import zmq.eventloop
-        import zmq.eventloop.ioloop
-        import zmq.eventloop.zmqstream
-        import zmq.green
-        import zmq.green.eventloop
-        import zmq.green.eventloop.ioloop
-        import zmq.green.eventloop.zmqstream
-    except ImportError:
-        return
-    TO_PATCH = ((zmq, zmq.green),
-                (zmq.eventloop, zmq.green.eventloop),
-                (zmq.eventloop.ioloop, zmq.green.eventloop.ioloop),
-                (zmq.eventloop.zmqstream, zmq.green.eventloop.zmqstream))
-    for (red, green) in TO_PATCH:
-        for name in dir(red):
-            redval = getattr(red, name)
-            if name.startswith('__') or type(redval) is type(zmq):
-                continue
-            try:
-                greenval = getattr(green, name)
-            except AttributeError:
-                continue
-            if redval is not greenval:
-                setattr(red, name, greenval)
-
-
 def hash_email(email):
     digest = sha1(email.lower()).digest()
     return b32encode(digest).lower()
