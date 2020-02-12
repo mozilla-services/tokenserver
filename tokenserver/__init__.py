@@ -6,12 +6,9 @@
 import sys
 import re
 import fnmatch
-from tokenserver.util import monkey_patch_gevent
 
 
 runner = sys.argv[0]
-if runner.endswith('nosetests'):
-    monkey_patch_gevent()
 
 
 import logging
