@@ -55,15 +55,13 @@ limit
     20
 """)
 
-# `uid` was an autoincrement field, however that's no longer being set
-# as autoincrementing by sqlalchemy
 _CREATE_USER_RECORD = sqltext("""\
 insert into
     users
     (service, email, nodeid, generation, keys_changed_at, client_state,
      created_at, replaced_at)
 values
-    ( :service, :email, :nodeid, :generation, :keys_changed_at,
+    (:service, :email, :nodeid, :generation, :keys_changed_at,
      :client_state, :timestamp, NULL)
 """)
 
