@@ -484,14 +484,13 @@ class TestService(unittest.TestCase):
             res = self.app.get('/1.0/sync/1.1', headers=headers)
         token = self.unsafelyParseToken(res.json["id"])
         self.assertEqual(token["fxa_kid"], "0000000002345-YmJi")
-        # TODO: ideally we will error if keysChangedAt changes without a
-        # change in generation, but we can't do that until all servers
-        # are running the latest version of the code.
-        # mock_response["idpClaims"]["fxa-keysChangedAt"] = 4567
-        # headers["X-Client-State"] = "636363"
-        # with self.mock_browserid_verifier(response=mock_response):
-        #     res = self.app.get('/1.0/sync/1.1', headers=headers, status=401)
-        # self.assertEqual(res.json["status"], "invalid-keysChangedAt")
+        # We should error out if keysChangedAt changes to be larger than
+        # the corresponding generation number.
+        mock_response["idpClaims"]["fxa-keysChangedAt"] = 4567
+        headers["X-Client-State"] = "636363"
+        with self.mock_browserid_verifier(response=mock_response):
+            res = self.app.get('/1.0/sync/1.1', headers=headers, status=401)
+        self.assertEqual(res.json["status"], "invalid-keysChangedAt")
         # But accept further updates if both values change in unison.
         mock_response["idpClaims"]["fxa-generation"] = 4567
         mock_response["idpClaims"]["fxa-keysChangedAt"] = 4567
