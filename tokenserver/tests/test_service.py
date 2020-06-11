@@ -661,7 +661,6 @@ class TestService(unittest.TestCase):
         with self.mock_browserid_verifier(response=mock_response):
             res = self.app.get("/1.0/sync/1.1", headers=headers_browserid,
                                status=401)
-        self.assertEqual(res1.json["api_endpoint"], res2.json["api_endpoint"])
         self.assertEqual(res.json["status"], "invalid-generation")
         # Earlier keys_changed_at via BrowserID is not accepted.
         mock_response["idpClaims"]['fxa-generation'] = 12
@@ -670,6 +669,13 @@ class TestService(unittest.TestCase):
             res1 = self.app.get("/1.0/sync/1.1", headers=headers_browserid,
                                 status=401)
         self.assertEqual(res1.json['status'], 'invalid-keysChangedAt')
+        # Earlier generation number via OAuth -> invalid-generation
+        mock_response["idpClaims"]['fxa-generation'] = 11
+        del mock_response["idpClaims"]["fxa-keysChangedAt"]
+        with self.mock_oauth_verifier(response=mock_response):
+            res = self.app.get("/1.0/sync/1.1", headers=headers_oauth,
+                               status=401)
+        self.assertEqual(res.json["status"], "invalid-generation")
         # Earlier keys_changed_at via OAuth is not accepted.
         headers_oauth['X-KeyID'] = '6-YWFh'
         res1 = self.app.get("/1.0/sync/1.1", headers=headers_oauth, status=401)
