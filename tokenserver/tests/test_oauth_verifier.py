@@ -186,3 +186,14 @@ class TestRemoteOAuthVerifier(unittest.TestCase):
         with self._mock_verifier(verifier, response={"user": "UID"}):
             with self.assertRaises(fxa.errors.TrustError):
                 verifier.verify(MOCK_TOKEN)
+
+    @responses.activate
+    def test_verifier_returns_generation(self):
+        config = self._make_config()
+        verifier = config.registry.getUtility(IOAuthVerifier)
+        generation = 2
+        with self._mock_verifier(
+                verifier,
+                response={"user": "UID", "generation": generation}):
+            self.assertEquals(verifier.verify(MOCK_TOKEN)['idpClaims'].get(
+                'fxa-generation'), generation)
