@@ -844,7 +844,7 @@ class TestServiceWithNoBackends(unittest.TestCase):
         self.config = testing.setUp()
         self.config.add_settings({ # noqa; identation below is non-standard
             "tokenserver.backend":
-              "tokenserver.assignment.memorynode.MemoryNodeAssignmentBackend",
+              "tokenserver.assignment.memorynode.MemoryNodeAssignmentBackend", # noqa
             "tokenserver.secrets.backend":
               "mozsvc.secrets.FixedSecrets",
             "tokenserver.secrets.secrets":
@@ -887,7 +887,7 @@ class TestServiceWithNoBrowserID(unittest.TestCase):
         self.config = testing.setUp()
         self.config.add_settings({ # noqa; identation below is non-standard
             "tokenserver.backend":
-              "tokenserver.assignment.memorynode.MemoryNodeAssignmentBackend",
+              "tokenserver.assignment.memorynode.MemoryNodeAssignmentBackend", # noqa
             "tokenserver.secrets.backend":
               "mozsvc.secrets.FixedSecrets",
             "tokenserver.secrets.secrets":
@@ -936,7 +936,7 @@ class TestServiceWithNoOAuth(unittest.TestCase):
         self.config = testing.setUp()
         self.config.add_settings({ # noqa; identation below is non-standard
             "tokenserver.backend":
-              "tokenserver.assignment.memorynode.MemoryNodeAssignmentBackend",
+              "tokenserver.assignment.memorynode.MemoryNodeAssignmentBackend", # noqa
             "tokenserver.secrets.backend":
               "mozsvc.secrets.FixedSecrets",
             "tokenserver.secrets.secrets":

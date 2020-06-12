@@ -29,6 +29,26 @@ jobs:
           name: Test nose
           command: docker run -it app:build test_nose
       - run:
+          name: Test that the `python` entrypoint responds
+          command: |
+            set -e
+            docker run -it app:build python --version
+      - run:
+          name: Test that the `server` entrypoint starts ok
+          command: |
+            set -e
+            container_name=$(docker run -it -e MOZSVC_SQLURI="sqlite:////tmp/tokenserver.db" --rm -d app:build server)
+            # Grab the logs now in case this crashes and is removed.
+            (docker logs --follow $container_name &)
+            sleep 10
+            # If the container above stops before running 10 seconds, the
+            # `--rm` will remove it and this `docker inspect` will exit
+            # non-zero, failing this step.
+            docker inspect -f '{{.State.Running}}' $container_name
+            docker kill $container_name
+      - store_test_results:
+          path: test_results
+      - run:
           name: Push to Dockerhub
           command: |
             if [ "${CIRCLE_BRANCH}" == "master" ]; then
