@@ -362,7 +362,7 @@ class SQLNodeAssignment(object):
         migrate = self.get_migration_percent()
         if migrate:
             pick = ord(hashlib.sha1(email.encode()).digest()[0])
-            return pick < (256 * (migrate * .01))
+            return pick < int(256 * (migrate * .01))
         else:
             return False
 

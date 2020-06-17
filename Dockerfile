@@ -14,7 +14,7 @@ COPY ./dev-requirements.txt /app/dev-requirements.txt
 
 # install dependencies, cleanup and add libstdc++ back in since
 # we the app needs to link to it
-RUN apk add --update build-base ca-certificates libffi-dev openssl-dev && \
+RUN apk add --update build-base ca-certificates libffi-dev openssl-dev mariadb-dev && \
     pip install -r requirements.txt gunicorn gevent && \
     pip install -r dev-requirements.txt && \
     apk del --purge build-base gcc && \
