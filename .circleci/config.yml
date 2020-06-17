@@ -28,6 +28,8 @@ jobs:
       - run:
           name: Test nose
           command: docker run -it app:build test_nose
+      - store_test_results:
+          path: test_results
       - run:
           name: Push to Dockerhub
           command: |

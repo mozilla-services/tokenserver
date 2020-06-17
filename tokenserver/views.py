@@ -377,21 +377,42 @@ def return_token(request):
                                          client_state,
                                          keys_changed_at=keys_changed_at)
 
+    # We now perform an elaborate set of consistency checks on the
+    # provided claims, which we expect to behave as follows:
+    #
+    #   * `generation` is a monotonic timestamp, and increases every time
+    #     there is an authentication-related change on the user's account.
+    #
+    #   * `keys_changed_at` is a monotonic timestamp, and increases every time
+    #     the user's keys change. This is a type of auth-related change, so
+    #     `keys_changed_at` <= `generation` at all times.
+    #
+    #   * `client_state` is a key fingerprint and should never change back
+    #      to a previously-seen value.
+    #
+    # Callers who provide identity claims that violate any of these rules
+    # either have stale credetials (in which case they should re-authenticate)
+    # or are buggy (in which case we deny them access to the user's data).
+    #
+    # The logic here is slightly complicated by the fact that older versions
+    # of the FxA server may not have been sending all the expected fields, and
+    # that some clients do not report the `generation` timestamp.
+
     # Update if this client is ahead of previously-seen clients.
     updates = {}
     if generation > user['generation']:
         updates['generation'] = generation
     if keys_changed_at > user['keys_changed_at']:
-        # If there's a generation number available, then a change
+        # If the caller reports a generation number, then a change
         # in keys should correspond to a change in generation number.
-        if generation > 0 and 'generation' not in updates:
-            # TODO: We can't accurately detect this case until all servers are
-            # reliably writing keys_changed_at to the database, so it will need
-            # to wait and be deployed separately. In the meantime we check that
-            # it's at least using the most-recently-seen generation number.
-            # Remove this `if` once keys_changed_at is fully deployed.
-            if generation != user['generation']:
-                raise _unauthorized('invalid-keysChangedAt')
+        # Unfortunately a previous version of the server that didn't
+        # have `keys_changed_at` support may have already seen and
+        # written the new value of `generation`. The best we can do
+        # here is enforce that `keys_changed_at` <= `generation`.
+        if generation > 0 and generation < keys_changed_at:
+            raise _unauthorized('invalid-keysChangedAt')
+        if generation == 0 and keys_changed_at > user['generation']:
+            updates['generation'] = keys_changed_at
         updates['keys_changed_at'] = keys_changed_at
     if client_state != user['client_state']:
         # Don't revert from some-client-state to no-client-state.

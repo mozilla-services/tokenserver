@@ -233,9 +233,12 @@ class RemoteOAuthVerifier(object):
         if not issuer or not isinstance(issuer, basestring):
             msg = 'Could not determine issuer from verifier response'
             raise fxa.errors.TrustError(msg)
+        idpclaims = {}
+        if userinfo.get('generation') is not None:
+            idpclaims['fxa-generation'] = userinfo['generation']
         return {
           'email': userinfo['user'] + '@' + issuer,
-          'idpClaims': {},
+          'idpClaims': idpclaims,
         }
 
 

@@ -484,14 +484,13 @@ class TestService(unittest.TestCase):
             res = self.app.get('/1.0/sync/1.1', headers=headers)
         token = self.unsafelyParseToken(res.json["id"])
         self.assertEqual(token["fxa_kid"], "0000000002345-YmJi")
-        # TODO: ideally we will error if keysChangedAt changes without a
-        # change in generation, but we can't do that until all servers
-        # are running the latest version of the code.
-        # mock_response["idpClaims"]["fxa-keysChangedAt"] = 4567
-        # headers["X-Client-State"] = "636363"
-        # with self.mock_browserid_verifier(response=mock_response):
-        #     res = self.app.get('/1.0/sync/1.1', headers=headers, status=401)
-        # self.assertEqual(res.json["status"], "invalid-keysChangedAt")
+        # We should error out if keysChangedAt changes to be larger than
+        # the corresponding generation number.
+        mock_response["idpClaims"]["fxa-keysChangedAt"] = 4567
+        headers["X-Client-State"] = "636363"
+        with self.mock_browserid_verifier(response=mock_response):
+            res = self.app.get('/1.0/sync/1.1', headers=headers, status=401)
+        self.assertEqual(res.json["status"], "invalid-keysChangedAt")
         # But accept further updates if both values change in unison.
         mock_response["idpClaims"]["fxa-generation"] = 4567
         mock_response["idpClaims"]["fxa-keysChangedAt"] = 4567
@@ -662,7 +661,6 @@ class TestService(unittest.TestCase):
         with self.mock_browserid_verifier(response=mock_response):
             res = self.app.get("/1.0/sync/1.1", headers=headers_browserid,
                                status=401)
-        self.assertEqual(res1.json["api_endpoint"], res2.json["api_endpoint"])
         self.assertEqual(res.json["status"], "invalid-generation")
         # Earlier keys_changed_at via BrowserID is not accepted.
         mock_response["idpClaims"]['fxa-generation'] = 12
@@ -671,6 +669,13 @@ class TestService(unittest.TestCase):
             res1 = self.app.get("/1.0/sync/1.1", headers=headers_browserid,
                                 status=401)
         self.assertEqual(res1.json['status'], 'invalid-keysChangedAt')
+        # Earlier generation number via OAuth -> invalid-generation
+        mock_response["idpClaims"]['fxa-generation'] = 11
+        del mock_response["idpClaims"]["fxa-keysChangedAt"]
+        with self.mock_oauth_verifier(response=mock_response):
+            res = self.app.get("/1.0/sync/1.1", headers=headers_oauth,
+                               status=401)
+        self.assertEqual(res.json["status"], "invalid-generation")
         # Earlier keys_changed_at via OAuth is not accepted.
         headers_oauth['X-KeyID'] = '6-YWFh'
         res1 = self.app.get("/1.0/sync/1.1", headers=headers_oauth, status=401)
@@ -831,7 +836,6 @@ class TestServiceWithSQLBackend(TestService):
         # to spanner, but the second will not be.
         EMAIL0 = "abO-test@example.com"
         EMAIL1 = "abT-test@example.com"
-
         user0 = self.backend.allocate_user("sync-1.5", EMAIL0)
         user1 = self.backend.allocate_user("sync-1.5", EMAIL1)
         self.assertEquals(user0['node'], self.spanner_node)
@@ -844,13 +848,13 @@ class TestServiceWithNoBackends(unittest.TestCase):
         self.config = testing.setUp()
         self.config.add_settings({ # noqa; identation below is non-standard
             "tokenserver.backend":
-            "tokenserver.assignment.memorynode.MemoryNodeAssignmentBackend",
+              "tokenserver.assignment.memorynode.MemoryNodeAssignmentBackend", # noqa
             "tokenserver.secrets.backend":
-            "mozsvc.secrets.FixedSecrets",
+              "mozsvc.secrets.FixedSecrets",
             "tokenserver.secrets.secrets":
-            "ssshh-its-a-secret",
+              "ssshh-its-a-secret",
             "tokenserver.applications":
-            "sync-1.1",
+              "sync-1.1",
         })
         self.config.include("tokenserver")
         self.config.commit()
@@ -887,15 +891,15 @@ class TestServiceWithNoBrowserID(unittest.TestCase):
         self.config = testing.setUp()
         self.config.add_settings({ # noqa; identation below is non-standard
             "tokenserver.backend":
-            "tokenserver.assignment.memorynode.MemoryNodeAssignmentBackend",
+              "tokenserver.assignment.memorynode.MemoryNodeAssignmentBackend", # noqa
             "tokenserver.secrets.backend":
-            "mozsvc.secrets.FixedSecrets",
+              "mozsvc.secrets.FixedSecrets",
             "tokenserver.secrets.secrets":
-            "ssshh-its-a-secret",
+              "ssshh-its-a-secret",
             "tokenserver.applications":
-            "sync-1.1",
+              "sync-1.1",
             "oauth.backend":
-            "tokenserver.verifiers.RemoteOAuthVerifier",
+              "tokenserver.verifiers.RemoteOAuthVerifier",
         })
         self.config.include("tokenserver")
         self.config.commit()
@@ -936,15 +940,15 @@ class TestServiceWithNoOAuth(unittest.TestCase):
         self.config = testing.setUp()
         self.config.add_settings({ # noqa; identation below is non-standard
             "tokenserver.backend":
-            "tokenserver.assignment.memorynode.MemoryNodeAssignmentBackend",
+              "tokenserver.assignment.memorynode.MemoryNodeAssignmentBackend", # noqa
             "tokenserver.secrets.backend":
-            "mozsvc.secrets.FixedSecrets",
+              "mozsvc.secrets.FixedSecrets",
             "tokenserver.secrets.secrets":
-            "ssshh-its-a-secret",
+              "ssshh-its-a-secret",
             "tokenserver.applications":
-            "sync-1.1",
+              "sync-1.1",
             "browserid.backend":
-            "tokenserver.verifiers.LocalBrowserIdVerifier",
+              "tokenserver.verifiers.LocalBrowserIdVerifier",
         })
         self.config.include("tokenserver")
         self.config.commit()

@@ -4,32 +4,26 @@
 from setuptools import setup, find_packages
 
 
-requires = [
-    'alembic',
-    'boto',
-    'cornice',
-    'hawkauthlib',
-    'mozsvc',
-    'Paste',
-    'PyBrowserID',
-    'PyFxA',
-    'PyMySQL',
-    'pymysql_sa',
-    'SQLAlchemy',
-    'testfixtures',
-    'tokenlib',
-]
+def load_req(filename):
+    """Load a pip style requirement file."""
+    reqs = []
+    with open(filename, "r") as file:
+        for line in file.readlines():
+            line = line.strip()
+            if line.startswith("-r"):
+                content = load_req(line.split(' ')[1])
+                reqs.extend(content)
+                continue
+            reqs.append(line)
+    return reqs
 
-tests_require = [
-    'mock',
-    'nose',
-    'unittest2',
-    'webtest',
-]
+
+requires = load_req("requirements.txt")
+tests_require = load_req("dev-requirements.txt")
 
 
 setup(name='tokenserver',
-      version='1.5.3',
+      version='1.5.6',
       packages=find_packages(),
       include_package_data=True,
       zip_safe=False,

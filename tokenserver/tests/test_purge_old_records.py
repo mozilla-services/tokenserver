@@ -28,13 +28,15 @@ class TestPurgeOldRecordsScript(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        # Run a testing service in a separate thread
-        # so that we can test for proper calls being made.
         cls.service_requests = []
         cls.service_node = "http://localhost:8002"
         cls.service = make_server("localhost", 8002, cls._service_app)
         target = cls.service.serve_forever
         cls.service_thread = threading.Thread(target=target)
+        # Note: If the following `start` causes the test thread to hang,
+        # you may need to specify
+        # `[app::pyramid.app] pyramid.worker_class = sync` in the test_*.ini
+        # files
         cls.service_thread.start()
         # This silences nuisance on-by-default logging output.
         cls.service.RequestHandlerClass.log_request = lambda *a: None

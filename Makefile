@@ -17,6 +17,10 @@ INSTALL = ARCHFLAGS=$(ARCHFLAGS) CFLAGS=$(CFLAGS) $(VENV)/bin/pip install
 .PHONY: all install install-dev virtualenv tests
 
 help:
+	@echo "Since Python 2.7 is no longer supported, but is used by this project,"
+	@echo "please be sure to install pypy 2.7 <http://pypy.org/download.html> and"
+	@echo "the system appropriate `pypy-dev` package"
+	@echo ""
 	@echo "Please use 'make <target>' where <target> is one of"
 	@echo "  install                     install dependencies and prepare environment"
 	@echo "  install-dev                 install dependencies and everything needed to run tests"
@@ -43,7 +47,7 @@ $(DEV_STAMP): $(PYTHON) dev-requirements.txt
 
 virtualenv: $(PYTHON)
 $(PYTHON):
-	$(VIRTUALENV) $(VENV)
+	$(VIRTUALENV) -p pypy $(VENV)
 
 build-requirements:
 	$(VIRTUALENV) $(TEMPDIR)

@@ -5,6 +5,7 @@ from pyramid import testing
 from pyramid.threadlocal import get_current_registry
 from mozsvc.config import load_into_settings
 from mozsvc.plugin import load_and_register
+from sqlalchemy.exc import IntegrityError
 
 from tokenserver.assignment import INodeAssignment
 from tokenserver import load_endpoints
@@ -29,7 +30,11 @@ class TestSQLBackend(unittest.TestCase):
         self.backend = self.config.registry.getUtility(INodeAssignment)
 
         # adding a service and a node with 100 slots
-        self.backend.add_service("sync-1.1", "{node}/1.1/{uid}")
+        try:
+            self.backend.add_service("sync-1.1", "{node}/1.1/{uid}")
+        except IntegrityError:
+            # ignore if the service was already added by another test.
+            pass
         self.backend.add_node("sync-1.1", "https://phx12", 100)
 
         self._sqlite = self.backend._engine.driver == 'pysqlite'
