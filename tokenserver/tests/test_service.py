@@ -844,13 +844,13 @@ class TestServiceWithNoBackends(unittest.TestCase):
         self.config = testing.setUp()
         self.config.add_settings({ # noqa; identation below is non-standard
             "tokenserver.backend":
-              "tokenserver.assignment.memorynode.MemoryNodeAssignmentBackend",
+            "tokenserver.assignment.memorynode.MemoryNodeAssignmentBackend",
             "tokenserver.secrets.backend":
-              "mozsvc.secrets.FixedSecrets",
+            "mozsvc.secrets.FixedSecrets",
             "tokenserver.secrets.secrets":
-              "ssshh-its-a-secret",
+            "ssshh-its-a-secret",
             "tokenserver.applications":
-              "sync-1.1",
+            "sync-1.1",
         })
         self.config.include("tokenserver")
         self.config.commit()
@@ -887,15 +887,15 @@ class TestServiceWithNoBrowserID(unittest.TestCase):
         self.config = testing.setUp()
         self.config.add_settings({ # noqa; identation below is non-standard
             "tokenserver.backend":
-              "tokenserver.assignment.memorynode.MemoryNodeAssignmentBackend",
+            "tokenserver.assignment.memorynode.MemoryNodeAssignmentBackend",
             "tokenserver.secrets.backend":
-              "mozsvc.secrets.FixedSecrets",
+            "mozsvc.secrets.FixedSecrets",
             "tokenserver.secrets.secrets":
-              "ssshh-its-a-secret",
+            "ssshh-its-a-secret",
             "tokenserver.applications":
-              "sync-1.1",
+            "sync-1.1",
             "oauth.backend":
-              "tokenserver.verifiers.RemoteOAuthVerifier",
+            "tokenserver.verifiers.RemoteOAuthVerifier",
         })
         self.config.include("tokenserver")
         self.config.commit()
@@ -936,15 +936,15 @@ class TestServiceWithNoOAuth(unittest.TestCase):
         self.config = testing.setUp()
         self.config.add_settings({ # noqa; identation below is non-standard
             "tokenserver.backend":
-              "tokenserver.assignment.memorynode.MemoryNodeAssignmentBackend",
+            "tokenserver.assignment.memorynode.MemoryNodeAssignmentBackend",
             "tokenserver.secrets.backend":
-              "mozsvc.secrets.FixedSecrets",
+            "mozsvc.secrets.FixedSecrets",
             "tokenserver.secrets.secrets":
-              "ssshh-its-a-secret",
+            "ssshh-its-a-secret",
             "tokenserver.applications":
-              "sync-1.1",
+            "sync-1.1",
             "browserid.backend":
-              "tokenserver.verifiers.LocalBrowserIdVerifier",
+            "tokenserver.verifiers.LocalBrowserIdVerifier",
         })
         self.config.include("tokenserver")
         self.config.commit()
