@@ -25,7 +25,7 @@ case "$1" in
             --log-config "$_SETTINGS_FILE"
         ;;
 
-    python)
+    pypy)
         exec "$@"
         ;;
 
