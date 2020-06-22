@@ -34,11 +34,16 @@ jobs:
             set -e
             docker run -it app:build python --version
       - run:
+          name: Test that the `pypy` entrypoint responds
+          command: |
+            set -e
+            docker run -it app:build pypy --version
+      - run:
           name: Test that the `server` entrypoint starts ok
           command: |
             set -e
             container_name=$(docker run -it -e MOZSVC_SQLURI="sqlite:////tmp/tokenserver.db" --rm -d app:build server)
-            # Grab the logs now in case this crashes and is removed.
+            # Grab the logs now in case this container crashes and is removed.
             (docker logs --follow $container_name &)
             sleep 10
             # If the container above stops before running 10 seconds, the

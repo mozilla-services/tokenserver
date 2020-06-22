@@ -29,6 +29,10 @@ case "$1" in
         exec "$@"
         ;;
 
+    pypy)
+        exec "$@"
+        ;;
+
     test_all)
         $0 test_flake8
         $0 test_nose
