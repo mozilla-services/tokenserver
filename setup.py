@@ -23,7 +23,7 @@ tests_require = load_req("dev-requirements.txt")
 
 
 setup(name='tokenserver',
-      version='1.5.6',
+      version='1.5.7',
       packages=find_packages(),
       include_package_data=True,
       zip_safe=False,
