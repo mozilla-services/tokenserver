@@ -188,10 +188,10 @@ class RemoteOAuthVerifier(object):
     implements(IOAuthVerifier)
 
     def __init__(self, server_url=None, default_issuer=None, timeout=30,
-                 scope=DEFAULT_OAUTH_SCOPE):
+                 scope=DEFAULT_OAUTH_SCOPE, jwks=None):
         if not scope:
             raise ValueError('Expected a non-empty "scope" argument')
-        self._client = fxa.oauth.Client(server_url=server_url)
+        self._client = fxa.oauth.Client(server_url=server_url, jwks=jwks)
         self._client.timeout = timeout
         if default_issuer is None:
             # This server_url will have been normalized to end in /v1.
