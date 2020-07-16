@@ -2,13 +2,15 @@ alembic==1.0.9
 asn1crypto==0.24.0
 boto==2.49.0
 certifi==2019.3.9
-cffi==1.13.2 ; platform_python_implementation == "CPython"
+# Handle older cffi versions in circleci
+cffi==1.14.0; platform_python_implementation == "CPython"
 chardet==3.0.4
 configparser==3.7.4
 cornice==3.5.1
 cryptography==2.6.1
 enum34==1.1.6
 gevent==1.4.0
+greenlet==0.4.13
 gunicorn==19.10.0
 hawkauthlib==2.0.0
 hupper==1.6.1
@@ -26,11 +28,13 @@ plaster-pastedeploy==0.7
 PyBrowserID==0.14.0
 pycparser==2.19
 PyFxA==0.7.6
+PyJWT==1.7.1
 PyMySQL==0.9.3
 pymysql-sa==1.0
 pyramid==1.10.4
 python-dateutil==2.8.0
 python-editor==1.0.4
+readline==6.2.4.1
 repoze.lru==0.7
 requests==2.22.0
 simplejson==3.16.0
