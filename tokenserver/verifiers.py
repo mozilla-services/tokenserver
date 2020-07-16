@@ -191,9 +191,11 @@ class RemoteOAuthVerifier(object):
                  scope=DEFAULT_OAUTH_SCOPE, jwks=None):
         if not scope:
             raise ValueError('Expected a non-empty "scope" argument')
+        jwks_json = None
         if jwks is not None:
-            jwks = json.loads(jwks).get('keys', [])
-        self._client = fxa.oauth.Client(server_url=server_url, jwks=jwks)
+            jwks_json = json.loads(jwks).get('keys', [])
+        self._client = fxa.oauth.Client(server_url=server_url, jwks=jwks_json)
+
         self._client.timeout = timeout
         if default_issuer is None:
             # This server_url will have been normalized to end in /v1.
