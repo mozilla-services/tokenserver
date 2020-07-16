@@ -3,8 +3,7 @@ asn1crypto==0.24.0
 boto==2.49.0
 certifi==2019.3.9
 # Handle older cffi versions in circleci
-cffi==1.13.2; implementation_name=="pypy"
-cffi==1.14.0; implementation_name!="pypy"
+cffi==1.14.0; platform_python_implementation == "CPython"
 chardet==3.0.4
 configparser==3.7.4
 cornice==3.5.1
