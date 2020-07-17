@@ -30,7 +30,6 @@ ini_file = find_config_file(config.get_main_option("token_ini"))
 settings = {}
 load_into_settings(ini_file, settings)
 
-
 def run_migrations_offline():
     """Run migrations in 'offline' mode.
 

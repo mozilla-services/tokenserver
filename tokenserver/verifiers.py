@@ -194,6 +194,7 @@ class RemoteOAuthVerifier(object):
         if jwks is not None:
             jwks = json.loads(jwks).get('keys', [])
         self._client = fxa.oauth.Client(server_url=server_url, jwks=jwks)
+
         self._client.timeout = timeout
         if default_issuer is None:
             # This server_url will have been normalized to end in /v1.
