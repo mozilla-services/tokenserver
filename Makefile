@@ -36,7 +36,6 @@ help:
 all: install
 install: $(INSTALL_STAMP)
 $(INSTALL_STAMP): $(PYTHON) setup.py
-	$(INSTALL) -U pip
 	$(INSTALL) -Ue .
 	touch $(INSTALL_STAMP)
 
@@ -47,11 +46,14 @@ $(DEV_STAMP): $(PYTHON) dev-requirements.txt
 
 virtualenv: $(PYTHON)
 $(PYTHON):
-	$(VIRTUALENV) -p pypy $(VENV)
+	# The latest `pip` doesn't work with pypy 2.7 on some platforms.
+	# Pin to a working version; ref https://github.com/pypa/pip/issues/8653
+	$(VIRTUALENV) -p pypy --no-pip $(VENV)
+	$(VENV)/bin/easy_install pip==20.1.1
 
 build-requirements:
-	$(VIRTUALENV) $(TEMPDIR)
-	$(TEMPDIR)/bin/pip install -U pip
+	$(VIRTUALENV) -p pypy --no-pip $(TEMPDIR)
+	$(TEMPDIR)/bin/easy_install pip==20.1.1
 	ARCHFLAGS=$(ARCHFLAGS) $(TEMPDIR)/bin/pip install -Ue .
 	$(TEMPDIR)/bin/pip freeze | grep -v -- '^-e' > requirements.txt
 

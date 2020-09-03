@@ -34,7 +34,6 @@ pymysql-sa==1.0
 pyramid==1.10.4
 python-dateutil==2.8.0
 python-editor==1.0.4
-readline==6.2.4.1
 repoze.lru==0.7
 requests==2.22.0
 simplejson==3.16.0
