@@ -1,5 +1,6 @@
 VIRTUALENV = virtualenv
 VENV := $(shell echo $${VIRTUAL_ENV-local})
+PTYPE = pypy
 PYTHON = $(VENV)/bin/python
 NOSE = $(VENV)/bin/nosetests
 DEV_STAMP = $(VENV)/.dev_env_installed.stamp
@@ -48,11 +49,11 @@ virtualenv: $(PYTHON)
 $(PYTHON):
 	# The latest `pip` doesn't work with pypy 2.7 on some platforms.
 	# Pin to a working version; ref https://github.com/pypa/pip/issues/8653
-	$(VIRTUALENV) -p pypy --no-pip $(VENV)
+	$(VIRTUALENV) -p $(PTYPE) --no-pip $(VENV)
 	$(VENV)/bin/easy_install pip==20.1.1
 
 build-requirements:
-	$(VIRTUALENV) -p pypy --no-pip $(TEMPDIR)
+	$(VIRTUALENV) -p $(PTYPE) --no-pip $(TEMPDIR)
 	$(TEMPDIR)/bin/easy_install pip==20.1.1
 	ARCHFLAGS=$(ARCHFLAGS) $(TEMPDIR)/bin/pip install -Ue .
 	$(TEMPDIR)/bin/pip freeze | grep -v -- '^-e' > requirements.txt
