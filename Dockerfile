@@ -1,4 +1,4 @@
-FROM pypy:2.7-jessie
+FROM pypy:2.7-buster
 
 WORKDIR /app
 
@@ -13,7 +13,8 @@ COPY ./dev-requirements.txt /app/dev-requirements.txt
 # install dependencies, cleanup and add libstdc++ back in since
 # we the app needs to link to it
 RUN apt-get update && \
-    apt-get install -y build-essential ca-certificates libffi-dev libssl-dev libmysqlclient-dev && \
+    apt-get install -y \
+      build-essential ca-certificates libffi-dev libssl-dev default-libmysqlclient-dev && \
     pip install -r dev-requirements.txt && \
     apt-get remove -y build-essential gcc
 
