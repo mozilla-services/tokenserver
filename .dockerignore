@@ -16,6 +16,7 @@
 
 # allow: everything else needed for the Docker image
 !docker-entrypoint.sh
+!alembic.ini
 
 # re-deny unwanted files
 **/*.pyc
