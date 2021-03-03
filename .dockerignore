@@ -1,7 +1,24 @@
-*.pyc
-local
-*.egg-info
-*.swp
-\.coverage
-*~
-nosetests.xml
+# deny-all, allow approach here to reduce image layers
+*
+
+# allow: never forget the license
+!LICENSE
+
+# allow: the actual module / setup code
+!tokenserver
+!setup.py
+
+# allow: all requirements files
+!*requirements.txt
+
+# allow: default configuration
+!etc
+
+# allow: everything else needed for the Docker image
+!docker-entrypoint.sh
+!alembic.ini
+
+# re-deny unwanted files
+**/*.pyc
+**/*.swp
+**/*~
