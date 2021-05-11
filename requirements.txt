@@ -10,7 +10,7 @@ cornice==3.5.1
 cryptography==2.6.1
 enum34==1.1.6
 gevent==1.4.0
-greenlet==0.4.13
+greenlet>=0.4.13
 gunicorn==19.10.0
 hawkauthlib==2.0.0
 hupper==1.6.1
