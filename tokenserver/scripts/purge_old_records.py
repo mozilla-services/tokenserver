@@ -74,8 +74,6 @@ def purge_old_records(config_file, grace_period=-1, max_per_loop=10,
                     if row.node is None:
                         logger.info("Deleting user record for uid %s on %s",
                                     row.uid, row.node)
-                        logging.info(
-                            "Deleting user records {}".format(row.uid))
                         if not settings.dryrun:
                             backend.delete_user_record(service, row.uid)
                     elif not row.downed:
@@ -89,7 +87,7 @@ def purge_old_records(config_file, grace_period=-1, max_per_loop=10,
                             backend.delete_user_record(service, row.uid)
                         counter += 1
                     elif row.downed and settings.force:
-                        logging.info(
+                        logger.info(
                             "Forcing tokenserver record delete: {}".format(
                                 row.uid
                             )
@@ -99,7 +97,7 @@ def purge_old_records(config_file, grace_period=-1, max_per_loop=10,
                         counter += 1
                     if settings.max_records:
                         if counter > settings.max_records:
-                            logging.info("Reached max_records, exiting")
+                            logger.info("Reached max_records, exiting")
                             return True
                 if len(rows) < max_per_loop:
                     break
@@ -184,7 +182,7 @@ def main(args=None):
                       help="Max records to delete")
     parser.add_option("", "--dryrun", action="store_true",
                       help="Don't do destructive things")
-    parser.add_option("", "-force", action="store_true",
+    parser.add_option("", "--force", action="store_true",
                       help="force record to be deleted from TS db,"
                       " even if node is down")
     parser.add_option("-v", "--verbose", action="count", dest="verbosity",
