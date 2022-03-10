@@ -88,6 +88,15 @@ def purge_old_records(config_file, grace_period=-1, max_per_loop=10,
                         if not settings.dryrun:
                             backend.delete_user_record(service, row.uid)
                         counter += 1
+                    elif row.downed and settings.force:
+                        logging.info(
+                            "Forcing tokenserver record delete: {}".format(
+                                row.uid
+                            )
+                        )
+                        if not settings.dryrun:
+                            backend.delete_user_record(service, row.uid)
+                        counter += 1
                     if settings.max_records:
                         if counter > settings.max_records:
                             logging.info("Reached max_records, exiting")
@@ -174,7 +183,10 @@ def main(args=None):
     parser.add_option("", "--max-records", type="int", default=0,
                       help="Max records to delete")
     parser.add_option("", "--dryrun", action="store_true",
-                      help="")
+                      help="Don't do destructive things")
+    parser.add_option("", "-force", action="store_true",
+                      help="force record to be deleted from TS db,"
+                      " even if node is down")
     parser.add_option("-v", "--verbose", action="count", dest="verbosity",
                       help="Control verbosity of log messages")
 
