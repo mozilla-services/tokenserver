@@ -74,17 +74,17 @@ def purge_old_records(config_file, grace_period=-1, max_per_loop=10,
                     if row.node is None:
                         logger.info("Deleting user record for uid %s on %s",
                                     row.uid, row.node)
-                        if not settings.dryrun:
+                        if not settings and settings.dryrun:
                             backend.delete_user_record(service, row.uid)
                     elif not row.downed:
                         logger.info("Purging uid %s on %s", row.uid, row.node)
                         delete_service_data(config, service, row,
                                             timeout=request_timeout,
                                             settings=settings)
-                        if not settings.dryrun:
+                        if settings and not settings.dryrun:
                             backend.delete_user_record(service, row.uid)
                         counter += 1
-                    elif row.downed and settings.force:
+                    elif row.downed and settings and settings.force:
                         logger.info(
                             "Forcing tokenserver record delete: {}".format(
                                 row.uid
@@ -134,7 +134,7 @@ def delete_service_data(config, service, user, timeout=60, settings=None):
     secret = tokenlib.get_derived_secret(token, secret=node_secrets[-1])
     endpoint = pattern.format(uid=user.uid, service=service, node=user.node)
     auth = HawkAuth(token, secret)
-    if settings.dryrun:
+    if settings and settings.dryrun:
         logger.info("Deleting %s with %s", endpoint, token)
         return
     resp = requests.delete(endpoint, auth=auth, timeout=timeout)
