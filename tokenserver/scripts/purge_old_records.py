@@ -65,6 +65,7 @@ def purge_old_records(config_file, grace_period=-1, max_per_loop=10,
                     "offset": offset,
                 }
                 rows = list(backend.get_old_user_records(service, **kwds))
+                logger.info("Found {} rows".format(len(rows)))
                 logger.info("Fetched %d rows at offset %d", len(rows), offset)
                 counter = 0
                 for row in rows:
@@ -74,7 +75,7 @@ def purge_old_records(config_file, grace_period=-1, max_per_loop=10,
                     if row.node is None:
                         logger.info("Deleting user record for uid %s on %s",
                                     row.uid, row.node)
-                        if not settings and settings.dryrun:
+                        if settings and not settings.dryrun:
                             backend.delete_user_record(service, row.uid)
                     elif not row.downed:
                         logger.info("Purging uid %s on %s", row.uid, row.node)
