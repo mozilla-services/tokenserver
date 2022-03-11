@@ -93,7 +93,7 @@ def purge_old_records(config_file, grace_period=-1, max_per_loop=10,
                         if not settings.dryrun:
                             backend.delete_user_record(service, row.uid)
                         counter += 1
-                    if settings.max_records:
+                    if settings and settings.max_records:
                         if counter > settings.max_records:
                             logger.info("Reached max_records, exiting")
                             return True
