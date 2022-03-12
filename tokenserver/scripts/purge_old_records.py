@@ -95,7 +95,7 @@ def purge_old_records(config_file, grace_period=-1, max_per_loop=10,
                             backend.delete_user_record(service, row.uid)
                         counter += 1
                     if settings and settings.max_records:
-                        if counter > settings.max_records:
+                        if counter >= settings.max_records:
                             logger.info("Reached max_records, exiting")
                             return True
                 if len(rows) < max_per_loop:
@@ -136,7 +136,6 @@ def delete_service_data(config, service, user, timeout=60, settings=None):
     endpoint = pattern.format(uid=user.uid, service=service, node=user.node)
     auth = HawkAuth(token, secret)
     if settings and settings.dryrun:
-        logger.info("Deleting %s with %s", endpoint, token)
         return
     resp = requests.delete(endpoint, auth=auth, timeout=timeout)
     if resp.status_code >= 400 and resp.status_code != 404:
