@@ -215,7 +215,7 @@ class RemoteOAuthVerifier(object):
                         default_issuer = r.json()['browserid']['issuer']
                     except KeyError:
                         pass
-                except ValueError as e:
+                except ValueError:
                     # some tests fail because requests returns a ValueError
                     # "I/O operation on a closed file"
                     # this is because response fails to read the empty stream.

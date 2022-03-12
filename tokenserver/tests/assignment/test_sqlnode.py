@@ -182,7 +182,8 @@ class NodeAssignmentTests(object):
         self.assertEqual(old_records[0][0], 4)
         # The 'limit' parameter should be respected.
         old_records = list(
-            self.backend.get_old_user_records(service, grace_period=0, limit=2))
+            self.backend.get_old_user_records(
+                service, grace_period=0, limit=2))
         self.assertEqual(len(old_records), 2)
         # The default grace period is too big to pick them up.
         old_records = list(self.backend.get_old_user_records(service))
@@ -296,7 +297,8 @@ class NodeAssignmentTests(object):
         # The old users records pointing to NODE2 should have a NULL 'node'
         # property since it has been removed from the db.
         null_node_count = 0
-        for row in self.backend.get_old_user_records("sync-1.0", grace_period=0):
+        for row in self.backend.get_old_user_records("sync-1.0",
+                                                     grace_period=0):
             if row.node is None:
                 null_node_count += 1
             else:
