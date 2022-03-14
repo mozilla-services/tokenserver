@@ -65,7 +65,6 @@ def purge_old_records(config_file, grace_period=-1, max_per_loop=10,
                     "offset": offset,
                 }
                 rows = list(backend.get_old_user_records(service, **kwds))
-                logger.info("Found {} rows".format(len(rows)))
                 logger.info("Fetched %d rows at offset %d", len(rows), offset)
                 counter = 0
                 for row in rows:
