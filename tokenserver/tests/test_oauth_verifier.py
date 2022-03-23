@@ -120,7 +120,7 @@ class TestRemoteOAuthVerifier(unittest.TestCase):
                 "https://oauth-server.my-self-hosted-setup.com/",
         })
         verifier = config.registry.getUtility(IOAuthVerifier)
-        self.assertEqual(len(responses.calls), 1)
+        self.assertEqual(len(responses.calls), 2)
         self.assertTrue(isinstance(verifier, RemoteOAuthVerifier))
         self.assertEquals(verifier.server_url,
                           "https://oauth-server.my-self-hosted-setup.com/v1")
