@@ -2,5 +2,5 @@
 flake8
 mock
 nose
-responses
+responses==0.14.0
 webtest
