@@ -98,12 +98,17 @@ class TestRemoteOAuthVerifier(unittest.TestCase):
                 },
             }
         )
+        call_count = 1
+        """
+        # Note: if versions of responses > 0.14 are required, the following
+        # code will need to be activated.
         try:
             import requests
 
             rr = requests.get(
                 "https://oauth-server.my-self-hosted-setup.com/config")
             rr.json()
+            call_count = 2
         except ValueError as e:
             # Not sure why, but for some reason, the above can fail with a
             # ValueError. I believe it's the result of trying to read the
@@ -115,12 +120,13 @@ class TestRemoteOAuthVerifier(unittest.TestCase):
             print("Skipping test since request/response returned {}", e)
             self.skipTest("broken response")
             return
+        """
         config = self._make_config({  # noqa; indentation below is non-standard
             "oauth.server_url":
                 "https://oauth-server.my-self-hosted-setup.com/",
         })
         verifier = config.registry.getUtility(IOAuthVerifier)
-        self.assertEqual(len(responses.calls), 2)
+        self.assertEqual(len(responses.calls), call_count)
         self.assertTrue(isinstance(verifier, RemoteOAuthVerifier))
         self.assertEquals(verifier.server_url,
                           "https://oauth-server.my-self-hosted-setup.com/v1")
