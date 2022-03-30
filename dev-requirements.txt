@@ -2,5 +2,8 @@
 flake8
 mock
 nose
-responses
+# Note: later versions of `responses` cause a `ValueError` to be returned
+# in `test_oauth_verifier.py` See commented content in
+# `test_verifier_config_dynamic_issuer_discovery()`
+responses==0.14.0
 webtest

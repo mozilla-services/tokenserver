@@ -35,7 +35,7 @@ logger = logging.getLogger("tokenserver.scripts.purge_old_records")
 
 
 def purge_old_records(config_file, grace_period=-1, max_per_loop=10,
-                      max_offset=0, request_timeout=60):
+                      max_offset=0, request_timeout=60, settings=None):
     """Purge old records from the assignment backend in the given config file.
 
     This function iterates through each storage backend in the given config
@@ -66,6 +66,7 @@ def purge_old_records(config_file, grace_period=-1, max_per_loop=10,
                 }
                 rows = list(backend.get_old_user_records(service, **kwds))
                 logger.info("Fetched %d rows at offset %d", len(rows), offset)
+                counter = 0
                 for row in rows:
                     # Don't attempt to purge data from downed nodes.
                     # Instead wait for them to either come back up or to be
@@ -73,12 +74,29 @@ def purge_old_records(config_file, grace_period=-1, max_per_loop=10,
                     if row.node is None:
                         logger.info("Deleting user record for uid %s on %s",
                                     row.uid, row.node)
-                        backend.delete_user_record(service, row.uid)
+                        if settings and not settings.dryrun:
+                            backend.delete_user_record(service, row.uid)
                     elif not row.downed:
                         logger.info("Purging uid %s on %s", row.uid, row.node)
                         delete_service_data(config, service, row,
-                                            timeout=request_timeout)
-                        backend.delete_user_record(service, row.uid)
+                                            timeout=request_timeout,
+                                            settings=settings)
+                        if settings and not settings.dryrun:
+                            backend.delete_user_record(service, row.uid)
+                        counter += 1
+                    elif row.downed and settings and settings.force:
+                        logger.info(
+                            "Forcing tokenserver record delete: {}".format(
+                                row.uid
+                            )
+                        )
+                        if not settings.dryrun:
+                            backend.delete_user_record(service, row.uid)
+                        counter += 1
+                    if settings and settings.max_records:
+                        if counter >= settings.max_records:
+                            logger.info("Reached max_records, exiting")
+                            return True
                 if len(rows) < max_per_loop:
                     break
     except Exception:
@@ -91,7 +109,7 @@ def purge_old_records(config_file, grace_period=-1, max_per_loop=10,
         config.end()
 
 
-def delete_service_data(config, service, user, timeout=60):
+def delete_service_data(config, service, user, timeout=60, settings=None):
     """Send a data-deletion request to the user's service node.
 
     This is a little bit of hackery to cause the user's service node to
@@ -116,6 +134,8 @@ def delete_service_data(config, service, user, timeout=60):
     secret = tokenlib.get_derived_secret(token, secret=node_secrets[-1])
     endpoint = pattern.format(uid=user.uid, service=service, node=user.node)
     auth = HawkAuth(token, secret)
+    if settings and settings.dryrun:
+        return
     resp = requests.delete(endpoint, auth=auth, timeout=timeout)
     if resp.status_code >= 400 and resp.status_code != 404:
         resp.raise_for_status()
@@ -155,6 +175,13 @@ def main(args=None):
                       help="Timeout for service deletion requests")
     parser.add_option("", "--oneshot", action="store_true",
                       help="Do a single purge run and then exit")
+    parser.add_option("", "--max-records", type="int", default=0,
+                      help="Max records to delete")
+    parser.add_option("", "--dryrun", action="store_true",
+                      help="Don't do destructive things")
+    parser.add_option("", "--force", action="store_true",
+                      help="force record to be deleted from TS db,"
+                      " even if node is down")
     parser.add_option("-v", "--verbose", action="count", dest="verbosity",
                       help="Control verbosity of log messages")
 

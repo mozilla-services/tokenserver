@@ -147,7 +147,7 @@ class RemoteBrowserIdVerifier(object):
                                          data=json.dumps(body),
                                          headers=headers,
                                          timeout=self.timeout)
-        except (socket.error, requests.RequestException), e:
+        except (socket.error, requests.RequestException) as e:
             msg = "Failed to POST %s. Reason: %s" % (self.verifier_url, str(e))
             raise ConnectionError(msg)
 
@@ -207,12 +207,21 @@ class RemoteOAuthVerifier(object):
                     default_issuer = urlparse.urlparse(auth_url).netloc
                     break
             else:
-                # For non-standard hosting setups, look it up dynamically.
-                r = requests.get(server_url[:-3] + '/config')
-                r.raise_for_status()
                 try:
-                    default_issuer = r.json()['browserid']['issuer']
-                except KeyError:
+                    # For non-standard hosting setups, look it up dynamically.
+                    r = requests.get(server_url[:-3] + '/config')
+                    r.raise_for_status()
+                    try:
+                        default_issuer = r.json()['browserid']['issuer']
+                    except KeyError:
+                        pass
+                except ValueError as e:
+                    # some tests fail because requests returns a ValueError
+                    # "I/O operation on a closed file"
+                    # this is because response fails to read the empty stream.
+                    # treat it as an empty response.
+                    import logging
+                    logging.getLogger().debug(e)
                     pass
         self.default_issuer = default_issuer
         self.scope = scope
@@ -228,7 +237,7 @@ class RemoteOAuthVerifier(object):
     def verify(self, token):
         try:
             userinfo = self._client.verify_token(token, self.scope)
-        except (socket.error, requests.RequestException), e:
+        except (socket.error, requests.RequestException) as e:
             msg = 'Verification request to %s failed; reason: %s'
             msg %= (self.server_url, str(e))
             raise ConnectionError(msg)

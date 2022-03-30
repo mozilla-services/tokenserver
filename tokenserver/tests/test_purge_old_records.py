@@ -6,6 +6,7 @@ import os
 import re
 import threading
 import unittest
+import mock
 from wsgiref.simple_server import make_server
 
 import tokenlib
@@ -95,15 +96,20 @@ class TestPurgeOldRecordsScript(unittest.TestCase):
         user = self.backend.get_user(service, email)
         self.assertEquals(user["client_state"], "cc")
         self.assertEquals(len(user["old_client_states"]), 2)
+        mock_settings = mock.Mock()
+        mock_settings.dryrun = False
 
         # The default grace-period should prevent any cleanup.
-        self.assertTrue(purge_old_records(self.ini_file))
+        self.assertTrue(purge_old_records(
+            self.ini_file, settings=mock_settings))
         user_records = list(self.backend.get_user_records(service, email))
         self.assertEqual(len(user_records), 3)
         self.assertEqual(len(self.service_requests), 0)
 
         # With no grace period, we should cleanup two old records.
-        self.assertTrue(purge_old_records(self.ini_file, grace_period=0))
+        self.assertTrue(
+            purge_old_records(
+                self.ini_file, grace_period=0, settings=mock_settings))
         user_records = list(self.backend.get_user_records(service, email))
         self.assertEqual(len(user_records), 1)
         self.assertEqual(len(self.service_requests), 2)
@@ -139,17 +145,22 @@ class TestPurgeOldRecordsScript(unittest.TestCase):
         self.backend.update_user(service, user, client_state="bb")
         user_records = list(self.backend.get_user_records(service, email))
         self.assertEqual(len(user_records), 2)
+        mock_settings = mock.Mock()
+        mock_settings.dryrun = False
+        mock_settings.force = False
 
         # With the node down, we should not purge any records.
         self.backend.update_node(service, self.service_node, downed=1)
-        self.assertTrue(purge_old_records(self.ini_file, grace_period=0))
+        self.assertTrue(purge_old_records(
+            self.ini_file, grace_period=0, settings=mock_settings))
         user_records = list(self.backend.get_user_records(service, email))
+
         self.assertEqual(len(user_records), 2)
         self.assertEqual(len(self.service_requests), 0)
-
         # With the node back up, we should purge correctly.
         self.backend.update_node(service, self.service_node, downed=0)
-        self.assertTrue(purge_old_records(self.ini_file, grace_period=0))
+        self.assertTrue(purge_old_records(
+            self.ini_file, grace_period=0, settings=mock_settings))
         user_records = list(self.backend.get_user_records(service, email))
         self.assertEqual(len(user_records), 1)
         self.assertEqual(len(self.service_requests), 1)
