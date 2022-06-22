@@ -69,9 +69,9 @@ def purge_old_records(config_file, grace_period=-1, max_per_loop=10,
                 if not rows:
                     logger.info("No more data for %s", service)
                     break
-                if rows == previous_list:
+                if [service].extend(rows) == previous_list:
                     raise Exception("Loop detected")
-                previous_list = rows[:]
+                previous_list = [service].extend(rows)
                 logger.info("Fetched %d rows at offset %d", len(rows), offset)
                 counter = 0
                 for row in rows:
