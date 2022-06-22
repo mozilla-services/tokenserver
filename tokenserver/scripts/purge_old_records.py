@@ -71,7 +71,7 @@ def purge_old_records(config_file, grace_period=-1, max_per_loop=10,
                     break
                 if rows == previous_list:
                     raise Exception("Loop detected")
-                previous_list = rows.copy()
+                previous_list = rows[:]
                 logger.info("Fetched %d rows at offset %d", len(rows), offset)
                 counter = 0
                 for row in rows:
