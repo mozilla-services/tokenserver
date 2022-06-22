@@ -54,6 +54,7 @@ def purge_old_records(config_file, grace_period=-1, max_per_loop=10,
     try:
         backend = config.registry.getUtility(INodeAssignment)
         patterns = config.registry['endpoints_patterns']
+        previous_list = []
         for service in patterns:
             logger.debug("Purging old user records for service: %s", service)
             # Process batches of <max_per_loop> items, until we run out.
@@ -65,6 +66,12 @@ def purge_old_records(config_file, grace_period=-1, max_per_loop=10,
                     "offset": offset,
                 }
                 rows = list(backend.get_old_user_records(service, **kwds))
+                if not rows:
+                    logger.info("No more data for %s", service)
+                    break
+                if rows == previous_list:
+                    raise Exception("Loop detected")
+                previous_list = rows.copy()
                 logger.info("Fetched %d rows at offset %d", len(rows), offset)
                 counter = 0
                 for row in rows:
@@ -99,8 +106,8 @@ def purge_old_records(config_file, grace_period=-1, max_per_loop=10,
                             return True
                 if len(rows) < max_per_loop:
                     break
-    except Exception:
-        logger.exception("Error while purging old user records")
+    except Exception as e:
+        logger.exception("Error while purging old user records: {}".format(e))
         return False
     else:
         logger.info("Finished purging old user records")
