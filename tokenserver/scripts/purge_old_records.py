@@ -198,7 +198,8 @@ def main(args=None):
                       grace_period=opts.grace_period,
                       max_per_loop=opts.max_per_loop,
                       max_offset=opts.max_offset,
-                      request_timeout=opts.request_timeout)
+                      request_timeout=opts.request_timeout,
+                      settings=opts)
     if not opts.oneshot:
         while True:
             # Randomize sleep interval +/- thirty percent to desynchronize
@@ -211,7 +212,8 @@ def main(args=None):
                               grace_period=opts.grace_period,
                               max_per_loop=opts.max_per_loop,
                               max_offset=opts.max_offset,
-                              request_timeout=opts.request_timeout)
+                              request_timeout=opts.request_timeout,
+                              settings=opts)
     return 0
 
 
