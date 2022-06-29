@@ -55,6 +55,7 @@ def purge_old_records(config_file, grace_period=-1, max_per_loop=10,
         backend = config.registry.getUtility(INodeAssignment)
         patterns = config.registry['endpoints_patterns']
         for service in patterns:
+            previous_list = []
             logger.debug("Purging old user records for service: %s", service)
             # Process batches of <max_per_loop> items, until we run out.
             while True:
@@ -65,6 +66,12 @@ def purge_old_records(config_file, grace_period=-1, max_per_loop=10,
                     "offset": offset,
                 }
                 rows = list(backend.get_old_user_records(service, **kwds))
+                if not rows:
+                    logger.info("No more data for %s", service)
+                    break
+                if rows == previous_list:
+                    raise Exception("Loop detected")
+                previous_list = rows
                 logger.info("Fetched %d rows at offset %d", len(rows), offset)
                 counter = 0
                 for row in rows:
@@ -99,8 +106,8 @@ def purge_old_records(config_file, grace_period=-1, max_per_loop=10,
                             return True
                 if len(rows) < max_per_loop:
                     break
-    except Exception:
-        logger.exception("Error while purging old user records")
+    except Exception as e:
+        logger.exception("Error while purging old user records: {}".format(e))
         return False
     else:
         logger.info("Finished purging old user records")
@@ -198,7 +205,8 @@ def main(args=None):
                       grace_period=opts.grace_period,
                       max_per_loop=opts.max_per_loop,
                       max_offset=opts.max_offset,
-                      request_timeout=opts.request_timeout)
+                      request_timeout=opts.request_timeout,
+                      settings=opts)
     if not opts.oneshot:
         while True:
             # Randomize sleep interval +/- thirty percent to desynchronize
@@ -211,7 +219,8 @@ def main(args=None):
                               grace_period=opts.grace_period,
                               max_per_loop=opts.max_per_loop,
                               max_offset=opts.max_offset,
-                              request_timeout=opts.request_timeout)
+                              request_timeout=opts.request_timeout,
+                              settings=opts)
     return 0
 
 
