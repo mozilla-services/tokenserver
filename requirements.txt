@@ -28,7 +28,7 @@ plaster-pastedeploy==0.7
 PyBrowserID==0.14.0
 pycparser==2.19
 PyFxA==0.7.7
-PyJWT==1.7.1
+PyJWT==2.4.0
 PyMySQL==0.9.3
 pymysql-sa==1.0
 pyramid==1.10.4
