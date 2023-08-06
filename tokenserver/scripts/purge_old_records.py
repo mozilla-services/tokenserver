@@ -85,19 +85,25 @@ def purge_old_records(config_file, grace_period=-1, max_per_loop=10,
                             backend.delete_user_record(service, row.uid)
                     elif not row.downed:
                         logger.info("Purging uid %s on %s", row.uid, row.node)
-                        delete_service_data(config, service, row,
-                                            timeout=request_timeout,
-                                            settings=settings)
                         if settings and not settings.dryrun:
+                            delete_service_data(config, service, row,
+                                                timeout=request_timeout,
+                                                settings=settings)
                             backend.delete_user_record(service, row.uid)
                         counter += 1
-                    elif row.downed and settings and settings.force:
+                    elif settings and settings.force:
                         logger.info(
                             "Forcing tokenserver record delete: {}".format(
                                 row.uid
                             )
                         )
+                        logger.info("Forcing Purge uid %s on %s",
+                                    row.uid,
+                                    row.node)
                         if not settings.dryrun:
+                            delete_service_data(config, service, row,
+                                                timeout=request_timeout,
+                                                settings=settings)
                             backend.delete_user_record(service, row.uid)
                         counter += 1
                     if settings and settings.max_records:
