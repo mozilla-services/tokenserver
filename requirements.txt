@@ -7,7 +7,7 @@ cffi==1.14.0; platform_python_implementation == "CPython"
 chardet==3.0.4
 configparser==3.7.4
 cornice==3.5.1
-cryptography==41.0.3
+cryptography==41.0.4
 enum34==1.1.6
 gevent==1.4.0
 greenlet==0.4.13
